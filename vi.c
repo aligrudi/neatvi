@@ -110,7 +110,7 @@ static char *lbuf_chr(struct lbuf *lb, int r, int c)
 		}
 		free(chrs);
 	}
-	return NULL;
+	return "";
 }
 
 static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
@@ -202,6 +202,65 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 	return c;
 }
 
+static int chkind(char *c)
+{
+	if (uc_isspace(c))
+		return 0;
+	if (uc_isalpha(c) || uc_isdigit(c) || c[0] == '_')
+		return 1;
+	return 2;
+}
+
+/* move to the last character of the word */
+static int lbuf_wordlast(struct lbuf *lb, int *row, int *col, int kind, int dir)
+{
+	if (!kind || !(chkind(lbuf_chr(lb, *row, *col)) & kind))
+		return 0;
+	while (chkind(lbuf_chr(lb, *row, *col)) & kind)
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	if (!(chkind(lbuf_chr(lb, *row, *col)) & kind))
+		lbuf_next(lb, row, col, -dir);
+	return 0;
+}
+
+static int lbuf_wordbeg(struct lbuf *lb, int *row, int *col, int big, int dir)
+{
+	int nl = 0;
+	lbuf_wordlast(lb, row, col, big ? 3 : chkind(lbuf_chr(lb, *row, *col)), dir);
+	if (lbuf_next(lb, row, col, dir))
+		return 1;
+	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
+		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
+		if (nl == 2)
+			return 0;
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	}
+	return 0;
+}
+
+static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
+{
+	int nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? -1 : 0;
+	if (!uc_isspace(lbuf_chr(lb, *row, *col)))
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
+		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
+		if (nl == 2) {
+			if (dir < 0)
+				lbuf_next(lb, row, col, -dir);
+			return 0;
+		}
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	}
+	if (lbuf_wordlast(lb, row, col, big ? 3 : chkind(lbuf_chr(lb, *row, *col)), dir))
+		return 1;
+	return 0;
+}
+
 static int vi_motion(int *row, int *col, int pre1, int pre2)
 {
 	int c = vi_read();
@@ -238,37 +297,33 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		lbuf_tochar(xb, row, col, vi_char(), 0, pre);
 		break;
 	case 'B':
-		if (!uc_isspace(lbuf_chr(xb, *row, *col)))
-			lbuf_next(xb, row, col, -1);
-		while (uc_isspace(lbuf_chr(xb, *row, *col)))
-			if (lbuf_next(xb, row, col, -1))
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordend(xb, row, col, 1, -1))
 				break;
-		while (!lbuf_next(xb, row, col, -1)) {
-			if (uc_isspace(lbuf_chr(xb, *row, *col))) {
-				lbuf_next(xb, row, col, 1);
-				break;
-			}
-		}
 		break;
 	case 'E':
-		if (!uc_isspace(lbuf_chr(xb, *row, *col)))
-			lbuf_next(xb, row, col, 1);
-		while (uc_isspace(lbuf_chr(xb, *row, *col)))
-			if (lbuf_next(xb, row, col, 1))
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordend(xb, row, col, 1, +1))
 				break;
-		while (!lbuf_next(xb, row, col, 1)) {
-			if (uc_isspace(lbuf_chr(xb, *row, *col))) {
-				lbuf_next(xb, row, col, -1);
-				break;
-			}
-		}
 		break;
 	case 'W':
-		while (!uc_isspace(lbuf_chr(xb, *row, *col)))
-			if (lbuf_next(xb, row, col, 1))
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordbeg(xb, row, col, 1, +1))
 				break;
-		while (uc_isspace(lbuf_chr(xb, *row, *col)))
-			if (lbuf_next(xb, row, col, 1))
+		break;
+	case 'b':
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordend(xb, row, col, 0, -1))
+				break;
+		break;
+	case 'e':
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordend(xb, row, col, 0, +1))
+				break;
+		break;
+	case 'w':
+		for (i = 0; i < pre; i++)
+			if (lbuf_wordbeg(xb, row, col, 0, +1))
 				break;
 		break;
 	case '0':

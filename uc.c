@@ -106,6 +106,18 @@ int uc_isprint(char *s)
 	return c > 0x7f || isprint(c);
 }
 
+int uc_isalpha(char *s)
+{
+	int c = s ? (unsigned char) *s : 0;
+	return c <= 0x7f && isalpha(c);
+}
+
+int uc_isdigit(char *s)
+{
+	int c = s ? (unsigned char) *s : 0;
+	return c <= 0x7f && isdigit(c);
+}
+
 #define UC_R2L(ch)	(((ch) & 0xff00) == 0x0600 || \
 			((ch) & 0xfffc) == 0x200c || \
 			((ch) & 0xff00) == 0xfb00 || \

@@ -66,7 +66,7 @@ static int vi_prefix(void)
 static int lbuf_lnnext(struct lbuf *lb, int *r, int *c, int dir)
 {
 	char *ln = lbuf_get(lb, *r);
-	int col = ren_next(ln, *c, dir);
+	int col = ln ? ren_next(ln, *c, dir) : -1;
 	if (col < 0)
 		return -1;
 	*c = col;
@@ -113,12 +113,28 @@ static char *lbuf_chr(struct lbuf *lb, int r, int c)
 	return "";
 }
 
+static int lbuf_indents(struct lbuf *lb, int r)
+{
+	char *ln = lbuf_get(lb, r);
+	int n;
+	char **chrs;
+	int i = 0;
+	if (!ln)
+		return 0;
+	chrs = uc_chop(ln ? ln : "", &n);
+	while (i < n && chrs[i][0] != '\n' && uc_isspace(chrs[i]))
+		i++;
+	free(chrs);
+	return i;
+}
+
 static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
 {
-	lbuf_eol(lb, r, c, -1);
-	while (uc_isspace(lbuf_chr(lb, *r, *c)))
-		if (lbuf_lnnext(lb, r, c, +1))
-			break;
+	char *ln = lbuf_get(lb, *r);
+	if (ln)
+		*c = ren_pos(ln, lbuf_indents(lb, *r));
+	else
+		lbuf_eol(lb, r, c, -1);
 }
 
 static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int dir, int n)
@@ -329,6 +345,9 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 	case '0':
 		lbuf_eol(xb, row, col, -1);
 		break;
+	case '^':
+		lbuf_postindents(xb, row, col);
+		break;
 	case '$':
 		lbuf_eol(xb, row, col, +1);
 		lbuf_lnnext(xb, row, col, -1);
@@ -402,7 +421,7 @@ static void vc_motion(int c, int pre1)
 		lbuf_eol(xb, &r1, &c1, -1);
 		lbuf_eol(xb, &r2, &c2, +1);
 	} else if ((mv = vi_motion(&r2, &c2, pre1, pre2))) {
-		if (strchr("0bBhlwW ", mv))
+		if (strchr("^0bBhlwW ", mv))
 			closed = 0;
 	} else {
 		return;
@@ -516,6 +535,7 @@ static void vi(void)
 			case TERMCTRL('b'):
 				xtop = MAX(0, xtop - xrows + 1);
 				xrow = xtop + xrows - 1;
+				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TERMCTRL('f'):
@@ -524,6 +544,7 @@ static void vi(void)
 				else
 					xtop = 0;
 				xrow = xtop;
+				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TERMCTRL('r'):

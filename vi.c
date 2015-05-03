@@ -170,10 +170,14 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 	int mark;
 	switch (c) {
 	case '\n':
+	case '+':
 		*row = MIN(*row + pre, lbuf_len(xb) - 1);
 		break;
 	case '-':
 		*row = MAX(*row - pre, 0);
+		break;
+	case '_':
+		*row = MIN(*row + pre - 1, lbuf_len(xb) - 1);
 		break;
 	case '\'':
 		if ((mark = vi_read()) > 0 && (isalpha(mark) || mark == '\''))
@@ -352,6 +356,9 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		lbuf_eol(xb, row, col, +1);
 		lbuf_lnnext(xb, row, col, -1);
 		break;
+	case '|':
+		*col = pre - 1;
+		break;
 	case 127:
 	case TERMCTRL('h'):
 		*col = ren_cursor(ln, *col);
@@ -421,7 +428,7 @@ static void vc_motion(int c, int pre1)
 		lbuf_eol(xb, &r1, &c1, -1);
 		lbuf_eol(xb, &r2, &c2, +1);
 	} else if ((mv = vi_motion(&r2, &c2, pre1, pre2))) {
-		if (strchr("^0bBhlwW ", mv))
+		if (!strchr("fFtTeE$", mv))
 			closed = 0;
 	} else {
 		return;

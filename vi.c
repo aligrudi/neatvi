@@ -222,24 +222,15 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 	return c;
 }
 
-static int chkind(char *c)
-{
-	if (uc_isspace(c))
-		return 0;
-	if (uc_isalpha(c) || uc_isdigit(c) || c[0] == '_')
-		return 1;
-	return 2;
-}
-
 /* move to the last character of the word */
 static int lbuf_wordlast(struct lbuf *lb, int *row, int *col, int kind, int dir)
 {
-	if (!kind || !(chkind(lbuf_chr(lb, *row, *col)) & kind))
+	if (!kind || !(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
 		return 0;
-	while (chkind(lbuf_chr(lb, *row, *col)) & kind)
+	while (uc_kind(lbuf_chr(lb, *row, *col)) & kind)
 		if (lbuf_next(lb, row, col, dir))
 			return 1;
-	if (!(chkind(lbuf_chr(lb, *row, *col)) & kind))
+	if (!(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
 		lbuf_next(lb, row, col, -dir);
 	return 0;
 }
@@ -247,7 +238,7 @@ static int lbuf_wordlast(struct lbuf *lb, int *row, int *col, int kind, int dir)
 static int lbuf_wordbeg(struct lbuf *lb, int *row, int *col, int big, int dir)
 {
 	int nl = 0;
-	lbuf_wordlast(lb, row, col, big ? 3 : chkind(lbuf_chr(lb, *row, *col)), dir);
+	lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir);
 	if (lbuf_next(lb, row, col, dir))
 		return 1;
 	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
@@ -276,7 +267,7 @@ static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
 		if (lbuf_next(lb, row, col, dir))
 			return 1;
 	}
-	if (lbuf_wordlast(lb, row, col, big ? 3 : chkind(lbuf_chr(lb, *row, *col)), dir))
+	if (lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir))
 		return 1;
 	return 0;
 }

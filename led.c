@@ -36,6 +36,18 @@ static int led_lastchar(char *s)
 	return r - s;
 }
 
+static int led_lastword(char *s)
+{
+	char *r = *s ? uc_beg(s, strchr(s, '\0') - 1) : s;
+	int kind;
+	while (r > s && uc_isspace(r))
+		r = uc_beg(s, r - 1);
+	kind = r > s ? uc_kind(r) : 0;
+	while (r > s && uc_kind(uc_beg(s, r - 1)) == kind)
+		r = uc_beg(s, r - 1);
+	return r - s;
+}
+
 static void led_printparts(char *pref, char *main, char *post)
 {
 	struct sbuf *ln;
@@ -86,6 +98,10 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 			break;
 		case TERMCTRL('v'):
 			sbuf_chr(sb, term_read(-1));
+			break;
+		case TERMCTRL('w'):
+			if (sbuf_len(sb))
+				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
 		default:
 			if (c == '\n' || c == TERMESC || c < 0)

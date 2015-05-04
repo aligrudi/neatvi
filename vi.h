@@ -58,6 +58,7 @@ int uc_isspace(char *s);
 int uc_isprint(char *s);
 int uc_isdigit(char *s);
 int uc_isalpha(char *s);
+int uc_kind(char *c);
 char **uc_chop(char *s, int *n);
 char *uc_next(char *s);
 char *uc_beg(char *beg, char *s);

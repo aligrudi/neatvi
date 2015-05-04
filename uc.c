@@ -118,6 +118,15 @@ int uc_isdigit(char *s)
 	return c <= 0x7f && isdigit(c);
 }
 
+int uc_kind(char *c)
+{
+	if (uc_isspace(c))
+		return 0;
+	if (uc_isalpha(c) || uc_isdigit(c) || c[0] == '_')
+		return 1;
+	return 2;
+}
+
 #define UC_R2L(ch)	(((ch) & 0xff00) == 0x0600 || \
 			((ch) & 0xfffc) == 0x200c || \
 			((ch) & 0xff00) == 0xfb00 || \

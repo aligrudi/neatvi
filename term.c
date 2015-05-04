@@ -8,7 +8,7 @@
 #include "vi.h"
 
 static struct sbuf *term_sbuf;
-static int rows = 25, cols = 80;
+static int rows, cols;
 static struct termios termios;
 
 void term_init(void)
@@ -20,10 +20,16 @@ void term_init(void)
 	newtermios.c_lflag &= ~ICANON;
 	newtermios.c_lflag &= ~ECHO;
 	tcsetattr(0, TCSAFLUSH, &newtermios);
+	if (getenv("LINES"))
+		rows = atoi(getenv("LINES"));
+	if (getenv("COLUMNS"))
+		cols = atoi(getenv("COLUMNS"));
 	if (!ioctl(0, TIOCGWINSZ, &win)) {
-		cols = win.ws_col;
-		rows = win.ws_row;
+		cols = cols ? cols : win.ws_col;
+		rows = rows ? rows : win.ws_row;
 	}
+	cols = cols ? cols : 80;
+	rows = rows ? rows : 25;
 }
 
 void term_done(void)

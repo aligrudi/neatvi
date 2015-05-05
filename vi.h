@@ -48,12 +48,20 @@ int ren_last(char *s);
 int ren_cmp(char *s, int pos1, int pos2);
 int ren_insertionoffset(char *s, int pos, int pre);
 
+/* string registers */
+char *reg_get(int c, int *lnmode);
+void reg_put(int c, char *s, int lnmode);
+void reg_done(void);
+
 /* utf-8 helper functions */
 int uc_len(char *s);
 int uc_dir(char *s);
 int uc_wid(char *s);
 int uc_slen(char *s);
 int uc_code(char *s);
+char *uc_chr(char *s, int off);
+char *uc_sub(char *s, int beg, int end);
+char *uc_dup(char *s);
 int uc_isspace(char *s);
 int uc_isprint(char *s);
 int uc_isdigit(char *s);

@@ -94,6 +94,34 @@ char **uc_chop(char *s, int *n)
 	return chrs;
 }
 
+char *uc_chr(char *s, int off)
+{
+	int i = 0;
+	while (s && *s) {
+		if (i++ == off)
+			return s;
+		s = uc_next(s);
+	}
+	return s && (off < 0 || i == off) ? s : "";
+}
+
+char *uc_sub(char *s, int beg, int end)
+{
+	char *sbeg = uc_chr(s, beg);
+	char *send = uc_chr(s, end);
+	int len = sbeg && send && sbeg <= send ? send - sbeg : 0;
+	char *r = malloc(len + 1);
+	memcpy(r, sbeg, len);
+	r[len] = '\0';
+	return r;
+}
+
+char *uc_dup(char *s)
+{
+	char *r = malloc(strlen(s) + 1);
+	return r ? strcpy(r, s) : NULL;
+}
+
 int uc_isspace(char *s)
 {
 	int c = s ? (unsigned char) *s : 0;

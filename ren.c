@@ -262,9 +262,39 @@ int ren_cmp(char *s, int pos1, int pos2)
  */
 int ren_insertionoffset(char *s, int pos, int pre)
 {
-	int l1;
-	if (!s)
-		return 0;
-	l1 = ren_off(s, pos);
-	return pre ? l1 : l1 + 1;
+	int *ord;		/* ord[i]: the order of the i-th char on the screen */
+	int *map;		/* map[i]: the char appearing i-th on the screen */
+	int n = uc_slen(s);
+	int oprev, o, onext;	/* the offset the of previous, current, and next positions */
+	int cord;		/* the order of the current position on the screen */
+	int i;
+	ord = malloc(n * sizeof(ord[0]));
+	for (i = 0; i < n; i++)
+		ord[i] = i;
+	ren_reorder(s, ord);
+	map = malloc(n * sizeof(map[0]));
+	for (i = 0; i < n; i++)
+		map[ord[i]] = i;
+	if (uc_chr(s, n - 1)[0] == '\n')
+		n--;
+	o = ren_off(s, pos);
+	cord = ord[o];
+	oprev = cord > 0 ? map[cord - 1] : -1;
+	onext = cord < n - 1 ? map[cord + 1] : -1;
+	free(map);
+	free(ord);
+	if (oprev < 0 && onext < 0)
+		return pre ? o : o + 1;
+	if (pre) {
+		if (oprev >= 0)
+			return oprev < o ? o : o + 1;
+		else
+			return onext > o ? o : o + 1;
+	} else {
+		if (onext >= 0)
+			return onext > o ? o + 1 : o;
+		else
+			return oprev < o ? o + 1 : o;
+	}
+	return 0;
 }

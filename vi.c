@@ -110,28 +110,11 @@ static char *lbuf_chr(struct lbuf *lb, int r, int c)
 	return "";
 }
 
-static int lbuf_indents(struct lbuf *lb, int r)
-{
-	char *ln = lbuf_get(lb, r);
-	int n;
-	char **chrs;
-	int i = 0;
-	if (!ln)
-		return 0;
-	chrs = uc_chop(ln ? ln : "", &n);
-	while (i < n && chrs[i][0] != '\n' && uc_isspace(chrs[i]))
-		i++;
-	free(chrs);
-	return i;
-}
-
 static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
 {
-	char *ln = lbuf_get(lb, *r);
-	if (ln)
-		*c = ren_pos(ln, lbuf_indents(lb, *r));
-	else
-		lbuf_eol(lb, r, c, -1);
+	lbuf_eol(lb, r, c, -1);
+	while (uc_isspace(lbuf_chr(lb, *r, *c)))
+		lbuf_lnnext(lb, r, c, +1);
 }
 
 static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int dir, int n)

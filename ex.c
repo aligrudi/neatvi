@@ -155,13 +155,13 @@ static int ex_region(char *loc, int *beg, int *end)
 		return 0;
 	}
 	while (*loc) {
-		char *r = loc;
-		while (*loc && *loc != ';' && *loc != ',')
-			loc++;
-		*beg = *end;
-		*end = ex_lineno(r) + 1;
+		int end0 = *end;
+		*end = ex_lineno(loc) + 1;
+		*beg = naddr++ ? end0 - 1 : *end - 1;
 		if (!naddr++)
 			*beg = *end - 1;
+		while (*loc && *loc != ';' && *loc != ',')
+			loc++;
 		if (!*loc)
 			break;
 		if (*loc == ';')
@@ -284,14 +284,52 @@ static void ec_print(char *ec)
 	}
 }
 
+static void ex_yank(int reg, int beg, int end)
+{
+	char *buf = lbuf_cp(xb, beg, end);
+	reg_put(reg, buf, 1);
+	free(buf);
+}
+
 static void ec_delete(char *ec)
 {
 	char loc[EXLEN];
+	char arg[EXLEN];
 	int beg, end;
 	ex_loc(ec, loc);
+	ex_arg(ec, arg);
 	if (!ex_region(loc, &beg, &end) && lbuf_len(xb)) {
+		ex_yank(arg[0], beg, end);
 		lbuf_rm(xb, beg, end);
 		xrow = beg;
+	}
+}
+
+static void ec_yank(char *ec)
+{
+	char loc[EXLEN];
+	char arg[EXLEN];
+	int beg, end;
+	ex_loc(ec, loc);
+	ex_arg(ec, arg);
+	if (!ex_region(loc, &beg, &end) && lbuf_len(xb))
+		ex_yank(arg[0], beg, end);
+}
+
+static void ec_put(char *ec)
+{
+	char loc[EXLEN];
+	char arg[EXLEN];
+	int beg, end;
+	int lnmode;
+	char *buf;
+	int n = lbuf_len(xb);
+	ex_loc(ec, loc);
+	ex_arg(ec, arg);
+	buf = reg_get(arg[0], &lnmode);
+	if (buf && !ex_region(loc, &beg, &end)) {
+		lbuf_put(xb, end, buf);
+		xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
 	}
 }
 
@@ -397,12 +435,14 @@ static struct excmd {
 	{"e", "edit", ec_edit},
 	{"=", "=", ec_lnum},
 	{"k", "mark", ec_mark},
+	{"pu", "put", ec_put},
 	{"q", "quit", ec_quit},
 	{"r", "read", ec_read},
 	{"w", "write", ec_write},
 	{"u", "undo", ec_undo},
 	{"r", "redo", ec_redo},
 	{"s", "substitute", ec_substitute},
+	{"ya", "yank", ec_yank},
 	{"", "", ec_print},
 };
 

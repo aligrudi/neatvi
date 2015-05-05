@@ -2,25 +2,27 @@
 #include <string.h>
 #include "vi.h"
 
-static char *reg;
-static int lnmode;
+static char *bufs[256];
+static int lnmode[256];
 
 char *reg_get(int c, int *ln)
 {
-	*ln = lnmode;
-	return reg;
+	*ln = lnmode[c];
+	return bufs[c];
 }
 
 void reg_put(int c, char *s, int ln)
 {
-	char *nreg = malloc(strlen(s) + 1);
-	strcpy(nreg, s);
-	free(reg);
-	reg = nreg;
-	lnmode = ln;
+	char *buf = malloc(strlen(s) + 1);
+	strcpy(buf, s);
+	free(bufs[c]);
+	bufs[c] = buf;
+	lnmode[c] = ln;
 }
 
 void reg_done(void)
 {
-	free(reg);
+	int i;
+	for (i = 0; i < LEN(bufs); i++)
+		free(bufs[i]);
 }

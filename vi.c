@@ -16,6 +16,7 @@ char xpath[PATHLEN];	/* current file */
 struct lbuf *xb;	/* current buffer */
 int xrow, xcol, xtop;	/* current row, column, and top row */
 int xled = 1;		/* use the line editor */
+int xdir = 'L';		/* current direction context */
 int xquit;
 
 static void vi_draw(void)
@@ -591,6 +592,10 @@ static void vi(void)
 			case 'p':
 			case 'P':
 				vc_put(c, pre1);
+				redraw = 1;
+				break;
+			case 'z':
+				xdir = vi_read();
 				redraw = 1;
 				break;
 			default:

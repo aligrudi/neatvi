@@ -111,3 +111,4 @@ extern int xtop;
 extern int xled;
 extern char xpath[];
 extern int xquit;
+extern int xdir;

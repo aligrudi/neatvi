@@ -40,6 +40,12 @@ static void bidi_reverse(int *ord, int beg, int end)
 
 int ren_dir(char *s)
 {
+	if (xdir == 'R')
+		return -1;
+	if (xdir == 'l')
+		return *s && uc_dir(s) < 0 ? -1 : +1;
+	if (xdir == 'r')
+		return *s && uc_dir(s) > 0 ? +1 : -1;
 	return +1;
 }
 

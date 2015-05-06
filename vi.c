@@ -536,6 +536,7 @@ static void vi(void)
 				lbuf_postindents(xb, &xrow, &xcol);
 		} else if (!vi_motion(&xrow, &xcol, pre1, 0)) {
 			int c = vi_read();
+			int z;
 			if (c <= 0)
 				continue;
 			switch (c) {
@@ -595,7 +596,24 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case 'z':
-				xdir = vi_read();
+				z = vi_read();
+				switch (z) {
+				case '\n':
+					xtop = pre1 ? pre1 : xrow;
+					break;
+				case '.':
+					xtop = MAX(0, (pre1 ? pre1 : xrow) - xrows / 2);
+					break;
+				case '-':
+					xtop = MAX(0, (pre1 ? pre1 : xrow) - xrows + 1);
+					break;
+				case 'l':
+				case 'r':
+				case 'L':
+				case 'R':
+					xdir = z;
+					break;
+				}
 				redraw = 1;
 				break;
 			default:

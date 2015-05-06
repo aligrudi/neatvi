@@ -86,7 +86,10 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 		c = term_read(-1);
 		switch (c) {
 		case TERMCTRL('f'):
-			*kmap = *kmap == kmap_def ? kmap_farsi : kmap_def;
+			*kmap = kmap_farsi;
+			continue;
+		case TERMCTRL('e'):
+			*kmap = kmap_def;
 			continue;
 		case TERMCTRL('h'):
 		case 127:

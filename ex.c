@@ -222,7 +222,7 @@ static void ec_write(char *ec)
 		beg = 0;
 		end = lbuf_len(xb);
 	}
-	fd = open(path, O_WRONLY | O_CREAT, 0600);
+	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (fd >= 0) {
 		lbuf_wr(xb, fd, beg, end);
 		close(fd);

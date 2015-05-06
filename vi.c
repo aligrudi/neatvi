@@ -115,7 +115,8 @@ static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
 {
 	lbuf_eol(lb, r, c, -1);
 	while (uc_isspace(lbuf_chr(lb, *r, *c)))
-		lbuf_lnnext(lb, r, c, +1);
+		if (lbuf_lnnext(lb, r, c, +1))
+			break;
 }
 
 static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int dir, int n)

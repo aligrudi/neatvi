@@ -499,6 +499,8 @@ static void vc_insert(int cmd)
 	pref = ln ? uc_sub(ln, 0, off) : uc_dup("");
 	post = ln ? uc_sub(ln, off, -1) : uc_dup("\n");
 	rep = led_input(pref, post, &row, &col);
+	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
+		lbuf_put(xb, 0, "\n");
 	if (rep) {
 		if (cmd != 'o' && cmd != 'O')
 			lbuf_rm(xb, xrow, xrow + 1);

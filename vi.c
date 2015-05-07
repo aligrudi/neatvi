@@ -372,21 +372,94 @@ static char *lbuf_region(struct lbuf *lb, int r1, int l1, int r2, int l2)
 	return sbuf_done(sb);
 }
 
-static void vc_motion(int c, int pre1)
+static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l2, int closed)
+{
+	if (*r2 < *r1 || (*r2 == *r1 && ren_cmp(lbuf_get(xb, *r1), *c1, *c2) > 0)) {
+		swap(r1, r2);
+		swap(c1, c2);
+	}
+	*l1 = lbuf_get(xb, *r1) ? ren_insertionoffset(lbuf_get(xb, *r1), *c1, 1) : 0;
+	*l2 = lbuf_get(xb, *r2) ? ren_insertionoffset(lbuf_get(xb, *r2), *c2, !closed) : 0;
+	if (*r1 == *r2 && *l2 < *l1)
+		swap(l1, l2);
+}
+
+static void vi_yank(int r1, int c1, int r2, int c2, int lnmode, int closed)
+{
+	char *region;
+	int l1, l2;
+	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
+	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
+	reg_put(0, region, lnmode);
+	free(region);
+	xrow = r1;
+	xcol = lnmode ? xcol : c1;
+}
+
+static void vi_delete(int r1, int c1, int r2, int c2, int lnmode, int closed)
+{
+	char *pref, *post;
+	char *region;
+	int l1, l2;
+	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
+	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
+	reg_put(0, region, lnmode);
+	free(region);
+	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
+	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
+	lbuf_rm(xb, r1, r2 + 1);
+	if (!lnmode) {
+		struct sbuf *sb = sbuf_make();
+		sbuf_str(sb, pref);
+		sbuf_str(sb, post);
+		lbuf_put(xb, r1, sbuf_buf(sb));
+		sbuf_free(sb);
+	}
+	xrow = r1;
+	xcol = c1;
+	if (lnmode)
+		lbuf_postindents(xb, &xrow, &xcol);
+	free(pref);
+	free(post);
+}
+
+static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
+{
+	char *region;
+	int l1, l2;
+	int row, col;
+	char *rep;
+	char *pref, *post;
+	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
+	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
+	reg_put(0, region, lnmode);
+	free(region);
+	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
+	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
+	rep = led_input(pref, post, &row, &col);
+	if (rep) {
+		lbuf_rm(xb, r1, r2 + 1);
+		lbuf_put(xb, r1, rep);
+		xrow = r1 + row;
+		xcol = col;
+		free(rep);
+	}
+	free(pref);
+	free(post);
+}
+
+static void vc_motion(int cmd, int pre1)
 {
 	int r1 = xrow, r2 = xrow;	/* region rows */
 	int c1 = xcol, c2 = xcol;	/* visual region columns */
-	int l1, l2;			/* logical region columns */
-	int ln = 0;			/* line-based region */
+	int lnmode = 0;			/* line-based region */
 	int closed = 1;			/* include the last character */
-	int mv, i;
-	char *pref = NULL;
-	char *post = NULL;
+	int mv;
 	int pre2 = vi_prefix();
 	if (pre2 < 0)
 		return;
-	if (vi_motionln(&r2, c, pre1, pre2)) {
-		ln = 1;
+	if (vi_motionln(&r2, cmd, pre1, pre2)) {
+		lnmode = 1;
 		lbuf_eol(xb, &r1, &c1, -1);
 		lbuf_eol(xb, &r2, &c2, +1);
 	} else if ((mv = vi_motion(&r2, &c2, pre1, pre2))) {
@@ -395,55 +468,12 @@ static void vc_motion(int c, int pre1)
 	} else {
 		return;
 	}
-	/* make sure the first position is visually before the second */
-	if (r2 < r1 || (r2 == r1 && ren_cmp(lbuf_get(xb, r1), c1, c2) > 0)) {
-		swap(&r1, &r2);
-		swap(&c1, &c2);
-	}
-	if (c == 'y') {				/* adjusting cursor position */
-		xrow = r1;
-		xcol = ln ? xcol : c1;
-	}
-	for (i = 0; i < 2; i++) {
-		l1 = ren_insertionoffset(lbuf_get(xb, r1), c1, 1);
-		l2 = ren_insertionoffset(lbuf_get(xb, r2), c2, !closed);
-		if (r1 == r2 && l2 < l1)	/* offsets out of order */
-			swap(&l1, &l2);
-	}
-	pref = ln ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
-	post = ln ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
-	if (c == 'c' || c == 'd' || c == 'y') {
-		char *region = lbuf_region(xb, r1, ln ? 0 : l1, r2, ln ? -1 : l2);
-		reg_put(0, region, ln);
-		free(region);
-	}
-	if (c == 'c') {
-		int row, col;
-		char *rep = led_input(pref, post, &row, &col);
-		if (rep) {
-			lbuf_rm(xb, r1, r2 + 1);
-			lbuf_put(xb, r1, rep);
-			xrow = r1 + row;
-			xcol = col;
-			free(rep);
-		}
-	}
-	if (c == 'd') {
-		lbuf_rm(xb, r1, r2 + 1);
-		if (!ln) {
-			struct sbuf *sb = sbuf_make();
-			sbuf_str(sb, pref);
-			sbuf_str(sb, post);
-			lbuf_put(xb, r1, sbuf_buf(sb));
-			sbuf_free(sb);
-		}
-		xrow = r1;
-		xcol = c1;
-		if (ln)
-			lbuf_postindents(xb, &xrow, &xcol);
-	}
-	free(pref);
-	free(post);
+	if (cmd == 'y')
+		vi_yank(r1, c1, r2, c2, lnmode, closed);
+	if (cmd == 'd')
+		vi_delete(r1, c1, r2, c2, lnmode, closed);
+	if (cmd == 'c')
+		vi_change(r1, c1, r2, c2, lnmode, closed);
 }
 
 static void vc_insert(int cmd)
@@ -660,6 +690,41 @@ static void vi(void)
 					xdir = z;
 					break;
 				}
+				redraw = 1;
+				break;
+			case 'x':
+				vi_back(' ');
+				vc_motion('d', pre1);
+				redraw = 1;
+				break;
+			case 'X':
+				vi_back('h');
+				vc_motion('d', pre1);
+				redraw = 1;
+				break;
+			case 'C':
+				vi_back('$');
+				vc_motion('c', pre1);
+				redraw = 1;
+				break;
+			case 'D':
+				vi_back('$');
+				vc_motion('d', pre1);
+				redraw = 1;
+				break;
+			case 's':
+				vi_back(' ');
+				vc_motion('c', pre1);
+				redraw = 1;
+				break;
+			case 'S':
+				vi_back('c');
+				vc_motion('c', pre1);
+				redraw = 1;
+				break;
+			case 'Y':
+				vi_back('y');
+				vc_motion('y', pre1);
 				redraw = 1;
 				break;
 			default:

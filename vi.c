@@ -515,6 +515,47 @@ static void vc_put(int cmd, int cnt)
 
 }
 
+static int join_spaces(char *prev, char *next)
+{
+	int prevlen = strlen(prev);
+	if (!prev[0])
+		return 0;
+	if (prev[prevlen - 1] == ' ' || next[0] == ')')
+		return 0;
+	return prev[prevlen - 1] == '.' ? 2 : 1;
+}
+
+static void vc_join(int arg)
+{
+	struct sbuf *sb;
+	int cnt = arg <= 1 ? 2 : arg;
+	int beg = xrow;
+	int end = xrow + cnt;
+	int off = 0;
+	int i;
+	if (!lbuf_get(xb, beg) || !lbuf_get(xb, end - 1))
+		return;
+	sb = sbuf_make();
+	for (i = beg; i < end; i++) {
+		char *ln = lbuf_get(xb, i);
+		char *lnend = strchr(ln, '\n');
+		int spaces;
+		if (i > beg)
+			while (ln[0] == ' ' || ln[0] == '\t')
+				ln++;
+		spaces = i > beg ? join_spaces(sbuf_buf(sb), ln) : 0;
+		off = uc_slen(sbuf_buf(sb));
+		while (spaces--)
+			sbuf_chr(sb, ' ');
+		sbuf_mem(sb, ln, lnend - ln);
+	}
+	sbuf_chr(sb, '\n');
+	lbuf_rm(xb, beg, end);
+	lbuf_put(xb, beg, sbuf_buf(sb));
+	xcol = ren_pos(sbuf_buf(sb), off);
+	sbuf_free(sb);
+}
+
 static void vi(void)
 {
 	int mark;
@@ -585,6 +626,10 @@ static void vi(void)
 			case 'o':
 			case 'O':
 				vc_insert(c);
+				redraw = 1;
+				break;
+			case 'J':
+				vc_join(pre1);
 				redraw = 1;
 				break;
 			case 'm':

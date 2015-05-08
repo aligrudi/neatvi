@@ -86,8 +86,8 @@ char **uc_chop(char *s, int *n)
 	char **chrs;
 	int i;
 	*n = uc_slen(s);
-	chrs = malloc(*n * sizeof(chrs[0]));
-	for (i = 0; i < *n; i++) {
+	chrs = malloc((*n + 1) * sizeof(chrs[0]));
+	for (i = 0; i < *n + 1; i++) {
 		chrs[i] = s;
 		s = uc_next(s);
 	}

@@ -264,7 +264,7 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 	switch (c) {
 	case ' ':
 		for (i = 0; i < pre; i++)
-			if (lbuf_next(xb, row, col, 1))
+			if (lbuf_lnnext(xb, row, col, 1))
 				break;
 		break;
 	case 'f':
@@ -334,9 +334,8 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case 127:
 	case TERMCTRL('h'):
-		*col = ren_cursor(ln, *col);
 		for (i = 0; i < pre; i++)
-			if (lbuf_next(xb, row, col, -1))
+			if (lbuf_lnnext(xb, row, col, -1))
 				break;
 		break;
 	default:
@@ -700,7 +699,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case 'X':
-				vi_back('h');
+				vi_back(TERMCTRL('h'));
 				vc_motion('d', pre1);
 				redraw = 1;
 				break;

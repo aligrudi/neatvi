@@ -48,26 +48,29 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
+/* the position of the cursor for inserting another character */
+static int led_insertionpos(struct sbuf *sb)
+{
+	int len = sbuf_len(sb);
+	char *chr = keymap(led_kmap, 'a');
+	int col;
+	sbuf_str(sb, chr);
+	col = ren_cursor(sbuf_buf(sb),
+		ren_pos(sbuf_buf(sb), uc_slen(sbuf_buf(sb)) - 1));
+	sbuf_cut(sb, len);
+	return col;
+}
+
 static void led_printparts(char *pref, char *main, char *post)
 {
 	struct sbuf *ln;
 	int col;
-	int cur;
-	int dir;
 	ln = sbuf_make();
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
-	cur = uc_slen(sbuf_buf(ln)) - 1;
-	dir = uc_dir(sbuf_buf(ln) + led_lastchar(sbuf_buf(ln)));
+	col = led_insertionpos(ln);
 	sbuf_str(ln, post);
 	led_print(sbuf_buf(ln), -1);
-	col = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(cur, 0)));
-	if (cur >= 0) {
-		if (dir < 0 || (!dir && ren_dir(sbuf_buf(ln)) < 0))
-			col = MAX(col - 1, 0);
-		else
-			col += 1;
-	}
 	term_pos(-1, col);
 	sbuf_free(ln);
 }

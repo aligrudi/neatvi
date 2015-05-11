@@ -1,64 +1,9 @@
 /* rendering strings */
-/*
- * Overview:
- * + ren_translate() replaces the characters if necessary.
- * + ren_position() specifies the position of characters on the screen.
- * + ren_reorder() is called by ren_position() and changes the order of characters.
- * + ren_highlight() performs syntax highlighting.
- */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vi.h"
-
-static int bidi_maximalregion(char *s, int n, int dir, char **chrs, int idx, int *beg, int *end)
-{
-	while (idx < n && uc_dir(chrs[idx]) * dir >= 0)
-		idx++;
-	*beg = idx;
-	*end = idx;
-	while (idx < n && uc_dir(chrs[idx]) * dir <= 0) {
-		if (uc_dir(chrs[idx]) * dir < 0)
-			*end = idx + 1;
-		idx++;
-	}
-	return *beg >= *end;
-}
-
-static void bidi_reverse(int *ord, int beg, int end)
-{
-	end--;
-	while (beg < end) {
-		int tmp = ord[beg];
-		ord[beg] = ord[end];
-		ord[end] = tmp;
-		beg++;
-		end--;
-	}
-}
-
-int ren_dir(char *s)
-{
-	if (xdir == 'R')
-		return -1;
-	if (xdir == 'l')
-		return *s && uc_dir(s) < 0 ? -1 : +1;
-	if (xdir == 'r')
-		return *s && uc_dir(s) > 0 ? +1 : -1;
-	return +1;
-}
-
-/* reorder the characters in s */
-static void ren_reorder(char *s, int *ord)
-{
-	int beg = 0, end = 0, n;
-	char **chrs = uc_chop(s, &n);
-	int dir = ren_dir(s);
-	while (!bidi_maximalregion(s, n, dir, chrs, end, &beg, &end))
-		bidi_reverse(ord, beg, end);
-	free(chrs);
-}
 
 /* specify the screen position of the characters in s */
 static int *ren_position(char *s, int *beg, int *end)
@@ -67,11 +12,11 @@ static int *ren_position(char *s, int *beg, int *end)
 	char **chrs = uc_chop(s, &n);
 	int *off, *pos;
 	int diff = 0;
-	int dir = ren_dir(s);
+	int dir = dir_context(s);
 	pos = malloc(n * sizeof(pos[0]));
 	for (i = 0; i < n; i++)
 		pos[i] = i;
-	ren_reorder(s, pos);
+	dir_reorder(s, pos);
 	off = malloc(n * sizeof(off[0]));
 	for (i = 0; i < n; i++)
 		off[pos[i]] = i;
@@ -124,7 +69,7 @@ char *ren_all(char *s0, int wid)
 	int i;
 	s1 = ren_translate(s0 ? s0 : "");
 	chrs = uc_chop(s1, &n);
-	pos = ren_position(s1, NULL, NULL);
+	pos = ren_position(s0, NULL, NULL);
 	for (i = 0; i < n; i++)
 		if (w <= pos[i])
 			w = pos[i] + 1;
@@ -192,7 +137,7 @@ int ren_off(char *s, int p)
 	int n = uc_slen(s);
 	int *pos = ren_position(s, NULL, NULL);
 	int i;
-	if (ren_dir(s) >= 0)
+	if (dir_context(s) >= 0)
 		p = pos_prev(pos, n, p, 1);
 	else
 		p = pos_next(pos, n, p, 1);
@@ -206,7 +151,7 @@ int ren_off(char *s, int p)
 /* adjust cursor position */
 int ren_cursor(char *s, int p)
 {
-	int dir = ren_dir(s ? s : "");
+	int dir = dir_context(s ? s : "");
 	int n, next;
 	int beg, end;
 	int *pos;
@@ -232,11 +177,11 @@ int ren_next(char *s, int p, int dir)
 {
 	int n = uc_slen(s);
 	int *pos = ren_position(s, NULL, NULL);
-	if (ren_dir(s ? s : "") >= 0)
+	if (dir_context(s ? s : "") >= 0)
 		p = pos_prev(pos, n, p, 1);
 	else
 		p = pos_next(pos, n, p, 1);
-	if (dir * ren_dir(s ? s : "") >= 0)
+	if (dir * dir_context(s ? s : "") >= 0)
 		p = pos_next(pos, n, p, 0);
 	else
 		p = pos_prev(pos, n, p, 0);
@@ -249,58 +194,57 @@ int ren_eol(char *s, int dir)
 	int beg, end;
 	int *pos = ren_position(s, &beg, &end);
 	free(pos);
-	return dir * ren_dir(s) >= 0 ? end : beg;
+	return dir * dir_context(s) >= 0 ? end : beg;
 }
 
 /* compare two visual positions */
 int ren_cmp(char *s, int pos1, int pos2)
 {
-	return ren_dir(s ? s : "") >= 0 ? pos1 - pos2 : pos2 - pos1;
+	return dir_context(s ? s : "") >= 0 ? pos1 - pos2 : pos2 - pos1;
 }
 
-/*
- * insertion offset before or after the given visual position
- *
- * When pre is nonzero, the return value indicates an offset of s,
- * which, if a character is inserted at that position, it appears
- * just before the character at pos.  If pre is zero, the inserted
- * character should appear just after the character at pos.
- */
-int ren_insertionoffset(char *s, int pos, int pre)
+static void swap(int *i1, int *i2)
+{
+	int t = *i1;
+	*i1 = *i2;
+	*i2 = t;
+}
+
+/* the region specified by two visual positions */
+int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
 {
 	int *ord;		/* ord[i]: the order of the i-th char on the screen */
-	int *map;		/* map[i]: the char appearing i-th on the screen */
+	int o1, o2;
+	int beg, end;
 	int n = uc_slen(s);
-	int oprev, o, onext;	/* the offset the of previous, current, and next positions */
-	int cord;		/* the order of the current position on the screen */
 	int i;
+	if (c1 == c2 && !closed) {
+		*l1 = ren_off(s, c1);
+		*l2 = ren_off(s, c2);
+		return 0;
+	}
 	ord = malloc(n * sizeof(ord[0]));
 	for (i = 0; i < n; i++)
 		ord[i] = i;
-	ren_reorder(s, ord);
-	map = malloc(n * sizeof(map[0]));
-	for (i = 0; i < n; i++)
-		map[ord[i]] = i;
-	if (uc_chr(s, n - 1)[0] == '\n')
-		n--;
-	o = ren_off(s, pos);
-	cord = ord[o];
-	oprev = cord > 0 ? map[cord - 1] : -1;
-	onext = cord < n - 1 ? map[cord + 1] : -1;
-	free(map);
+	dir_reorder(s, ord);
+
+	if (ren_cmp(s, c1, c2) > 0)
+		swap(&c1, &c2);
+	if (!closed)
+		c2 = ren_next(s, c2, -1);
+	beg = ren_off(s, c1);
+	end = ren_off(s, c2);
+	if (end < beg)
+		swap(&beg, &end);
+	o1 = ord[beg];
+	o2 = ord[end];
+	if (o2 < o1)
+		swap(&o1, &o2);
+	for (i = beg; i <= end; i++)
+		if (ord[i] < o1 || ord[i] > o2)
+			break;
+	*l1 = beg;
+	*l2 = i;
 	free(ord);
-	if (oprev < 0 && onext < 0)
-		return pre ? o : o + 1;
-	if (pre) {
-		if (oprev >= 0)
-			return oprev < o ? o : o + 1;
-		else
-			return onext > o ? o : o + 1;
-	} else {
-		if (onext >= 0)
-			return onext > o ? o + 1 : o;
-		else
-			return oprev < o ? o + 1 : o;
-	}
 	return 0;
 }

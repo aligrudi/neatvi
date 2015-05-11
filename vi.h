@@ -36,17 +36,27 @@ void sbuf_printf(struct sbuf *sbuf, char *s, ...);
 int sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, int len);
 
+/* regular expression sets */
+struct reset *reset_make(int n, char **pat);
+int reset_find(struct reset *re, char *s, int n, int *grps, int flg);
+void reset_free(struct reset *re);
+
 /* rendering lines */
 char *ren_all(char *s, int wid);
 int ren_cursor(char *s, int pos);
 int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
-int ren_dir(char *s);
 int ren_pos(char *s, int off);
 int ren_off(char *s, int pos);
 int ren_last(char *s);
 int ren_cmp(char *s, int pos1, int pos2);
-int ren_insertionoffset(char *s, int pos, int pre);
+int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed);
+
+/* text direction */
+int dir_context(char *s);
+void dir_reorder(char *s, int *ord);
+void dir_init(void);
+void dir_done(void);
 
 /* string registers */
 char *reg_get(int c, int *lnmode);

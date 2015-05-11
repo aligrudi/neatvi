@@ -259,7 +259,7 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 	int c = vi_read();
 	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
 	char *ln = lbuf_get(xb, *row);
-	int dir = ren_dir(ln ? ln : "");
+	int dir = dir_context(ln ? ln : "");
 	int i;
 	switch (c) {
 	case ' ':
@@ -371,14 +371,37 @@ static char *lbuf_region(struct lbuf *lb, int r1, int l1, int r2, int l2)
 	return sbuf_done(sb);
 }
 
+/* insertion offset before or after the given visual position */
+static int vi_insertionoffset(char *s, int c1, int before)
+{
+	int l1, l2, c2;
+	c2 = ren_next(s, c1, before ? -1 : +1);
+	l2 = c2 >= 0 ? ren_off(s, c2) : 0;
+	if (c1 == c2 || c2 < 0 || uc_chr(s, l2)[0] == '\n') {
+		c2 = ren_next(s, c1, before ? +1 : -1);
+		l1 = ren_off(s, c1);
+		l2 = c2 >= 0 ? ren_off(s, c2) : 0;
+		if (c1 == c2 || c2 < 0 || uc_chr(s, l2)[0] == '\n')
+			return before ? l1 : l1 + 1;
+		if (before)
+			return l1 < l2 ? l1 : l1 + 1;
+		else
+			return l2 < l1 ? l1 + 1 : l1;
+	}
+	ren_region(s, c1, c2, &l1, &l2, 0);
+	return l1 < l2 ? l2 : l1;
+}
+
 static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l2, int closed)
 {
 	if (*r2 < *r1 || (*r2 == *r1 && ren_cmp(lbuf_get(xb, *r1), *c1, *c2) > 0)) {
 		swap(r1, r2);
 		swap(c1, c2);
 	}
-	*l1 = lbuf_get(xb, *r1) ? ren_insertionoffset(lbuf_get(xb, *r1), *c1, 1) : 0;
-	*l2 = lbuf_get(xb, *r2) ? ren_insertionoffset(lbuf_get(xb, *r2), *c2, !closed) : 0;
+	*l1 = lbuf_get(xb, *r1) ? vi_insertionoffset(lbuf_get(xb, *r1), *c1, 1) : 0;
+	*l2 = lbuf_get(xb, *r2) ? vi_insertionoffset(lbuf_get(xb, *r2), *c2, !closed) : 0;
+	if (*r1 == *r2 && lbuf_get(xb, *r1))
+		ren_region(lbuf_get(xb, *r1), *c1, *c2, l1, l2, closed);
 	if (*r1 == *r2 && *l2 < *l1)
 		swap(l1, l2);
 }
@@ -492,9 +515,9 @@ static void vc_insert(int cmd)
 	if (cmd == 'o' || cmd == 'O')
 		ln = NULL;
 	if (cmd == 'i' || cmd == 'I')
-		off = ln ? ren_insertionoffset(ln, xcol, 1) : 0;
+		off = ln ? vi_insertionoffset(ln, xcol, 1) : 0;
 	if (cmd == 'a' || cmd == 'A')
-		off = ln ? ren_insertionoffset(ln, xcol, 0) : 0;
+		off = ln ? vi_insertionoffset(ln, xcol, 0) : 0;
 	pref = ln ? uc_sub(ln, 0, off) : uc_dup("");
 	post = ln ? uc_sub(ln, off, -1) : uc_dup("\n");
 	rep = led_input(pref, post, &row, &col);
@@ -523,7 +546,7 @@ static void vc_put(int cmd, int cnt)
 	if (!buf)
 		return;
 	ln = lnmode ? NULL : lbuf_get(xb, xrow);
-	off = ln ? ren_insertionoffset(ln, xcol, cmd == 'P') : 0;
+	off = ln ? vi_insertionoffset(ln, xcol, cmd == 'P') : 0;
 	if (cmd == 'p' && !ln)
 		xrow++;
 	sb = sbuf_make();
@@ -762,6 +785,7 @@ int main(int argc, char *argv[])
 		if (argv[i][1] == 'v')
 			visual = 1;
 	}
+	dir_init();
 	if (i < argc) {
 		snprintf(ecmd, PATHLEN, "e %s", argv[i]);
 		ex_command(ecmd);
@@ -772,5 +796,6 @@ int main(int argc, char *argv[])
 		ex();
 	lbuf_free(xb);
 	reg_done();
+	dir_done();
 	return 0;
 }

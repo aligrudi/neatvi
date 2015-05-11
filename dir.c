@@ -28,9 +28,9 @@ static struct dmark {
 	{-1, +1, 0, "[a-zA-Z0-9_][^" CR2L "\\\\`$']*[a-zA-Z0-9_]"},
 };
 
-static struct reset *dir_rslr;
-static struct reset *dir_rsrl;
-static struct reset *dir_rsctx;
+static struct rset *dir_rslr;	/* pattern of marks for left-to-right strings */
+static struct rset *dir_rsrl;	/* pattern of marks for right-to-left strings */
+static struct rset *dir_rsctx;	/* direction context patterns */
 
 static int uc_off(char *s, int off)
 {
@@ -45,11 +45,11 @@ static int dir_match(char **chrs, int beg, int end, int ctx, int *rec,
 		int *r_beg, int *r_end, int *c_beg, int *c_end, int *dir)
 {
 	int subs[16 * 2];
-	struct reset *rs = ctx < 0 ? dir_rsrl : dir_rslr;
+	struct rset *rs = ctx < 0 ? dir_rsrl : dir_rslr;
 	struct sbuf *str = sbuf_make();
 	int found;
 	sbuf_mem(str, chrs[beg], chrs[end] - chrs[beg]);
-	found = reset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, 0);
+	found = rset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, 0);
 	if (found >= 0 && r_beg && r_end && c_beg && c_end) {
 		struct dmark *dm = &dmarks[found];
 		char *s = sbuf_buf(str);
@@ -103,7 +103,7 @@ int dir_context(char *s)
 		return +1;
 	if (xdir == 'R')
 		return -1;
-	found = reset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
+	found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (found >= 0)
 		return dcontexts[found].dir;
 	return xdir == 'r' ? +1 : -1;
@@ -133,16 +133,16 @@ void dir_init(void)
 		relr[i] = dmarks[i].ctx >= 0 ? dmarks[i].pat : NULL;
 		rerl[i] = dmarks[i].ctx <= 0 ? dmarks[i].pat : NULL;
 	}
-	dir_rslr = reset_make(LEN(dmarks), relr);
-	dir_rsrl = reset_make(LEN(dmarks), rerl);
+	dir_rslr = rset_make(LEN(dmarks), relr);
+	dir_rsrl = rset_make(LEN(dmarks), rerl);
 	for (i = 0; i < LEN(dcontexts); i++)
 		ctx[i] = dcontexts[i].pat;
-	dir_rsctx = reset_make(LEN(dcontexts), ctx);
+	dir_rsctx = rset_make(LEN(dcontexts), ctx);
 }
 
 void dir_done(void)
 {
-	reset_free(dir_rslr);
-	reset_free(dir_rsrl);
-	reset_free(dir_rsctx);
+	rset_free(dir_rslr);
+	rset_free(dir_rsrl);
+	rset_free(dir_rsctx);
 }

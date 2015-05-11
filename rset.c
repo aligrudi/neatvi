@@ -4,7 +4,8 @@
 #include <string.h>
 #include "vi.h"
 
-struct reset {
+/* regular expression set */
+struct rset {
 	regex_t regex;		/* the combined regular expression */
 	int n;			/* number of regular expressions in this set */
 	int *grp;		/* the group assigned to each subgroup */
@@ -25,9 +26,9 @@ static int re_groupcount(char *s)
 	return n;
 }
 
-struct reset *reset_make(int n, char **re)
+struct rset *rset_make(int n, char **re)
 {
-	struct reset *rs = malloc(sizeof(*rs));
+	struct rset *rs = malloc(sizeof(*rs));
 	struct sbuf *sb = sbuf_make();
 	int i;
 	memset(rs, 0, sizeof(*rs));
@@ -64,7 +65,8 @@ struct reset *reset_make(int n, char **re)
 	return rs;
 }
 
-int reset_find(struct reset *rs, char *s, int n, int *grps, int flg)
+/* return the index of the matching regular expression or -1 if none matches */
+int rset_find(struct rset *rs, char *s, int n, int *grps, int flg)
 {
 	regmatch_t *subs;
 	int found, i, set = -1;
@@ -91,7 +93,7 @@ int reset_find(struct reset *rs, char *s, int n, int *grps, int flg)
 	return set;
 }
 
-void reset_free(struct reset *rs)
+void rset_free(struct rset *rs)
 {
 	regfree(&rs->regex);
 	free(rs->setgrpcnt);

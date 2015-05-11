@@ -37,9 +37,9 @@ int sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, int len);
 
 /* regular expression sets */
-struct reset *reset_make(int n, char **pat);
-int reset_find(struct reset *re, char *s, int n, int *grps, int flg);
-void reset_free(struct reset *re);
+struct rset *rset_make(int n, char **pat);
+int rset_find(struct rset *re, char *s, int n, int *grps, int flg);
+void rset_free(struct rset *re);
 
 /* rendering lines */
 int *ren_position(char *s);

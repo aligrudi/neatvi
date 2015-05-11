@@ -42,14 +42,15 @@ int reset_find(struct reset *re, char *s, int n, int *grps, int flg);
 void reset_free(struct reset *re);
 
 /* rendering lines */
-char *ren_all(char *s, int wid);
+int *ren_position(char *s);
+char *ren_translate(char *s);
 int ren_cursor(char *s, int pos);
 int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
 int ren_pos(char *s, int off);
 int ren_off(char *s, int pos);
 int ren_last(char *s);
-int ren_cmp(char *s, int pos1, int pos2);
+int ren_wid(char *s);
 int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed);
 
 /* text direction */
@@ -108,6 +109,7 @@ char *led_prompt(char *pref, char *post);
 char *led_input(char *pref, char *post, int *row, int *col);
 void led_print(char *msg, int row);
 char *led_keymap(int c);
+int led_pos(char *s, int pos);
 
 /* ex commands */
 void ex(void);

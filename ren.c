@@ -6,14 +6,13 @@
 #include "vi.h"
 
 /* specify the screen position of the characters in s */
-static int *ren_position(char *s, int *beg, int *end)
+int *ren_position(char *s)
 {
 	int i, n;
 	char **chrs = uc_chop(s, &n);
 	int *off, *pos;
 	int diff = 0;
-	int dir = dir_context(s);
-	pos = malloc(n * sizeof(pos[0]));
+	pos = malloc((n + 1) * sizeof(pos[0]));
 	for (i = 0; i < n; i++)
 		pos[i] = i;
 	dir_reorder(s, pos);
@@ -25,24 +24,22 @@ static int *ren_position(char *s, int *beg, int *end)
 		if (*chrs[i] == '\t')
 			diff += 8 - (pos[off[i]] & 7);
 	}
-	if (beg)
-		*beg = 0;
-	if (end)
-		*end = n + diff;
-	if (dir < 0) {
-		if (beg)
-			*beg = xcols - *end - 1;
-		if (end)
-			*end = xcols - 1;
-		for (i = 0; i < n; i++)
-			pos[i] = xcols - pos[i] - 1;
-	}
+	pos[n] = n + diff;
 	free(chrs);
 	free(off);
 	return pos;
 }
 
-static char *ren_translate(char *s)
+int ren_wid(char *s)
+{
+	int *pos = ren_position(s);
+	int n = uc_slen(s);
+	int ret = pos[n];
+	free(pos);
+	return ret;
+}
+
+char *ren_translate(char *s)
 {
 	struct sbuf *sb = sbuf_make();
 	char *r = s;
@@ -58,43 +55,10 @@ static char *ren_translate(char *s)
 	return sbuf_done(sb);
 }
 
-char *ren_all(char *s0, int wid)
-{
-	int n, w = 0;
-	int *pos;	/* pos[i]: the screen position of the i-th character */
-	int *off;	/* off[i]: the character at screen position i */
-	char **chrs;	/* chrs[i]: the i-th character in s1 */
-	char *s1;
-	struct sbuf *out;
-	int i;
-	s1 = ren_translate(s0 ? s0 : "");
-	chrs = uc_chop(s1, &n);
-	pos = ren_position(s0, NULL, NULL);
-	for (i = 0; i < n; i++)
-		if (w <= pos[i])
-			w = pos[i] + 1;
-	off = malloc(w * sizeof(off[0]));
-	memset(off, 0xff, w * sizeof(off[0]));
-	for (i = 0; i < n; i++)
-		off[pos[i]] = i;
-	out = sbuf_make();
-	for (i = 0; i < w; i++) {
-		if (off[i] >= 0 && uc_isprint(chrs[off[i]]))
-			sbuf_mem(out, chrs[off[i]], uc_len(chrs[off[i]]));
-		else
-			sbuf_chr(out, ' ');
-	}
-	free(pos);
-	free(off);
-	free(chrs);
-	free(s1);
-	return sbuf_done(out);
-}
-
 int ren_last(char *s)
 {
 	int n = uc_slen(s);
-	int *pos = ren_position(s, NULL, NULL);
+	int *pos = ren_position(s);
 	int ret = n ? pos[n - 1] : 0;
 	free(pos);
 	return ret;
@@ -124,7 +88,7 @@ static int pos_prev(int *pos, int n, int p, int cur)
 int ren_pos(char *s, int off)
 {
 	int n = uc_slen(s);
-	int *pos = ren_position(s, NULL, NULL);
+	int *pos = ren_position(s);
 	int ret = off < n ? pos[off] : 0;
 	free(pos);
 	return ret;
@@ -135,12 +99,9 @@ int ren_off(char *s, int p)
 {
 	int off = -1;
 	int n = uc_slen(s);
-	int *pos = ren_position(s, NULL, NULL);
+	int *pos = ren_position(s);
 	int i;
-	if (dir_context(s) >= 0)
-		p = pos_prev(pos, n, p, 1);
-	else
-		p = pos_next(pos, n, p, 1);
+	p = pos_prev(pos, n, p, 1);
 	for (i = 0; i < n; i++)
 		if (pos[i] == p)
 			off = i;
@@ -151,23 +112,15 @@ int ren_off(char *s, int p)
 /* adjust cursor position */
 int ren_cursor(char *s, int p)
 {
-	int dir = dir_context(s ? s : "");
 	int n, next;
-	int beg, end;
 	int *pos;
 	if (!s)
 		return 0;
 	n = uc_slen(s);
-	pos = ren_position(s, &beg, &end);
-	if (dir >= 0)
-		p = pos_prev(pos, n, p, 1);
-	else
-		p = pos_next(pos, n, p, 1);
-	if (dir >= 0)
-		next = pos_next(pos, n, p, 0);
-	else
-		next = pos_prev(pos, n, p, 0);
-	p = (next >= 0 ? next : (dir >= 0 ? end : beg)) - dir;
+	pos = ren_position(s);
+	p = pos_prev(pos, n, p, 1);
+	next = pos_next(pos, n, p, 0);
+	p = (next >= 0 ? next : pos[n]) - 1;
 	free(pos);
 	return p >= 0 ? p : 0;
 }
@@ -176,31 +129,14 @@ int ren_cursor(char *s, int p)
 int ren_next(char *s, int p, int dir)
 {
 	int n = uc_slen(s);
-	int *pos = ren_position(s, NULL, NULL);
-	if (dir_context(s ? s : "") >= 0)
-		p = pos_prev(pos, n, p, 1);
-	else
-		p = pos_next(pos, n, p, 1);
-	if (dir * dir_context(s ? s : "") >= 0)
+	int *pos = ren_position(s);
+	p = pos_prev(pos, n, p, 1);
+	if (dir >= 0)
 		p = pos_next(pos, n, p, 0);
 	else
 		p = pos_prev(pos, n, p, 0);
 	free(pos);
 	return p;
-}
-
-int ren_eol(char *s, int dir)
-{
-	int beg, end;
-	int *pos = ren_position(s, &beg, &end);
-	free(pos);
-	return dir * dir_context(s) >= 0 ? end : beg;
-}
-
-/* compare two visual positions */
-int ren_cmp(char *s, int pos1, int pos2)
-{
-	return dir_context(s ? s : "") >= 0 ? pos1 - pos2 : pos2 - pos1;
 }
 
 static void swap(int *i1, int *i2)
@@ -228,7 +164,7 @@ int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
 		ord[i] = i;
 	dir_reorder(s, ord);
 
-	if (ren_cmp(s, c1, c2) > 0)
+	if (c2 < c1)
 		swap(&c1, &c2);
 	if (!closed)
 		c2 = ren_next(s, c2, -1);

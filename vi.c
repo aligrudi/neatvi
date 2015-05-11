@@ -27,7 +27,7 @@ static void vi_draw(void)
 		char *s = lbuf_get(xb, i);
 		led_print(s ? s : "~", i - xtop);
 	}
-	term_pos(xrow, xcol);
+	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 	term_commit();
 }
 
@@ -77,7 +77,7 @@ static int lbuf_lnnext(struct lbuf *lb, int *r, int *c, int dir)
 static void lbuf_eol(struct lbuf *lb, int *r, int *c, int dir)
 {
 	char *ln = lbuf_get(lb, *r);
-	*c = ren_eol(ln ? ln : "", dir);
+	*c = dir < 0 ? 0 : MAX(0, ren_wid(ln ? ln : "") - 1);
 }
 
 static int lbuf_next(struct lbuf *lb, int *r, int *c, int dir)
@@ -394,7 +394,7 @@ static int vi_insertionoffset(char *s, int c1, int before)
 
 static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l2, int closed)
 {
-	if (*r2 < *r1 || (*r2 == *r1 && ren_cmp(lbuf_get(xb, *r1), *c1, *c2) > 0)) {
+	if (*r2 < *r1 || (*r2 == *r1 && *c2 < *c1)) {
 		swap(r1, r2);
 		swap(c1, c2);
 	}
@@ -618,7 +618,7 @@ static void vi(void)
 	xrow = 0;
 	lbuf_eol(xb, &xrow, &xcol, -1);
 	vi_draw();
-	term_pos(xrow, xcol);
+	term_pos(xrow, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
 		int redraw = 0;
 		int orow = xrow;
@@ -660,7 +660,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case ':':
-				term_pos(xrows, 0);
+				term_pos(xrows, led_pos(":", 0));
 				term_kill();
 				ex_command(NULL);
 				if (xquit)
@@ -763,7 +763,8 @@ static void vi(void)
 		}
 		if (redraw)
 			vi_draw();
-		term_pos(xrow - xtop, ren_cursor(lbuf_get(xb, xrow), xcol));
+		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),
+				ren_cursor(lbuf_get(xb, xrow), xcol)));
 		lbuf_undomark(xb);
 	}
 	term_pos(xrows, 0);

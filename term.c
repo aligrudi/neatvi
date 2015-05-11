@@ -80,6 +80,10 @@ void term_kill(void)
 void term_pos(int r, int c)
 {
 	char buf[32] = "\r";
+	if (c < 0)
+		c = 0;
+	if (c >= xcols)
+		c = cols - 1;
 	if (r < 0)
 		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
 	else

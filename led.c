@@ -14,14 +14,56 @@ static char *keymap(char **kmap, int c)
 	return kmap[c] ? kmap[c] : cs;
 }
 
+/* map cursor horizontal position to terminal column number */
+int led_pos(char *s, int pos)
+{
+	return dir_context(s) >= 0 ? pos : xcols - pos - 1;
+}
+
 char *led_keymap(int c)
 {
 	return c >= 0 ? keymap(led_kmap, c) : NULL;
 }
 
+static char *led_render(char *s0)
+{
+	int n, maxcol = 0;
+	int *pos;	/* pos[i]: the screen position of the i-th character */
+	int *off;	/* off[i]: the character at screen position i */
+	char **chrs;	/* chrs[i]: the i-th character in s1 */
+	char *s1;
+	struct sbuf *out;
+	int i;
+	s1 = ren_translate(s0 ? s0 : "");
+	chrs = uc_chop(s1, &n);
+	pos = ren_position(s0);
+	off = malloc(xcols * sizeof(off[0]));
+	memset(off, 0xff, xcols * sizeof(off[0]));
+	for (i = 0; i < n; i++) {
+		int curpos = led_pos(s0, pos[i]);
+		if (curpos >= 0 && curpos < xcols) {
+			off[curpos] = i;
+			if (curpos > maxcol)
+				maxcol = curpos;
+		}
+	}
+	out = sbuf_make();
+	for (i = 0; i <= maxcol; i++) {
+		if (off[i] >= 0 && uc_isprint(chrs[off[i]]))
+			sbuf_mem(out, chrs[off[i]], uc_len(chrs[off[i]]));
+		else
+			sbuf_chr(out, ' ');
+	}
+	free(pos);
+	free(off);
+	free(chrs);
+	free(s1);
+	return sbuf_done(out);
+}
+
 void led_print(char *s, int row)
 {
-	char *r = ren_all(s, -1);
+	char *r = led_render(s);
 	term_pos(row, 0);
 	term_kill();
 	term_str(r);
@@ -71,7 +113,7 @@ static void led_printparts(char *pref, char *main, char *post)
 	col = led_insertionpos(ln);
 	sbuf_str(ln, post);
 	led_print(sbuf_buf(ln), -1);
-	term_pos(-1, col);
+	term_pos(-1, led_pos(sbuf_buf(ln), col));
 	sbuf_free(ln);
 }
 

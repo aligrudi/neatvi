@@ -641,17 +641,18 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case TERMCTRL('b'):
+				if (xtop == 0)
+					break;
 				xtop = MAX(0, xtop - xrows + 1);
-				xrow = xtop + xrows - 1;
+				xrow = MIN(xrow, xtop + xrows - 1);
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TERMCTRL('f'):
-				if (lbuf_len(xb))
-					xtop = MIN(lbuf_len(xb) - 1, xtop + xrows - 1);
-				else
-					xtop = 0;
-				xrow = xtop;
+				if (xtop >= lbuf_len(xb) - 1)
+					break;
+				xtop = MIN(lbuf_len(xb) - 1, xtop + xrows - 1);
+				xrow = MAX(xrow, xtop);
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;

@@ -18,6 +18,8 @@ int xrow, xcol, xtop;	/* current row, column, and top row */
 int xled = 1;		/* use the line editor */
 int xdir = 'L';		/* current direction context */
 int xquit;
+static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
+static int vi_charcmd;		/* the character finding command */
 
 static void vi_draw(void)
 {
@@ -120,30 +122,23 @@ static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
 			break;
 }
 
-static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int dir, int n)
+static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd, int n)
 {
+	int dir = (cmd == 'f' || cmd == 't') ? +1 : -1;
 	int c = *col;
-	if (!cs)
-		return;
+	if (n < 0)
+		dir = -dir;
+	if (n < 0)
+		n = -n;
+	strcpy(vi_charlast, cs);
+	vi_charcmd = cmd;
 	while (n > 0 && !lbuf_lnnext(lb, row, &c, dir))
 		if (uc_code(lbuf_chr(lb, *row, c)) == uc_code(cs))
 			n--;
 	if (!n)
 		*col = c;
-}
-
-static void lbuf_tochar(struct lbuf *lb, int *row, int *col, char *cs, int dir, int n)
-{
-	int c = *col;
-	if (!cs)
-		return;
-	while (n > 0 && !lbuf_lnnext(lb, row, &c, dir))
-		if (uc_code(lbuf_chr(lb, *row, c)) == uc_code(cs))
-			n--;
-	if (!n) {
-		*col = c;
+	if (!n && (cmd == 't' || cmd == 'T'))
 		lbuf_lnnext(lb, row, col, -dir);
-	}
 }
 
 static int vi_motionln(int *row, int cmd, int pre1, int pre2)
@@ -261,6 +256,7 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
+	char *cs;
 	int i;
 	switch (c) {
 	case ' ':
@@ -269,10 +265,20 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 				break;
 		break;
 	case 'f':
-		lbuf_findchar(xb, row, col, vi_char(), +1, pre);
+		if ((cs = vi_char()))
+			lbuf_findchar(xb, row, col, cs, c, pre);
 		break;
 	case 'F':
-		lbuf_findchar(xb, row, col, vi_char(), -1, pre);
+		if ((cs = vi_char()))
+			lbuf_findchar(xb, row, col, cs, c, pre);
+		break;
+	case ';':
+		if (vi_charlast[0])
+			lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, pre);
+		break;
+	case ',':
+		if (vi_charlast[0])
+			lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -pre);
 		break;
 	case 'h':
 		for (i = 0; i < pre; i++)
@@ -285,10 +291,12 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 				break;
 		break;
 	case 't':
-		lbuf_tochar(xb, row, col, vi_char(), 1, pre);
+		if ((cs = vi_char()))
+			lbuf_findchar(xb, row, col, cs, c, pre);
 		break;
 	case 'T':
-		lbuf_tochar(xb, row, col, vi_char(), 0, pre);
+		if ((cs = vi_char()))
+			lbuf_findchar(xb, row, col, cs, c, pre);
 		break;
 	case 'B':
 		for (i = 0; i < pre; i++)

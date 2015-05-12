@@ -27,6 +27,7 @@ static void vi_draw(void)
 		char *s = lbuf_get(xb, i);
 		led_print(s ? s : "~", i - xtop);
 	}
+	led_print("", xrows);
 	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 	term_commit();
 }
@@ -613,6 +614,7 @@ static void vc_join(int arg)
 static void vi(void)
 {
 	int mark;
+	char *ln;
 	term_init();
 	xtop = 0;
 	xrow = 0;
@@ -663,10 +665,14 @@ static void vi(void)
 			case ':':
 				term_pos(xrows, led_pos(":", 0));
 				term_kill();
-				ex_command(NULL);
+				ln = led_prompt(":", "");
+				if (ln && ln[0]) {
+					ex_command(ln);
+					redraw = 1;
+				}
+				free(ln);
 				if (xquit)
 					continue;
-				redraw = 1;
 				break;
 			case 'c':
 			case 'd':

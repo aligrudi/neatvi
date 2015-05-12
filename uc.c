@@ -285,20 +285,6 @@ static int uc_comb(int c)
 		c == 0x0670;				/* superscript alef */
 }
 
-/* the direction of the given utf-8 character */
-int uc_dir(char *s)
-{
-	int u, c = (unsigned char) s[0];
-	if (c < 128 && (ispunct(c) || isspace(c)))
-		return 0;
-	if (c < 128 && isalnum(c))
-		return 1;
-	u = uc_code(s);
-	if (UC_R2L(u))
-		return -1;
-	return 1;
-}
-
 static void uc_cput(char *d, int c)
 {
 	int l = 0;

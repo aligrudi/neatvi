@@ -90,30 +90,26 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-/* the position of the cursor for inserting another character */
-static int led_insertionpos(struct sbuf *sb)
-{
-	int len = sbuf_len(sb);
-	char *chr = keymap(led_kmap, 'a');
-	int col;
-	sbuf_str(sb, chr);
-	col = ren_cursor(sbuf_buf(sb),
-		ren_pos(sbuf_buf(sb), uc_slen(sbuf_buf(sb)) - 1));
-	sbuf_cut(sb, len);
-	return col;
-}
-
 static void led_printparts(char *pref, char *main, char *post)
 {
 	struct sbuf *ln;
-	int col;
+	int off, pos;
 	ln = sbuf_make();
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
-	col = led_insertionpos(ln);
+	off = uc_slen(sbuf_buf(ln));
 	sbuf_str(ln, post);
+	/* cursor position for inserting the next character */
+	if (post[0]) {
+		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
+	} else {
+		int len = sbuf_len(ln);
+		sbuf_str(ln, keymap(led_kmap, 'a'));
+		pos = ren_pos(sbuf_buf(ln), off);
+		sbuf_cut(ln, len);
+	}
 	led_print(sbuf_buf(ln), -1);
-	term_pos(-1, led_pos(sbuf_buf(ln), col));
+	term_pos(-1, led_pos(sbuf_buf(ln), ren_cursor(sbuf_buf(ln), pos)));
 	sbuf_free(ln);
 }
 
@@ -177,19 +173,15 @@ char *led_prompt(char *pref, char *post)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, int *row, int *col)
+char *led_input(char *pref, char *post)
 {
 	struct sbuf *sb = sbuf_make();
 	int key;
-	*row = 0;
 	while (1) {
 		char *ln = led_line(pref, post, &key, &led_kmap);
-		if (pref)
-			sbuf_str(sb, pref);
 		sbuf_str(sb, ln);
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
-		*col = ren_last(pref ? sbuf_buf(sb) : ln);
 		led_printparts(pref ? pref : "", ln, key == '\n' ? "" : post);
 		if (key == '\n')
 			term_chr('\n');
@@ -198,9 +190,7 @@ char *led_input(char *pref, char *post, int *row, int *col)
 		free(ln);
 		if (key != '\n')
 			break;
-		(*row)++;
 	}
-	sbuf_str(sb, post);
 	if (key == TERMESC)
 		return sbuf_done(sb);
 	sbuf_free(sb);

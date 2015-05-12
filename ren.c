@@ -55,15 +55,6 @@ char *ren_translate(char *s)
 	return sbuf_done(sb);
 }
 
-int ren_last(char *s)
-{
-	int n = uc_slen(s);
-	int *pos = ren_position(s);
-	int ret = n ? pos[n - 1] : 0;
-	free(pos);
-	return ret;
-}
-
 /* find the next character after visual position p; if cur start from p itself */
 static int pos_next(int *pos, int n, int p, int cur)
 {

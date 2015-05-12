@@ -49,7 +49,6 @@ int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
 int ren_pos(char *s, int off);
 int ren_off(char *s, int pos);
-int ren_last(char *s);
 int ren_wid(char *s);
 int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed);
 
@@ -66,7 +65,6 @@ void reg_done(void);
 
 /* utf-8 helper functions */
 int uc_len(char *s);
-int uc_dir(char *s);
 int uc_wid(char *s);
 int uc_slen(char *s);
 int uc_code(char *s);
@@ -106,7 +104,7 @@ void term_commit(void);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post);
-char *led_input(char *pref, char *post, int *row, int *col);
+char *led_input(char *pref, char *post);
 void led_print(char *msg, int row);
 char *led_keymap(int c);
 int led_pos(char *s, int pos);

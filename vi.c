@@ -398,7 +398,12 @@ static int vi_insertionoffset(char *s, int c1, int before)
 			return l2 < l1 ? l1 + 1 : l1;
 	}
 	ren_region(s, c1, c2, &l1, &l2, 0);
-	return l1 < l2 ? l2 : l1;
+	c1 = ren_pos(s, l1);
+	c2 = ren_pos(s, l2);
+	if (c1 < c2)
+		return l1 < l2 ? l2 : l1;
+	else
+		return l1 < l2 ? l1 : l2;
 }
 
 static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l2, int closed)
@@ -454,6 +459,42 @@ static void vi_delete(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(post);
 }
 
+static int lastline(char *str)
+{
+	char *s = str;
+	char *r = s;
+	while (s && s[0]) {
+		r = s;
+		s = strchr(s == str ? s : s + 1, '\n');
+	}
+	return r - str;
+}
+
+static int linecount(char *s)
+{
+	int n;
+	for (n = 0; s; n++)
+		if ((s = strchr(s, '\n')))
+			s++;
+	return n;
+}
+
+static char *vi_input(char *pref, char *post, int *row, int *col)
+{
+	char *rep = led_input(pref, post);
+	struct sbuf *sb = sbuf_make();
+	int last, off;
+	sbuf_str(sb, pref);
+	sbuf_str(sb, rep);
+	last = lastline(sbuf_buf(sb));
+	off = uc_slen(sbuf_buf(sb) + last);
+	sbuf_str(sb, post);
+	*row = linecount(sbuf_buf(sb)) - 1;
+	*col = ren_pos(sbuf_buf(sb) + last, MAX(0, off - 1));
+	free(rep);
+	return sbuf_done(sb);
+}
+
 static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 {
 	char *region;
@@ -467,11 +508,11 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(region);
 	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
-	rep = led_input(pref, post, &row, &col);
+	rep = vi_input(pref, post, &row, &col);
 	if (rep) {
 		lbuf_rm(xb, r1, r2 + 1);
 		lbuf_put(xb, r1, rep);
-		xrow = r1 + row;
+		xrow = r1 + row - 1;
 		xcol = col;
 		free(rep);
 	}
@@ -529,14 +570,14 @@ static void vc_insert(int cmd)
 		off = ln ? vi_insertionoffset(ln, xcol, 0) : 0;
 	pref = ln ? uc_sub(ln, 0, off) : uc_dup("");
 	post = ln ? uc_sub(ln, off, -1) : uc_dup("\n");
-	rep = led_input(pref, post, &row, &col);
+	rep = vi_input(pref, post, &row, &col);
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
 		lbuf_put(xb, 0, "\n");
 	if (rep) {
 		if (cmd != 'o' && cmd != 'O')
 			lbuf_rm(xb, xrow, xrow + 1);
 		lbuf_put(xb, xrow, rep);
-		xrow += row;
+		xrow += row - 1;
 		xcol = col;
 		free(rep);
 	}

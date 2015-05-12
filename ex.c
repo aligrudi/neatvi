@@ -17,7 +17,8 @@ static char *ex_read(char *msg)
 	char c;
 	if (xled) {
 		char *s = led_prompt(msg, "");
-		printf("\n");
+		if (s)
+			printf("\n");
 		return s;
 	}
 	sb = sbuf_make();
@@ -36,10 +37,12 @@ static char *ex_read(char *msg)
 /* print an output line; ex's output function */
 static void ex_show(char *msg)
 {
-	if (xled)
+	if (xled) {
 		led_print(msg, -1);
-	else
+		term_chr('\n');
+	} else {
 		printf("%s", msg);
+	}
 }
 
 /* read ex command location */
@@ -447,13 +450,10 @@ static struct excmd {
 };
 
 /* execute a single ex command */
-void ex_command(char *ln0)
+void ex_command(char *ln)
 {
 	char cmd[EXLEN];
-	char *ln = ln0 ? ln0 : ex_read(":");
 	int i;
-	if (!ln)
-		return;
 	ex_cmd(ln, cmd);
 	for (i = 0; i < LEN(excmds); i++) {
 		if (!strcmp(excmds[i].abbr, cmd) || !strcmp(excmds[i].name, cmd)) {
@@ -461,8 +461,6 @@ void ex_command(char *ln0)
 			break;
 		}
 	}
-	if (!ln0)
-		free(ln);
 	lbuf_undomark(xb);
 }
 
@@ -471,8 +469,12 @@ void ex(void)
 {
 	if (xled)
 		term_init();
-	while (!xquit)
-		ex_command(NULL);
+	while (!xquit) {
+		char *ln = ex_read(":");
+		if (ln)
+			ex_command(ln);
+		free(ln);
+	}
 	if (xled)
 		term_done();
 }

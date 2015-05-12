@@ -611,6 +611,24 @@ static void vc_join(int arg)
 	sbuf_free(sb);
 }
 
+static int vi_scrollforeward(int cnt)
+{
+	if (xtop >= lbuf_len(xb) - 1)
+		return 1;
+	xtop = MIN(lbuf_len(xb) - 1, xtop + cnt);
+	xrow = MAX(xrow, xtop);
+	return 0;
+}
+
+static int vi_scrollbackward(int cnt)
+{
+	if (xtop == 0)
+		return 1;
+	xtop = MAX(0, xtop - cnt);
+	xrow = MIN(xrow, xtop + xrows - 1);
+	return 0;
+}
+
 static void vi(void)
 {
 	int mark;
@@ -643,19 +661,25 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case TERMCTRL('b'):
-				if (xtop == 0)
+				if (vi_scrollbackward((pre1 ? pre1 : 1) * (xrows - 1)))
 					break;
-				xtop = MAX(0, xtop - xrows + 1);
-				xrow = MIN(xrow, xtop + xrows - 1);
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TERMCTRL('f'):
-				if (xtop >= lbuf_len(xb) - 1)
+				if (vi_scrollforeward((pre1 ? pre1 : 1) * (xrows - 1)))
 					break;
-				xtop = MIN(lbuf_len(xb) - 1, xtop + xrows - 1);
-				xrow = MAX(xrow, xtop);
 				lbuf_postindents(xb, &xrow, &xcol);
+				redraw = 1;
+				break;
+			case TERMCTRL('e'):
+				if (vi_scrollforeward((pre1 ? pre1 : 1)))
+					break;
+				redraw = 1;
+				break;
+			case TERMCTRL('y'):
+				if (vi_scrollbackward((pre1 ? pre1 : 1)))
+					break;
 				redraw = 1;
 				break;
 			case TERMCTRL('r'):

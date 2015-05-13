@@ -7,6 +7,7 @@
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟"
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
+/* direction context patterns */
 static struct dcontext {
 	int dir;
 	char *pat;
@@ -20,7 +21,7 @@ static struct dmark {
 	int ctx;	/* the direction context for this mark; 0 means any */
 	int dir;	/* the direction of matched text */
 	int grp;	/* the nested subgroup; 0 means no groups */
-	char *pat;	/* the pattern */
+	char *pat;
 } dmarks[] = {
 	{+0, +1, 0, "$([^$]+)\\$"},
 	{+0, +1, 1, "\\\\\\*\\[([^]]+)\\]"},
@@ -106,7 +107,7 @@ int dir_context(char *s)
 	found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (found >= 0)
 		return dcontexts[found].dir;
-	return xdir == 'r' ? +1 : -1;
+	return xdir == 'r' ? -1 : +1;
 }
 
 /* reorder the characters in s */

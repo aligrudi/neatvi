@@ -107,11 +107,11 @@ static void led_printparts(char *pref, char *main, char *post)
 	} else {
 		int len = sbuf_len(ln);
 		sbuf_str(ln, keymap(led_kmap, 'a'));
-		pos = ren_pos(sbuf_buf(ln), off);
+		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
 		sbuf_cut(ln, len);
 	}
 	led_print(sbuf_buf(ln), -1);
-	term_pos(-1, led_pos(sbuf_buf(ln), ren_cursor(sbuf_buf(ln), pos)));
+	term_pos(-1, led_pos(sbuf_buf(ln), pos));
 	sbuf_free(ln);
 }
 

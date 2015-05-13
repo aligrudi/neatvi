@@ -22,7 +22,7 @@ int *ren_position(char *s)
 	for (i = 0; i < n; i++) {
 		pos[off[i]] += diff;
 		if (*chrs[i] == '\t')
-			diff += 8 - (pos[off[i]] & 7);
+			diff += 8 - (pos[off[i]] & 7) - 1;
 	}
 	pos[n] = n + diff;
 	free(chrs);

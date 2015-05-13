@@ -678,6 +678,14 @@ static int vi_scrollbackward(int cnt)
 	return 0;
 }
 
+static void vi_status(void)
+{
+	char stat[128];
+	sprintf(stat, "[%s] %d lines, %d,%d\n",
+		xpath[0] ? xpath : "unnamed", lbuf_len(xb), xrow + 1, xcol + 1);
+	led_print(stat, xrows);
+}
+
 static void vi(void)
 {
 	int mark;
@@ -734,6 +742,9 @@ static void vi(void)
 			case TERMCTRL('r'):
 				lbuf_redo(xb);
 				redraw = 1;
+				break;
+			case TERMCTRL('g'):
+				vi_status();
 				break;
 			case ':':
 				term_pos(xrows, led_pos(":", 0));

@@ -99,8 +99,8 @@ int term_read(int timeout);
 void term_record(void);
 void term_commit(void);
 
-#define TERMCTRL(x)	((x) - 96)
-#define TERMESC		27
+#define TK_CTL(x)	((x) - 96)
+#define TK_ESC		27
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post);

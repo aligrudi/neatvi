@@ -5,6 +5,8 @@
 #include "vi.h"
 #include "kmap.h"
 
+#define TK_STOP(c)		((c) < 0 || (c) == TK_ESC || (c) == TK_CTL('c'))
+
 static char **led_kmap = kmap_def;
 
 static char *keymap(char **kmap, int c)
@@ -126,33 +128,33 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 		led_printparts(pref, sbuf_buf(sb), post);
 		c = term_read(-1);
 		switch (c) {
-		case TERMCTRL('f'):
+		case TK_CTL('f'):
 			*kmap = kmap_farsi;
 			continue;
-		case TERMCTRL('e'):
+		case TK_CTL('e'):
 			*kmap = kmap_def;
 			continue;
-		case TERMCTRL('h'):
+		case TK_CTL('h'):
 		case 127:
 			if (sbuf_len(sb))
 				sbuf_cut(sb, led_lastchar(sbuf_buf(sb)));
 			break;
-		case TERMCTRL('u'):
+		case TK_CTL('u'):
 			sbuf_cut(sb, 0);
 			break;
-		case TERMCTRL('v'):
+		case TK_CTL('v'):
 			sbuf_chr(sb, term_read(-1));
 			break;
-		case TERMCTRL('w'):
+		case TK_CTL('w'):
 			if (sbuf_len(sb))
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
 		default:
-			if (c == '\n' || c == TERMESC || c < 0)
+			if (c == '\n' || TK_STOP(c))
 				break;
 			sbuf_str(sb, keymap(*kmap, c));
 		}
-		if (c == '\n' || c == TERMESC || c < 0)
+		if (c == '\n' || TK_STOP(c))
 			break;
 	}
 	*key = c;
@@ -191,7 +193,7 @@ char *led_input(char *pref, char *post)
 		if (key != '\n')
 			break;
 	}
-	if (key == TERMESC)
+	if (TK_STOP(key))
 		return sbuf_done(sb);
 	sbuf_free(sb);
 	return NULL;

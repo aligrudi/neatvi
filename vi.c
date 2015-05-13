@@ -342,7 +342,7 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		*col = pre - 1;
 		break;
 	case 127:
-	case TERMCTRL('h'):
+	case TK_CTL('h'):
 		for (i = 0; i < pre; i++)
 			if (lbuf_lnnext(xb, row, col, -1))
 				break;
@@ -482,8 +482,11 @@ static int linecount(char *s)
 static char *vi_input(char *pref, char *post, int *row, int *col)
 {
 	char *rep = led_input(pref, post);
-	struct sbuf *sb = sbuf_make();
+	struct sbuf *sb;
 	int last, off;
+	if (!rep)
+		return NULL;
+	sb = sbuf_make();
 	sbuf_str(sb, pref);
 	sbuf_str(sb, rep);
 	last = lastline(sbuf_buf(sb));
@@ -717,33 +720,33 @@ static void vi(void)
 				lbuf_undo(xb);
 				redraw = 1;
 				break;
-			case TERMCTRL('b'):
+			case TK_CTL('b'):
 				if (vi_scrollbackward((pre1 ? pre1 : 1) * (xrows - 1)))
 					break;
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
-			case TERMCTRL('f'):
+			case TK_CTL('f'):
 				if (vi_scrollforeward((pre1 ? pre1 : 1) * (xrows - 1)))
 					break;
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
-			case TERMCTRL('e'):
+			case TK_CTL('e'):
 				if (vi_scrollforeward((pre1 ? pre1 : 1)))
 					break;
 				redraw = 1;
 				break;
-			case TERMCTRL('y'):
+			case TK_CTL('y'):
 				if (vi_scrollbackward((pre1 ? pre1 : 1)))
 					break;
 				redraw = 1;
 				break;
-			case TERMCTRL('r'):
+			case TK_CTL('r'):
 				lbuf_redo(xb);
 				redraw = 1;
 				break;
-			case TERMCTRL('g'):
+			case TK_CTL('g'):
 				vi_status();
 				break;
 			case ':':
@@ -813,7 +816,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case 'X':
-				vi_back(TERMCTRL('h'));
+				vi_back(TK_CTL('h'));
 				vc_motion('d', pre1);
 				redraw = 1;
 				break;

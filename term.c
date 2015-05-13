@@ -17,7 +17,7 @@ void term_init(void)
 	struct termios newtermios;
 	tcgetattr(0, &termios);
 	newtermios = termios;
-	newtermios.c_lflag &= ~ICANON;
+	newtermios.c_lflag &= ~(ICANON | ISIG);
 	newtermios.c_lflag &= ~ECHO;
 	tcsetattr(0, TCSAFLUSH, &newtermios);
 	if (getenv("LINES"))

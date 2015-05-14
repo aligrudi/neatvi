@@ -12,11 +12,14 @@
 #include <string.h>
 #include "vi.h"
 
-char xpath[PATHLEN];	/* current file */
-struct lbuf *xb;	/* current buffer */
-int xrow, xcol, xtop;	/* current row, column, and top row */
-int xled = 1;		/* use the line editor */
-int xdir = 'L';		/* current direction context */
+char xpath[PATHLEN];		/* current file */
+char xpath_alt[PATHLEN];	/* alternate file */
+struct lbuf *xb;		/* current buffer */
+int xrow, xcol, xtop;		/* current row, column, and top row */
+int xrow_alt;			/* alternate row, column, and top row */
+int xled = 1;			/* use the line editor */
+int xdir = 'L';			/* current direction context */
+int xvis;			/* visual mode */
 int xquit;
 static char vi_findlast[256];	/* the last searched keyword */
 static int vi_finddir;		/* the last search direction */
@@ -859,6 +862,10 @@ static void vi(void)
 			case TK_CTL('g'):
 				vi_status();
 				break;
+			case TK_CTL('^'):
+				ex_command("e #");
+				redraw = 1;
+				break;
 			case ':':
 				term_pos(xrows, led_pos(":", 0));
 				term_kill();
@@ -978,24 +985,24 @@ static void vi(void)
 
 int main(int argc, char *argv[])
 {
-	int visual = 1;
 	char ecmd[PATHLEN];
 	int i;
 	xb = lbuf_make();
+	xvis = 1;
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
 		if (argv[i][1] == 's')
 			xled = 0;
 		if (argv[i][1] == 'e')
-			visual = 0;
+			xvis = 0;
 		if (argv[i][1] == 'v')
-			visual = 1;
+			xvis = 1;
 	}
 	dir_init();
 	if (i < argc) {
 		snprintf(ecmd, PATHLEN, "e %s", argv[i]);
 		ex_command(ecmd);
 	}
-	if (visual)
+	if (xvis)
 		vi();
 	else
 		ex();

@@ -191,15 +191,32 @@ static void ec_edit(char *ec)
 	char arg[EXLEN];
 	int fd;
 	ex_arg(ec, arg);
-	fd = open(arg, O_RDONLY);
+	if (!strcmp(arg, "%") || !arg[0]) {
+		strcpy(arg, xpath);
+	} else if (!strcmp(arg, "#")) {
+		char xpath_tmp[PATHLEN];
+		int xrow_tmp = xrow;
+		strcpy(xpath_tmp, xpath_alt);
+		strcpy(xpath_alt, xpath);
+		strcpy(xpath, xpath_tmp);
+		xrow = xrow_alt;
+		xrow_alt = xrow_tmp;
+		xcol = 0;
+		xtop = 0;
+	} else {
+		strcpy(xpath_alt, xpath);
+		snprintf(xpath, PATHLEN, "%s", arg);
+		xrow_alt = xrow;
+		xrow = xvis ? 0 : 1 << 20;
+	}
+	fd = open(xpath, O_RDONLY);
 	lbuf_rm(xb, 0, lbuf_len(xb));
 	if (fd >= 0) {
 		lbuf_rd(xb, fd, 0);
 		close(fd);
 	}
-	xrow = MAX(0, lbuf_len(xb) - 1);
+	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	lbuf_undofree(xb);
-	snprintf(xpath, PATHLEN, "%s", arg);
 }
 
 static void ec_read(char *ec)

@@ -104,8 +104,8 @@ int term_read(int timeout);
 void term_record(void);
 void term_commit(void);
 
-#define TK_CTL(x)	((x) - 96)
-#define TK_ESC		27
+#define TK_CTL(x)	((x) & 037)
+#define TK_ESC		(TK_CTL('['))
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post);
@@ -119,11 +119,14 @@ void ex(void);
 void ex_command(char *cmd);
 
 /* global variables */
+extern int xvis;
 extern struct lbuf *xb;
 extern int xrow;
 extern int xcol;
 extern int xtop;
 extern int xled;
+extern int xrow_alt;
 extern char xpath[];
+extern char xpath_alt[];
 extern int xquit;
 extern int xdir;

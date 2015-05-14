@@ -55,7 +55,8 @@ static void vi_back(int c)
 
 static char *vi_char(void)
 {
-	return led_keymap(vi_read());
+	int key = vi_read();
+	return TK_INT(key) ? NULL : led_keymap(key);
 }
 
 static int vi_prefix(void)
@@ -796,6 +797,40 @@ static void vi_status(void)
 	led_print(stat, xrows);
 }
 
+static int vc_replace(int arg)
+{
+	int cnt = MAX(1, arg);
+	char *cs = vi_char();
+	char *ln = lbuf_get(xb, xrow);
+	struct sbuf *sb;
+	char *pref, *post;
+	char *s;
+	int off, i;
+	if (!ln || !cs)
+		return 1;
+	off = ren_off(ln, xcol);
+	s = uc_chr(ln, off);
+	for (i = 0; s[0] != '\n' && i < cnt; i++)
+		s = uc_next(s);
+	if (i < cnt)
+		return 1;
+	pref = uc_sub(ln, 0, off);
+	post = uc_sub(ln, off + cnt, -1);
+	sb = sbuf_make();
+	sbuf_str(sb, pref);
+	for (i = 0; i < cnt; i++)
+		sbuf_str(sb, cs);
+	sbuf_str(sb, post);
+	lbuf_rm(xb, xrow, xrow + 1);
+	lbuf_put(xb, xrow, sbuf_buf(sb));
+	off += cnt - 1;
+	xcol = ren_pos(sbuf_buf(sb), off);
+	sbuf_free(sb);
+	free(pref);
+	free(post);
+	return 0;
+}
+
 static void vi(void)
 {
 	int mark;
@@ -829,10 +864,6 @@ static void vi(void)
 			if (c <= 0)
 				continue;
 			switch (c) {
-			case 'u':
-				lbuf_undo(xb);
-				redraw = 1;
-				break;
 			case TK_CTL('b'):
 				if (vi_scrollbackward((pre1 ? pre1 : 1) * (xrows - 1)))
 					break;
@@ -853,6 +884,10 @@ static void vi(void)
 			case TK_CTL('y'):
 				if (vi_scrollbackward((pre1 ? pre1 : 1)))
 					break;
+				redraw = 1;
+				break;
+			case 'u':
+				lbuf_undo(xb);
 				redraw = 1;
 				break;
 			case TK_CTL('r'):
@@ -945,6 +980,10 @@ static void vi(void)
 			case 'D':
 				vi_back('$');
 				vc_motion('d', pre1);
+				redraw = 1;
+				break;
+			case 'r':
+				vc_replace(pre1);
 				redraw = 1;
 				break;
 			case 's':

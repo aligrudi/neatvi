@@ -5,8 +5,6 @@
 #include "vi.h"
 #include "kmap.h"
 
-#define TK_STOP(c)		((c) < 0 || (c) == TK_ESC || (c) == TK_CTL('c'))
-
 static char **led_kmap = kmap_def;
 
 static char *keymap(char **kmap, int c)
@@ -150,11 +148,11 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
 		default:
-			if (c == '\n' || TK_STOP(c))
+			if (c == '\n' || TK_INT(c))
 				break;
 			sbuf_str(sb, keymap(*kmap, c));
 		}
-		if (c == '\n' || TK_STOP(c))
+		if (c == '\n' || TK_INT(c))
 			break;
 	}
 	*key = c;
@@ -193,7 +191,7 @@ char *led_input(char *pref, char *post)
 		if (key != '\n')
 			break;
 	}
-	if (TK_STOP(key))
+	if (TK_INT(key))
 		return sbuf_done(sb);
 	sbuf_free(sb);
 	return NULL;

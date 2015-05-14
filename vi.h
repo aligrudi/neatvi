@@ -105,6 +105,7 @@ void term_record(void);
 void term_commit(void);
 
 #define TK_CTL(x)	((x) & 037)
+#define TK_INT(c)	((c) < 0 || (c) == TK_ESC || (c) == TK_CTL('c'))
 #define TK_ESC		(TK_CTL('['))
 
 /* line-oriented input and output */

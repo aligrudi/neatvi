@@ -179,6 +179,7 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 	int failed = 0;
 	int len = 0;
 	int i, dir;
+	char *off = "";
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
 		char *kw;
@@ -187,10 +188,12 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 		if (!(kw = led_prompt(sign, "")))
 			return 1;
 		vi_finddir = cmd == '/' ? +1 : -1;
-		if (strchr(kw, cmd))
-			*strchr(kw, cmd) = '\0';
 		if (kw[0])
 			snprintf(vi_findlast, sizeof(vi_findlast), "%s", kw);
+		if (strchr(vi_findlast, cmd)) {
+			off = strchr(vi_findlast, cmd) + 1;
+			*strchr(vi_findlast, cmd) = '\0';
+		}
 		free(kw);
 	}
 	dir = cmd == 'N' ? -vi_finddir : vi_finddir;
@@ -208,10 +211,70 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 	if (!failed) {
 		*row = r;
 		*col = ren_pos(lbuf_get(xb, r), c);
+		while (off[0] && isspace((unsigned char) off[0]))
+			off++;
+		if (off[0]) {
+			*col = -1;
+			if (*row + atoi(off) < 0 || *row + atoi(off) >= lbuf_len(xb))
+				failed = 1;
+			else
+				*row += atoi(off);
+		}
 	}
 	return failed;
 }
 
+/* move to the last character of the word */
+static int lbuf_wordlast(struct lbuf *lb, int *row, int *col, int kind, int dir)
+{
+	if (!kind || !(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
+		return 0;
+	while (uc_kind(lbuf_chr(lb, *row, *col)) & kind)
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	if (!(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
+		lbuf_next(lb, row, col, -dir);
+	return 0;
+}
+
+static int lbuf_wordbeg(struct lbuf *lb, int *row, int *col, int big, int dir)
+{
+	int nl = 0;
+	lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir);
+	if (lbuf_next(lb, row, col, dir))
+		return 1;
+	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
+		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
+		if (nl == 2)
+			return 0;
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	}
+	return 0;
+}
+
+static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
+{
+	int nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? -1 : 0;
+	if (!uc_isspace(lbuf_chr(lb, *row, *col)))
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
+		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
+		if (nl == 2) {
+			if (dir < 0)
+				lbuf_next(lb, row, col, -dir);
+			return 0;
+		}
+		if (lbuf_next(lb, row, col, dir))
+			return 1;
+	}
+	if (lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir))
+		return 1;
+	return 0;
+}
+
+/* read a line motion */
 static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 {
 	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
@@ -271,65 +334,21 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 	return c;
 }
 
-/* move to the last character of the word */
-static int lbuf_wordlast(struct lbuf *lb, int *row, int *col, int kind, int dir)
-{
-	if (!kind || !(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
-		return 0;
-	while (uc_kind(lbuf_chr(lb, *row, *col)) & kind)
-		if (lbuf_next(lb, row, col, dir))
-			return 1;
-	if (!(uc_kind(lbuf_chr(lb, *row, *col)) & kind))
-		lbuf_next(lb, row, col, -dir);
-	return 0;
-}
-
-static int lbuf_wordbeg(struct lbuf *lb, int *row, int *col, int big, int dir)
-{
-	int nl = 0;
-	lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir);
-	if (lbuf_next(lb, row, col, dir))
-		return 1;
-	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
-		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
-		if (nl == 2)
-			return 0;
-		if (lbuf_next(lb, row, col, dir))
-			return 1;
-	}
-	return 0;
-}
-
-static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
-{
-	int nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? -1 : 0;
-	if (!uc_isspace(lbuf_chr(lb, *row, *col)))
-		if (lbuf_next(lb, row, col, dir))
-			return 1;
-	while (uc_isspace(lbuf_chr(lb, *row, *col))) {
-		nl = uc_code(lbuf_chr(lb, *row, *col)) == '\n' ? nl + 1 : 0;
-		if (nl == 2) {
-			if (dir < 0)
-				lbuf_next(lb, row, col, -dir);
-			return 0;
-		}
-		if (lbuf_next(lb, row, col, dir))
-			return 1;
-	}
-	if (lbuf_wordlast(lb, row, col, big ? 3 : uc_kind(lbuf_chr(lb, *row, *col)), dir))
-		return 1;
-	return 0;
-}
-
+/* read a motion */
 static int vi_motion(int *row, int *col, int pre1, int pre2)
 {
-	int c = vi_read();
 	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
 	char *cs;
+	int mv;
 	int i;
-	switch (c) {
+	if ((mv = vi_motionln(row, 0, pre1, pre2))) {
+		*col = -1;
+		return mv;
+	}
+	mv = vi_read();
+	switch (mv) {
 	case ' ':
 		for (i = 0; i < pre; i++)
 			if (lbuf_lnnext(xb, row, col, 1))
@@ -337,11 +356,11 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case 'f':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, c, pre);
+			lbuf_findchar(xb, row, col, cs, mv, pre);
 		break;
 	case 'F':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, c, pre);
+			lbuf_findchar(xb, row, col, cs, mv, pre);
 		break;
 	case ';':
 		if (vi_charlast[0])
@@ -363,11 +382,11 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case 't':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, c, pre);
+			lbuf_findchar(xb, row, col, cs, mv, pre);
 		break;
 	case 'T':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, c, pre);
+			lbuf_findchar(xb, row, col, cs, mv, pre);
 		break;
 	case 'B':
 		for (i = 0; i < pre; i++)
@@ -413,16 +432,16 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		*col = pre - 1;
 		break;
 	case '/':
-		vi_search(c, pre, row, col);
+		vi_search(mv, pre, row, col);
 		break;
 	case '?':
-		vi_search(c, pre, row, col);
+		vi_search(mv, pre, row, col);
 		break;
 	case 'n':
-		vi_search(c, pre, row, col);
+		vi_search(mv, pre, row, col);
 		break;
 	case 'N':
-		vi_search(c, pre, row, col);
+		vi_search(mv, pre, row, col);
 		break;
 	case 127:
 	case TK_CTL('h'):
@@ -431,10 +450,10 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 				break;
 		break;
 	default:
-		vi_back(c);
+		vi_back(mv);
 		return 0;
 	}
-	return c;
+	return mv;
 }
 
 static void swap(int *a, int *b)
@@ -616,15 +635,17 @@ static void vc_motion(int cmd, int pre1)
 	int pre2 = vi_prefix();
 	if (pre2 < 0)
 		return;
-	if (vi_motionln(&r2, cmd, pre1, pre2)) {
-		lnmode = 1;
+	if ((mv = vi_motionln(&r2, cmd, pre1, pre2))) {
+		c2 = -1;
+	} else if (!(mv = vi_motion(&r2, &c2, pre1, pre2))) {
+		return;
+	}
+	if (!strchr("fFtTeE$", mv))
+		closed = 0;
+	lnmode = c2 < 0;
+	if (lnmode) {
 		lbuf_eol(xb, &r1, &c1, -1);
 		lbuf_eol(xb, &r2, &c2, +1);
-	} else if ((mv = vi_motion(&r2, &c2, pre1, pre2))) {
-		if (!strchr("fFtTeE$", mv))
-			closed = 0;
-	} else {
-		return;
 	}
 	if (cmd == 'y')
 		vi_yank(r1, c1, r2, c2, lnmode, closed);
@@ -785,15 +806,21 @@ static void vi(void)
 	while (!xquit) {
 		int redraw = 0;
 		int orow = xrow;
+		int ocol = xcol;
 		int pre1, mv;
 		if ((pre1 = vi_prefix()) < 0)
 			continue;
-		if ((mv = vi_motionln(&xrow, 0, pre1, 0))) {
-			if (strchr("\'GHML", mv))
+		mv = vi_motion(&xrow, &xcol, pre1, 0);
+		if (mv) {
+			if (strchr("\'GHML/?", mv))
 				lbuf_mark(xb, '\'', orow);
-			if (!strchr("jk", mv))
-				lbuf_postindents(xb, &xrow, &xcol);
-		} else if (!vi_motion(&xrow, &xcol, pre1, 0)) {
+			if (xcol < 0) {
+				if (strchr("jk", mv))
+					xcol = ocol;
+				else
+					lbuf_postindents(xb, &xrow, &xcol);
+			}
+		} else {
 			int c = vi_read();
 			int z;
 			if (c <= 0)

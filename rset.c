@@ -26,10 +26,11 @@ static int re_groupcount(char *s)
 	return n;
 }
 
-struct rset *rset_make(int n, char **re)
+struct rset *rset_make(int n, char **re, int flg)
 {
 	struct rset *rs = malloc(sizeof(*rs));
 	struct sbuf *sb = sbuf_make();
+	int regex_flg = REG_EXTENDED | (flg & RE_ICASE ? REG_ICASE : 0);
 	int i;
 	memset(rs, 0, sizeof(*rs));
 	rs->grp = malloc((n + 1) * sizeof(rs->grp[0]));
@@ -54,7 +55,7 @@ struct rset *rset_make(int n, char **re)
 	}
 	rs->grp[n] = rs->grpcnt;
 	sbuf_chr(sb, ')');
-	if (regcomp(&rs->regex, sbuf_buf(sb), REG_EXTENDED)) {
+	if (regcomp(&rs->regex, sbuf_buf(sb), regex_flg)) {
 		free(rs->grp);
 		free(rs->setgrpcnt);
 		free(rs);
@@ -70,10 +71,15 @@ int rset_find(struct rset *rs, char *s, int n, int *grps, int flg)
 {
 	regmatch_t *subs;
 	int found, i, set = -1;
+	int regex_flg = 0;
 	if (rs->grpcnt <= 2)
 		return -1;
+	if (flg & RE_NOTBOL)
+		regex_flg |= REG_NOTBOL;
+	if (flg & RE_NOTEOL)
+		regex_flg |= REG_NOTEOL;
 	subs = malloc(rs->grpcnt * sizeof(subs[0]));
-	found = !regexec(&rs->regex, s, rs->grpcnt, subs, 0);
+	found = !regexec(&rs->regex, s, rs->grpcnt, subs, regex_flg);
 	for (i = 0; found && i < rs->n; i++)
 		if (rs->grp[i] >= 0 && subs[rs->grp[i]].rm_so >= 0)
 			set = i;

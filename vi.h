@@ -37,7 +37,11 @@ int sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, int len);
 
 /* regular expression sets */
-struct rset *rset_make(int n, char **pat);
+#define RE_ICASE		1
+#define RE_NOTBOL		2
+#define RE_NOTEOL		4
+
+struct rset *rset_make(int n, char **pat, int flg);
 int rset_find(struct rset *re, char *s, int n, int *grps, int flg);
 void rset_free(struct rset *re);
 
@@ -69,6 +73,7 @@ int uc_wid(char *s);
 int uc_slen(char *s);
 int uc_code(char *s);
 char *uc_chr(char *s, int off);
+int uc_off(char *s, int off);
 char *uc_sub(char *s, int beg, int end);
 char *uc_dup(char *s);
 int uc_isspace(char *s);

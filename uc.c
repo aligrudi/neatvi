@@ -105,6 +105,16 @@ char *uc_chr(char *s, int off)
 	return s && (off < 0 || i == off) ? s : "";
 }
 
+/* the number of characters between s and s + off*/
+int uc_off(char *s, int off)
+{
+	char *e = s + off;
+	int i;
+	for (i = 0; s < e && *s; i++)
+		s = uc_next(s);
+	return i;
+}
+
 char *uc_sub(char *s, int beg, int end)
 {
 	char *sbeg = uc_chr(s, beg);

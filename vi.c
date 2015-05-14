@@ -7,7 +7,6 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
-#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -146,29 +145,30 @@ static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd
 
 static int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *c, int *len)
 {
-	regmatch_t subs[1];
-	regex_t re;
+	int offs[2];
 	int found = 0;
 	int row = *r, col = *c;
 	int i;
-	if (regcomp(&re, kw, REG_EXTENDED))
+	struct rset *re = rset_make(1, &kw, 0);
+	if (!re)
 		return 1;
 	for (i = row; !found && i >= 0 && i < lbuf_len(lb); i += dir) {
 		char *s = lbuf_get(lb, i);
-		int off = dir > 0 && row == i ? col + 1 : 0;
-		while (!regexec(&re, s + off, LEN(subs), subs, 0)) {
-			if (dir < 0 && row == i && off + subs[0].rm_so >= col)
+		int off = dir > 0 && row == i ? uc_chr(s, col + 1) - s : 0;
+		int flg = off ? RE_NOTBOL : 0;
+		while (rset_find(re, s + off, 1, offs, flg) >= 0) {
+			if (dir < 0 && row == i && off + offs[0] >= col)
 				break;
 			found = 1;
-			*c = off + subs[0].rm_so;
+			*c = uc_off(s, off + offs[0]);
 			*r = i;
-			*len = subs[0].rm_eo - subs[0].rm_so;
-			off += subs[0].rm_eo;
+			*len = offs[1] - offs[0];
+			off += offs[1];
 			if (dir > 0)
 				break;
 		}
 	}
-	regfree(&re);
+	rset_free(re);
 	return !found;
 }
 
@@ -177,8 +177,8 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 	int r = *row;
 	int c = *col;
 	int failed = 0;
-	int i, len;
-	int dir;
+	int len = 0;
+	int i, dir;
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
 		char *kw;

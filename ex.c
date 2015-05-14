@@ -1,6 +1,5 @@
 #include <ctype.h>
 #include <fcntl.h>
-#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,28 +95,32 @@ static char *ex_arg(char *s, char *arg)
 
 static int ex_search(char *pat)
 {
-	struct sbuf *kwd;
+	struct sbuf *kw;
 	int dir = *pat == '/' ? 1 : -1;
 	char *b = pat;
 	char *e = b;
+	char *re_kw[1];
 	int i = xrow;
-	regex_t re;
-	kwd = sbuf_make();
+	struct rset *re;
+	kw = sbuf_make();
 	while (*++e) {
 		if (*e == *pat)
 			break;
-		sbuf_chr(kwd, (unsigned char) *e);
+		sbuf_chr(kw, (unsigned char) *e);
 		if (*e == '\\' && e[1])
 			e++;
 	}
-	regcomp(&re, sbuf_buf(kwd), 0);
+	re_kw[0] = sbuf_buf(kw);
+	re = rset_make(1, re_kw, 0);
+	sbuf_free(kw);
+	if (!re)
+		return i;
 	while (i >= 0 && i < lbuf_len(xb)) {
-		if (!regexec(&re, lbuf_get(xb, i), 0, NULL, 0))
+		if (rset_find(re, lbuf_get(xb, i), 0, NULL, 0) >= 0)
 			break;
 		i += dir;
 	}
-	regfree(&re);
-	sbuf_free(kwd);
+	rset_free(re);
 	return i;
 }
 
@@ -388,8 +391,8 @@ static char *readuntil(char **src, int delim)
 static void ec_substitute(char *ec)
 {
 	char loc[EXLEN], arg[EXLEN];
-	regmatch_t subs[16];
-	regex_t re;
+	struct rset *re;
+	int offs[32];
 	int beg, end;
 	char *pat, *rep;
 	char *s = arg;
@@ -402,20 +405,20 @@ static void ec_substitute(char *ec)
 	delim = (unsigned char) *s++;
 	pat = readuntil(&s, delim);
 	rep = readuntil(&s, delim);
-	regcomp(&re, pat, 0);
+	re = rset_make(1, &pat, 0);
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
-		if (!regexec(&re, ln, LEN(subs), subs, 0)) {
+		if (rset_find(re, ln, LEN(offs) / 2, offs, 0)) {
 			struct sbuf *r = sbuf_make();
-			sbuf_mem(r, ln, subs[0].rm_so);
+			sbuf_mem(r, ln, offs[0]);
 			sbuf_str(r, rep);
-			sbuf_str(r, ln + subs[0].rm_eo);
+			sbuf_str(r, ln + offs[1]);
 			lbuf_put(xb, i, sbuf_buf(r));
 			lbuf_rm(xb, i + 1, i + 2);
 			sbuf_free(r);
 		}
 	}
-	regfree(&re);
+	rset_free(re);
 	free(pat);
 	free(rep);
 }

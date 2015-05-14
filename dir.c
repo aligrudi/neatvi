@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include "vi.h"
 
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟"
@@ -33,32 +32,26 @@ static struct rset *dir_rslr;	/* pattern of marks for left-to-right strings */
 static struct rset *dir_rsrl;	/* pattern of marks for right-to-left strings */
 static struct rset *dir_rsctx;	/* direction context patterns */
 
-static int uc_off(char *s, int off)
-{
-	char *e = s + off;
-	int i;
-	for (i = 0; s < e && *s; i++)
-		s = uc_next(s);
-	return i;
-}
-
 static int dir_match(char **chrs, int beg, int end, int ctx, int *rec,
 		int *r_beg, int *r_end, int *c_beg, int *c_end, int *dir)
 {
 	int subs[16 * 2];
 	struct rset *rs = ctx < 0 ? dir_rsrl : dir_rslr;
 	struct sbuf *str = sbuf_make();
+	int flg = (beg ? RE_NOTBOL : 0) | (chrs[end][0] ? RE_NOTEOL : 0);
 	int found;
 	sbuf_mem(str, chrs[beg], chrs[end] - chrs[beg]);
-	found = rset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, 0);
+	found = rset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, flg);
 	if (found >= 0 && r_beg && r_end && c_beg && c_end) {
 		struct dmark *dm = &dmarks[found];
 		char *s = sbuf_buf(str);
 		int grp = dm->grp;
 		*r_beg = beg + uc_off(s, subs[0]);
 		*r_end = beg + uc_off(s, subs[1]);
-		*c_beg = subs[grp * 2 + 0] >= 0 ? beg + uc_off(s, subs[grp * 2 + 0]) : *r_beg;
-		*c_end = subs[grp * 2 + 1] >= 0 ? beg + uc_off(s, subs[grp * 2 + 1]) : *r_end;
+		*c_beg = subs[grp * 2 + 0] >= 0 ?
+			beg + uc_off(s, subs[grp * 2 + 0]) : *r_beg;
+		*c_end = subs[grp * 2 + 1] >= 0 ?
+			beg + uc_off(s, subs[grp * 2 + 1]) : *r_end;
 		*dir = dm->dir;
 		*rec = grp > 0;
 	}
@@ -134,11 +127,11 @@ void dir_init(void)
 		relr[i] = dmarks[i].ctx >= 0 ? dmarks[i].pat : NULL;
 		rerl[i] = dmarks[i].ctx <= 0 ? dmarks[i].pat : NULL;
 	}
-	dir_rslr = rset_make(LEN(dmarks), relr);
-	dir_rsrl = rset_make(LEN(dmarks), rerl);
+	dir_rslr = rset_make(LEN(dmarks), relr, 0);
+	dir_rsrl = rset_make(LEN(dmarks), rerl, 0);
 	for (i = 0; i < LEN(dcontexts); i++)
 		ctx[i] = dcontexts[i].pat;
-	dir_rsctx = rset_make(LEN(dcontexts), ctx);
+	dir_rsctx = rset_make(LEN(dcontexts), ctx, 0);
 }
 
 void dir_done(void)

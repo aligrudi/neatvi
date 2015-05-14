@@ -181,6 +181,11 @@ static int ex_region(char *loc, int *beg, int *end)
 	return 0;
 }
 
+static void ec_quit(char *ec)
+{
+	xquit = 1;
+}
+
 static void ec_edit(char *ec)
 {
 	char arg[EXLEN];
@@ -215,10 +220,11 @@ static void ec_read(char *ec)
 
 static void ec_write(char *ec)
 {
-	char arg[EXLEN], loc[EXLEN];
+	char cmd[EXLEN], arg[EXLEN], loc[EXLEN];
 	char *path;
 	int beg, end;
 	int fd;
+	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	path = arg[0] ? arg : xpath;
@@ -233,6 +239,8 @@ static void ec_write(char *ec)
 		lbuf_wr(xb, fd, beg, end);
 		close(fd);
 	}
+	if (!strcmp("wq", cmd))
+		ec_quit("wq");
 }
 
 static void ec_insert(char *ec)
@@ -423,11 +431,6 @@ static void ec_substitute(char *ec)
 	free(rep);
 }
 
-static void ec_quit(char *ec)
-{
-	xquit = 1;
-}
-
 static struct excmd {
 	char *abbr;
 	char *name;
@@ -445,6 +448,7 @@ static struct excmd {
 	{"q", "quit", ec_quit},
 	{"r", "read", ec_read},
 	{"w", "write", ec_write},
+	{"wq", "wq", ec_write},
 	{"u", "undo", ec_undo},
 	{"r", "redo", ec_redo},
 	{"s", "substitute", ec_substitute},

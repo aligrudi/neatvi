@@ -128,7 +128,7 @@ static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
 			break;
 }
 
-static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd, int n)
+static int lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd, int n)
 {
 	int dir = (cmd == 'f' || cmd == 't') ? +1 : -1;
 	int c = *col;
@@ -145,6 +145,7 @@ static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd
 		*col = c;
 	if (!n && (cmd == 't' || cmd == 'T'))
 		lbuf_lnnext(lb, row, col, -dir);
+	return n != 0;
 }
 
 static int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *c, int *len)
@@ -360,19 +361,23 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case 'f':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, mv, pre);
+			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+				return -1;
 		break;
 	case 'F':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, mv, pre);
+			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+				return -1;
 		break;
 	case ';':
 		if (vi_charlast[0])
-			lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, pre);
+			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, pre))
+				return -1;
 		break;
 	case ',':
 		if (vi_charlast[0])
-			lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -pre);
+			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -pre))
+				return -1;
 		break;
 	case 'h':
 		for (i = 0; i < pre; i++)
@@ -386,11 +391,13 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case 't':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, mv, pre);
+			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+				return -1;
 		break;
 	case 'T':
 		if ((cs = vi_char()))
-			lbuf_findchar(xb, row, col, cs, mv, pre);
+			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+				return -1;
 		break;
 	case 'B':
 		for (i = 0; i < pre; i++)
@@ -436,16 +443,20 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		*col = pre - 1;
 		break;
 	case '/':
-		vi_search(mv, pre, row, col);
+		if (vi_search(mv, pre, row, col))
+			return -1;
 		break;
 	case '?':
-		vi_search(mv, pre, row, col);
+		if (vi_search(mv, pre, row, col))
+			return -1;
 		break;
 	case 'n':
-		vi_search(mv, pre, row, col);
+		if (vi_search(mv, pre, row, col))
+			return -1;
 		break;
 	case 'N':
-		vi_search(mv, pre, row, col);
+		if (vi_search(mv, pre, row, col))
+			return -1;
 		break;
 	case 127:
 	case TK_CTL('h'):
@@ -644,6 +655,8 @@ static void vc_motion(int cmd, int pre1)
 	} else if (!(mv = vi_motion(&r2, &c2, pre1, pre2))) {
 		return;
 	}
+	if (mv < 0)
+		return;
 	if (!strchr("fFtTeE$", mv))
 		closed = 0;
 	lnmode = c2 < 0;
@@ -849,6 +862,8 @@ static void vi(void)
 		if ((pre1 = vi_prefix()) < 0)
 			continue;
 		mv = vi_motion(&xrow, &xcol, pre1, 0);
+		if (mv < 0)
+			continue;
 		if (mv) {
 			if (strchr("\'GHML/?", mv))
 				lbuf_mark(xb, '\'', orow);

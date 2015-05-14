@@ -110,7 +110,7 @@ void term_commit(void);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post);
-char *led_input(char *pref, char *post);
+char *led_input(char *pref, char *post, char *ai, int ai_max);
 void led_print(char *msg, int row);
 char *led_keymap(int c);
 int led_pos(char *s, int pos);

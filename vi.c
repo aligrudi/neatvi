@@ -587,18 +587,35 @@ static int linecount(char *s)
 	return n;
 }
 
+static int indentscopy(char *d, char *s, int len)
+{
+	int i;
+	for (i = 0; i < len - 1 && (s[i] == ' ' || s[i] == '\t'); i++)
+		d[i] = s[i];
+	d[i] = '\0';
+	return i;
+}
+
 static char *vi_input(char *pref, char *post, int *row, int *col)
 {
-	char *rep = led_input(pref, post);
+	char ai[64] = "";
+	char *rep;
 	struct sbuf *sb;
 	int last, off;
+	if (xautoindent)
+		pref += indentscopy(ai, pref, sizeof(ai));
+	rep = led_input(pref, post, ai, xautoindent ? sizeof(ai) - 1 : 0);
 	if (!rep)
 		return NULL;
 	sb = sbuf_make();
+	sbuf_str(sb, ai);
 	sbuf_str(sb, pref);
 	sbuf_str(sb, rep);
 	last = lastline(sbuf_buf(sb));
 	off = uc_slen(sbuf_buf(sb) + last);
+	if (last)
+		while (xautoindent && (post[0] == ' ' || post[0] == '\t'))
+			post++;
 	sbuf_str(sb, post);
 	*row = linecount(sbuf_buf(sb)) - 1;
 	*col = ren_pos(sbuf_buf(sb) + last, MAX(0, off - 1));

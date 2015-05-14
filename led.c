@@ -90,11 +90,12 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *pref, char *main, char *post)
+static void led_printparts(char *ai, char *pref, char *main, char *post)
 {
 	struct sbuf *ln;
 	int off, pos;
 	ln = sbuf_make();
+	sbuf_str(ln, ai);
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
 	off = uc_slen(sbuf_buf(ln));
@@ -113,9 +114,10 @@ static void led_printparts(char *pref, char *main, char *post)
 	sbuf_free(ln);
 }
 
-static char *led_line(char *pref, char *post, int *key, char ***kmap)
+static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char ***kmap)
 {
 	struct sbuf *sb;
+	int ai_len = strlen(ai);
 	int c;
 	sb = sbuf_make();
 	if (!pref)
@@ -123,7 +125,7 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 	if (!post)
 		post = "";
 	while (1) {
-		led_printparts(pref, sbuf_buf(sb), post);
+		led_printparts(ai, pref, sbuf_buf(sb), post);
 		c = term_read(-1);
 		switch (c) {
 		case TK_CTL('f'):
@@ -147,6 +149,14 @@ static char *led_line(char *pref, char *post, int *key, char ***kmap)
 			if (sbuf_len(sb))
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
+		case TK_CTL('t'):
+			if (ai_len < ai_max)
+				ai[ai_len++] = '\t';
+			break;
+		case TK_CTL('d'):
+			if (ai_len > 0)
+				ai[--ai_len] = '\0';
+			break;
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
@@ -165,7 +175,7 @@ char *led_prompt(char *pref, char *post)
 	char **kmap = kmap_def;
 	char *s;
 	int key;
-	s = led_line(pref, post, &key, &kmap);
+	s = led_line(pref, post, "", 0, &key, &kmap);
 	if (key == '\n')
 		return s;
 	free(s);
@@ -173,16 +183,21 @@ char *led_prompt(char *pref, char *post)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post)
+char *led_input(char *pref, char *post, char *ai, int ai_max)
 {
 	struct sbuf *sb = sbuf_make();
+	char *first_ai = NULL;
 	int key;
 	while (1) {
-		char *ln = led_line(pref, post, &key, &led_kmap);
+		char *ln = led_line(pref, post, ai, ai_max, &key, &led_kmap);
+		if (pref)
+			first_ai = uc_dup(ai);
+		if (!pref)
+			sbuf_str(sb, ai);
 		sbuf_str(sb, ln);
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
-		led_printparts(pref ? pref : "", ln, key == '\n' ? "" : post);
+		led_printparts(ai, pref ? pref : "", ln, key == '\n' ? "" : post);
 		if (key == '\n')
 			term_chr('\n');
 		pref = NULL;
@@ -190,7 +205,11 @@ char *led_input(char *pref, char *post)
 		free(ln);
 		if (key != '\n')
 			break;
+		while (ai_max && post[0] && (post[0] == ' ' || post[0] == '\t'))
+			post++;
 	}
+	strcpy(ai, first_ai);
+	free(first_ai);
 	if (TK_INT(key))
 		return sbuf_done(sb);
 	sbuf_free(sb);

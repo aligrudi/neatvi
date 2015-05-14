@@ -7,6 +7,7 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@ int xrow, xcol, xtop;	/* current row, column, and top row */
 int xled = 1;		/* use the line editor */
 int xdir = 'L';		/* current direction context */
 int xquit;
+static char vi_findlast[256];	/* the last searched keyword */
+static int vi_finddir;		/* the last search direction */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
 
@@ -139,6 +142,74 @@ static void lbuf_findchar(struct lbuf *lb, int *row, int *col, char *cs, int cmd
 		*col = c;
 	if (!n && (cmd == 't' || cmd == 'T'))
 		lbuf_lnnext(lb, row, col, -dir);
+}
+
+static int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *c, int *len)
+{
+	regmatch_t subs[1];
+	regex_t re;
+	int found = 0;
+	int row = *r, col = *c;
+	int i;
+	if (regcomp(&re, kw, REG_EXTENDED))
+		return 1;
+	for (i = row; !found && i >= 0 && i < lbuf_len(lb); i += dir) {
+		char *s = lbuf_get(lb, i);
+		int off = dir > 0 && row == i ? col + 1 : 0;
+		while (!regexec(&re, s + off, LEN(subs), subs, 0)) {
+			if (dir < 0 && row == i && off + subs[0].rm_so >= col)
+				break;
+			found = 1;
+			*c = off + subs[0].rm_so;
+			*r = i;
+			*len = subs[0].rm_eo - subs[0].rm_so;
+			off += subs[0].rm_eo;
+			if (dir > 0)
+				break;
+		}
+	}
+	regfree(&re);
+	return !found;
+}
+
+static int vi_search(int cmd, int cnt, int *row, int *col)
+{
+	int r = *row;
+	int c = *col;
+	int failed = 0;
+	int i, len;
+	int dir;
+	if (cmd == '/' || cmd == '?') {
+		char sign[4] = {cmd};
+		char *kw;
+		term_pos(xrows, led_pos(sign, 0));
+		term_kill();
+		if (!(kw = led_prompt(sign, "")))
+			return 1;
+		vi_finddir = cmd == '/' ? +1 : -1;
+		if (strchr(kw, cmd))
+			*strchr(kw, cmd) = '\0';
+		if (kw[0])
+			snprintf(vi_findlast, sizeof(vi_findlast), "%s", kw);
+		free(kw);
+	}
+	dir = cmd == 'N' ? -vi_finddir : vi_finddir;
+	if (!vi_findlast[0] || !lbuf_len(xb))
+		return 1;
+	c = ren_off(lbuf_get(xb, *row), *col);
+	for (i = 0; i < cnt; i++) {
+		if (lbuf_search(xb, vi_findlast, dir, &r, &c, &len)) {
+			failed = 1;
+			break;
+		}
+		if (i + 1 < cnt && cmd == '/')
+			c += len;
+	}
+	if (!failed) {
+		*row = r;
+		*col = ren_pos(lbuf_get(xb, r), c);
+	}
+	return failed;
 }
 
 static int vi_motionln(int *row, int cmd, int pre1, int pre2)
@@ -340,6 +411,18 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		break;
 	case '|':
 		*col = pre - 1;
+		break;
+	case '/':
+		vi_search(c, pre, row, col);
+		break;
+	case '?':
+		vi_search(c, pre, row, col);
+		break;
+	case 'n':
+		vi_search(c, pre, row, col);
+		break;
+	case 'N':
+		vi_search(c, pre, row, col);
 		break;
 	case 127:
 	case TK_CTL('h'):

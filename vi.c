@@ -21,6 +21,7 @@ int xled = 1;			/* use the line editor */
 int xdir = 'L';			/* current direction context */
 int xvis;			/* visual mode */
 int xquit;
+int xautoindent = 1;
 static char vi_findlast[256];	/* the last searched keyword */
 static int vi_finddir;		/* the last search direction */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
@@ -103,21 +104,11 @@ static int lbuf_next(struct lbuf *lb, int *r, int *c, int dir)
 	return 0;
 }
 
-/* return a static buffer to the character at visual position c of line r */
+/* return a pointer to the character at visual position c of line r */
 static char *lbuf_chr(struct lbuf *lb, int r, int c)
 {
-	static char chr[8];
 	char *ln = lbuf_get(lb, r);
-	if (ln) {
-		int off = ren_off(ln, c);
-		char *s = uc_chr(ln, off);
-		if (s) {
-			memcpy(chr, s, uc_len(s));
-			chr[uc_len(s)] = '\0';
-			return chr;
-		}
-	}
-	return "";
+	return ln ? uc_chr(ln, ren_off(ln, c)) : "";
 }
 
 static void lbuf_postindents(struct lbuf *lb, int *r, int *c)
@@ -615,6 +606,14 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 	return sbuf_done(sb);
 }
 
+static char *vi_indents(char *ln)
+{
+	struct sbuf *sb = sbuf_make();
+	while (xautoindent && ln && (*ln == ' ' || *ln == '\t'))
+		sbuf_chr(sb, *ln++);
+	return sbuf_done(sb);
+}
+
 static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 {
 	char *region;
@@ -626,7 +625,7 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
 	reg_put(0, region, lnmode);
 	free(region);
-	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
+	pref = lnmode ? vi_indents(lbuf_get(xb, r1)) : uc_sub(lbuf_get(xb, r1), 0, l1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
 	rep = vi_input(pref, post, &row, &col);
 	if (rep) {
@@ -686,14 +685,12 @@ static void vc_insert(int cmd)
 	}
 	if (cmd == 'o')
 		xrow += 1;
-	if (cmd == 'o' || cmd == 'O')
-		ln = NULL;
 	if (cmd == 'i' || cmd == 'I')
 		off = ln ? vi_insertionoffset(ln, xcol, 1) : 0;
 	if (cmd == 'a' || cmd == 'A')
 		off = ln ? vi_insertionoffset(ln, xcol, 0) : 0;
-	pref = ln ? uc_sub(ln, 0, off) : uc_dup("");
-	post = ln ? uc_sub(ln, off, -1) : uc_dup("\n");
+	pref = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, 0, off) : vi_indents(ln);
+	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
 	rep = vi_input(pref, post, &row, &col);
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
 		lbuf_put(xb, 0, "\n");

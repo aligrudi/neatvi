@@ -859,9 +859,7 @@ static void vi(void)
 		if ((pre1 = vi_prefix()) < 0)
 			continue;
 		mv = vi_motion(&xrow, &xcol, pre1, 0);
-		if (mv < 0)
-			continue;
-		if (mv) {
+		if (mv > 0) {
 			if (strchr("\'GHML/?", mv))
 				lbuf_mark(xb, '\'', orow);
 			if (xcol < 0) {
@@ -870,7 +868,7 @@ static void vi(void)
 				else
 					lbuf_postindents(xb, &xrow, &xcol);
 			}
-		} else {
+		} else if (mv == 0) {
 			int c = vi_read();
 			int z;
 			if (c <= 0)

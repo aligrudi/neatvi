@@ -192,13 +192,13 @@ static void ec_edit(char *ec)
 	int fd;
 	ex_arg(ec, arg);
 	fd = open(arg, O_RDONLY);
+	lbuf_rm(xb, 0, lbuf_len(xb));
 	if (fd >= 0) {
-		lbuf_rm(xb, 0, lbuf_len(xb));
 		lbuf_rd(xb, fd, 0);
-		lbuf_undofree(xb);
 		close(fd);
-		xrow = MAX(0, lbuf_len(xb) - 1);
 	}
+	xrow = MAX(0, lbuf_len(xb) - 1);
+	lbuf_undofree(xb);
 	snprintf(xpath, PATHLEN, "%s", arg);
 }
 

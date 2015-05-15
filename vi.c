@@ -286,6 +286,27 @@ static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
 	return 0;
 }
 
+static int lbuf_paragraphbeg(struct lbuf *lb, int *row, int *col, int dir)
+{
+	while (*row >= 0 && *row < lbuf_len(lb) && !strcmp("\n", lbuf_get(lb, *row)))
+		*row += dir;
+	while (*row >= 0 && *row < lbuf_len(lb) && strcmp("\n", lbuf_get(lb, *row)))
+		*row += dir;
+	*row = MAX(0, MIN(*row, lbuf_len(lb) - 1));
+	lbuf_eol(lb, row, col, -1);
+	return 0;
+}
+
+static int lbuf_sectionbeg(struct lbuf *lb, int *row, int *col, int dir)
+{
+	*row += dir;
+	while (*row >= 0 && *row < lbuf_len(lb) && lbuf_get(lb, *row)[0] != '{')
+		*row += dir;
+	*row = MAX(0, MIN(*row, lbuf_len(lb) - 1));
+	lbuf_eol(lb, row, col, -1);
+	return 0;
+}
+
 /* read a line motion */
 static int vi_motionln(int *row, int cmd)
 {
@@ -434,6 +455,30 @@ static int vi_motion(int *row, int *col)
 	case 'w':
 		for (i = 0; i < cnt; i++)
 			if (lbuf_wordbeg(xb, row, col, 0, +1))
+				break;
+		break;
+	case '{':
+		for (i = 0; i < cnt; i++)
+			if (lbuf_paragraphbeg(xb, row, col,  -1))
+				break;
+		break;
+	case '}':
+		for (i = 0; i < cnt; i++)
+			if (lbuf_paragraphbeg(xb, row, col, +1))
+				break;
+		break;
+	case '[':
+		if (vi_read() != '[')
+			return -1;
+		for (i = 0; i < cnt; i++)
+			if (lbuf_sectionbeg(xb, row, col, -1))
+				break;
+		break;
+	case ']':
+		if (vi_read() != ']')
+			return -1;
+		for (i = 0; i < cnt; i++)
+			if (lbuf_sectionbeg(xb, row, col, +1))
 				break;
 		break;
 	case '0':

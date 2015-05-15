@@ -57,9 +57,9 @@ static void lbuf_insertline(struct lbuf *lb, int pos, char *s)
 		lb->ln = nln;
 		lb->ln_sz = nsz;
 	}
-	lb->ln_n++;
 	memmove(lb->ln + pos + 1, lb->ln + pos,
 		(lb->ln_n - pos) * sizeof(lb->ln[0]));
+	lb->ln_n++;
 	lb->ln[pos] = s;
 }
 

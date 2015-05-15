@@ -26,6 +26,8 @@ static char vi_findlast[256];	/* the last searched keyword */
 static int vi_finddir;		/* the last search direction */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
+static int vi_arg1, vi_arg2;	/* the first and second arguments */
+static int vi_ybuf;		/* current yank buffer */
 
 static void vi_draw(void)
 {
@@ -60,18 +62,27 @@ static char *vi_char(void)
 	return TK_INT(key) ? NULL : led_keymap(key);
 }
 
+static int vi_yankbuf(void)
+{
+	int c = vi_read();
+	if (c == '"')
+		return vi_read();
+	vi_back(c);
+	return 0;
+}
+
 static int vi_prefix(void)
 {
-	int pre = 0;
+	int n = 0;
 	int c = vi_read();
 	if ((c >= '1' && c <= '9')) {
 		while (isdigit(c)) {
-			pre = pre * 10 + c - '0';
+			n = n * 10 + c - '0';
 			c = vi_read();
 		}
 	}
 	vi_back(c);
-	return pre;
+	return n;
 }
 
 static int lbuf_lnnext(struct lbuf *lb, int *r, int *c, int dir)
@@ -271,21 +282,21 @@ static int lbuf_wordend(struct lbuf *lb, int *row, int *col, int big, int dir)
 }
 
 /* read a line motion */
-static int vi_motionln(int *row, int cmd, int pre1, int pre2)
+static int vi_motionln(int *row, int cmd)
 {
-	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
+	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	int c = vi_read();
 	int mark;
 	switch (c) {
 	case '\n':
 	case '+':
-		*row = MIN(*row + pre, lbuf_len(xb) - 1);
+		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 		break;
 	case '-':
-		*row = MAX(*row - pre, 0);
+		*row = MAX(*row - cnt, 0);
 		break;
 	case '_':
-		*row = MIN(*row + pre - 1, lbuf_len(xb) - 1);
+		*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 		break;
 	case '\'':
 		if ((mark = vi_read()) > 0 && (isalpha(mark) || mark == '\''))
@@ -293,23 +304,23 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 				*row = lbuf_markpos(xb, mark);
 		break;
 	case 'j':
-		*row = MIN(*row + pre, lbuf_len(xb) - 1);
+		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 		break;
 	case 'k':
-		*row = MAX(*row - pre, 0);
+		*row = MAX(*row - cnt, 0);
 		break;
 	case 'G':
-		*row = (pre1 || pre2) ? pre - 1 : lbuf_len(xb) - 1;
+		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
 		break;
 	case 'H':
 		if (lbuf_len(xb))
-			*row = MIN(xtop + pre - 1, lbuf_len(xb) - 1);
+			*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
 		else
 			*row = 0;
 		break;
 	case 'L':
 		if (lbuf_len(xb))
-			*row = MIN(xtop + xrows - 1 - pre + 1, lbuf_len(xb) - 1);
+			*row = MIN(xtop + xrows - 1 - cnt + 1, lbuf_len(xb) - 1);
 		else
 			*row = 0;
 		break;
@@ -321,7 +332,7 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 		break;
 	default:
 		if (c == cmd) {
-			*row = MIN(*row + pre - 1, lbuf_len(xb) - 1);
+			*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 			break;
 		}
 		vi_back(c);
@@ -331,92 +342,92 @@ static int vi_motionln(int *row, int cmd, int pre1, int pre2)
 }
 
 /* read a motion */
-static int vi_motion(int *row, int *col, int pre1, int pre2)
+static int vi_motion(int *row, int *col)
 {
-	int pre = (pre1 ? pre1 : 1) * (pre2 ? pre2 : 1);
+	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
 	char *cs;
 	int mv;
 	int i;
-	if ((mv = vi_motionln(row, 0, pre1, pre2))) {
+	if ((mv = vi_motionln(row, 0))) {
 		*col = -1;
 		return mv;
 	}
 	mv = vi_read();
 	switch (mv) {
 	case ' ':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_lnnext(xb, row, col, 1))
 				break;
 		break;
 	case 'f':
 		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
 				return -1;
 		break;
 	case 'F':
 		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
 				return -1;
 		break;
 	case ';':
 		if (vi_charlast[0])
-			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, pre))
+			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, cnt))
 				return -1;
 		break;
 	case ',':
 		if (vi_charlast[0])
-			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -pre))
+			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -cnt))
 				return -1;
 		break;
 	case 'h':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_lnnext(xb, row, col, -1 * dir))
 				break;
 		break;
 	case 'l':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_lnnext(xb, row, col, +1 * dir))
 				break;
 		break;
 	case 't':
 		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
 				return -1;
 		break;
 	case 'T':
 		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, pre))
+			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
 				return -1;
 		break;
 	case 'B':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordend(xb, row, col, 1, -1))
 				break;
 		break;
 	case 'E':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordend(xb, row, col, 1, +1))
 				break;
 		break;
 	case 'W':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordbeg(xb, row, col, 1, +1))
 				break;
 		break;
 	case 'b':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordend(xb, row, col, 0, -1))
 				break;
 		break;
 	case 'e':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordend(xb, row, col, 0, +1))
 				break;
 		break;
 	case 'w':
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_wordbeg(xb, row, col, 0, +1))
 				break;
 		break;
@@ -431,27 +442,27 @@ static int vi_motion(int *row, int *col, int pre1, int pre2)
 		lbuf_lnnext(xb, row, col, -1);
 		break;
 	case '|':
-		*col = pre - 1;
+		*col = cnt - 1;
 		break;
 	case '/':
-		if (vi_search(mv, pre, row, col))
+		if (vi_search(mv, cnt, row, col))
 			return -1;
 		break;
 	case '?':
-		if (vi_search(mv, pre, row, col))
+		if (vi_search(mv, cnt, row, col))
 			return -1;
 		break;
 	case 'n':
-		if (vi_search(mv, pre, row, col))
+		if (vi_search(mv, cnt, row, col))
 			return -1;
 		break;
 	case 'N':
-		if (vi_search(mv, pre, row, col))
+		if (vi_search(mv, cnt, row, col))
 			return -1;
 		break;
 	case 127:
 	case TK_CTL('h'):
-		for (i = 0; i < pre; i++)
+		for (i = 0; i < cnt; i++)
 			if (lbuf_lnnext(xb, row, col, -1))
 				break;
 		break;
@@ -534,7 +545,7 @@ static void vi_yank(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	int l1, l2;
 	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
 	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
-	reg_put(0, region, lnmode);
+	reg_put(vi_ybuf, region, lnmode);
 	free(region);
 	xrow = r1;
 	xcol = lnmode ? xcol : c1;
@@ -547,7 +558,7 @@ static void vi_delete(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	int l1, l2;
 	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
 	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
-	reg_put(0, region, lnmode);
+	reg_put(vi_ybuf, region, lnmode);
 	free(region);
 	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, l1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
@@ -640,7 +651,7 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	char *pref, *post;
 	vi_commandregion(&r1, &r2, &c1, &c2, &l1, &l2, closed);
 	region = lbuf_region(xb, r1, lnmode ? 0 : l1, r2, lnmode ? -1 : l2);
-	reg_put(0, region, lnmode);
+	reg_put(vi_ybuf, region, lnmode);
 	free(region);
 	pref = lnmode ? vi_indents(lbuf_get(xb, r1)) : uc_sub(lbuf_get(xb, r1), 0, l1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), l2, -1);
@@ -656,23 +667,24 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(post);
 }
 
-static void vc_motion(int cmd, int pre1)
+static int vc_motion(int cmd)
 {
 	int r1 = xrow, r2 = xrow;	/* region rows */
 	int c1 = xcol, c2 = xcol;	/* visual region columns */
 	int lnmode = 0;			/* line-based region */
 	int closed = 1;			/* include the last character */
 	int mv;
-	int pre2 = vi_prefix();
-	if (pre2 < 0)
-		return;
-	if ((mv = vi_motionln(&r2, cmd, pre1, pre2))) {
+	vi_arg2 = vi_prefix();
+	if (vi_arg2 < 0)
+		return 1;
+	if ((mv = vi_motionln(&r2, cmd))) {
 		c2 = -1;
-	} else if (!(mv = vi_motion(&r2, &c2, pre1, pre2))) {
-		return;
+	} else if (!(mv = vi_motion(&r2, &c2))) {
+		vi_read();
+		return 1;
 	}
 	if (mv < 0)
-		return;
+		return 1;
 	if (!strchr("fFtTeE$", mv))
 		closed = 0;
 	lnmode = c2 < 0;
@@ -686,9 +698,10 @@ static void vc_motion(int cmd, int pre1)
 		vi_delete(r1, c1, r2, c2, lnmode, closed);
 	if (cmd == 'c')
 		vi_change(r1, c1, r2, c2, lnmode, closed);
+	return 0;
 }
 
-static void vc_insert(int cmd)
+static int vc_insert(int cmd)
 {
 	char *pref, *post;
 	char *ln = lbuf_get(xb, xrow);
@@ -721,18 +734,20 @@ static void vc_insert(int cmd)
 	}
 	free(pref);
 	free(post);
+	return !rep;
 }
 
-static void vc_put(int cmd, int cnt)
+static int vc_put(int cmd)
 {
+	int cnt = MAX(1, vi_arg1);
 	int lnmode;
 	char *ln;
-	char *buf = reg_get(0, &lnmode);
+	char *buf = reg_get(vi_ybuf, &lnmode);
 	struct sbuf *sb;
 	int off;
 	int i;
 	if (!buf)
-		return;
+		return 1;
 	ln = lnmode ? NULL : lbuf_get(xb, xrow);
 	off = ln ? vi_insertionoffset(ln, xcol, cmd == 'P') : 0;
 	if (cmd == 'p' && !ln)
@@ -750,11 +765,13 @@ static void vc_put(int cmd, int cnt)
 		sbuf_str(sb, s);
 		free(s);
 	}
+	if (!ln && !lbuf_len(xb))
+		lbuf_put(xb, 0, "\n");
 	if (ln)
 		lbuf_rm(xb, xrow, xrow + 1);
 	lbuf_put(xb, xrow, sbuf_buf(sb));
 	sbuf_free(sb);
-
+	return 0;
 }
 
 static int join_spaces(char *prev, char *next)
@@ -767,16 +784,16 @@ static int join_spaces(char *prev, char *next)
 	return prev[prevlen - 1] == '.' ? 2 : 1;
 }
 
-static void vc_join(int arg)
+static int vc_join(void)
 {
 	struct sbuf *sb;
-	int cnt = arg <= 1 ? 2 : arg;
+	int cnt = vi_arg1 <= 1 ? 2 : vi_arg1;
 	int beg = xrow;
 	int end = xrow + cnt;
 	int off = 0;
 	int i;
 	if (!lbuf_get(xb, beg) || !lbuf_get(xb, end - 1))
-		return;
+		return 1;
 	sb = sbuf_make();
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
@@ -796,6 +813,7 @@ static void vc_join(int arg)
 	lbuf_put(xb, beg, sbuf_buf(sb));
 	xcol = ren_pos(sbuf_buf(sb), off);
 	sbuf_free(sb);
+	return 0;
 }
 
 static int vi_scrollforeward(int cnt)
@@ -824,9 +842,9 @@ static void vi_status(void)
 	led_print(stat, xrows);
 }
 
-static int vc_replace(int arg)
+static int vc_replace(void)
 {
-	int cnt = MAX(1, arg);
+	int cnt = MAX(1, vi_arg1);
 	char *cs = vi_char();
 	char *ln = lbuf_get(xb, xrow);
 	struct sbuf *sb;
@@ -872,10 +890,13 @@ static void vi(void)
 		int redraw = 0;
 		int orow = xrow;
 		int ocol = xcol;
-		int pre1, mv;
-		if ((pre1 = vi_prefix()) < 0)
-			continue;
-		mv = vi_motion(&xrow, &xcol, pre1, 0);
+		int mv, n;
+		vi_arg2 = 0;
+		vi_ybuf = vi_yankbuf();
+		vi_arg1 = vi_prefix();
+		if (!vi_ybuf)
+			vi_ybuf = vi_yankbuf();
+		mv = vi_motion(&xrow, &xcol);
 		if (mv > 0) {
 			if (strchr("\'GHML/?", mv))
 				lbuf_mark(xb, '\'', orow);
@@ -892,24 +913,24 @@ static void vi(void)
 				continue;
 			switch (c) {
 			case TK_CTL('b'):
-				if (vi_scrollbackward((pre1 ? pre1 : 1) * (xrows - 1)))
+				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TK_CTL('f'):
-				if (vi_scrollforeward((pre1 ? pre1 : 1) * (xrows - 1)))
+				if (vi_scrollforeward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				lbuf_postindents(xb, &xrow, &xcol);
 				redraw = 1;
 				break;
 			case TK_CTL('e'):
-				if (vi_scrollforeward((pre1 ? pre1 : 1)))
+				if (vi_scrollforeward(MAX(1, vi_arg1)))
 					break;
 				redraw = 1;
 				break;
 			case TK_CTL('y'):
-				if (vi_scrollbackward((pre1 ? pre1 : 1)))
+				if (vi_scrollbackward(MAX(1, vi_arg1)))
 					break;
 				redraw = 1;
 				break;
@@ -943,8 +964,8 @@ static void vi(void)
 			case 'c':
 			case 'd':
 			case 'y':
-				vc_motion(c, pre1);
-				redraw = 1;
+				if (!vc_motion(c))
+					redraw = 1;
 				break;
 			case 'i':
 			case 'I':
@@ -952,12 +973,12 @@ static void vi(void)
 			case 'A':
 			case 'o':
 			case 'O':
-				vc_insert(c);
-				redraw = 1;
+				if (!vc_insert(c))
+					redraw = 1;
 				break;
 			case 'J':
-				vc_join(pre1);
-				redraw = 1;
+				if (!vc_join())
+					redraw = 1;
 				break;
 			case 'm':
 				if ((mark = vi_read()) > 0 && isalpha(mark))
@@ -965,20 +986,22 @@ static void vi(void)
 				break;
 			case 'p':
 			case 'P':
-				vc_put(c, pre1);
-				redraw = 1;
+				if (!vc_put(c))
+					redraw = 1;
 				break;
 			case 'z':
 				z = vi_read();
 				switch (z) {
 				case '\n':
-					xtop = pre1 ? pre1 : xrow;
+					xtop = vi_arg1 ? vi_arg1 : xrow;
 					break;
 				case '.':
-					xtop = MAX(0, (pre1 ? pre1 : xrow) - xrows / 2);
+					n = vi_arg1 ? vi_arg1 : xrow;
+					xtop = MAX(0, n - xrows / 2);
 					break;
 				case '-':
-					xtop = MAX(0, (pre1 ? pre1 : xrow) - xrows + 1);
+					n = vi_arg1 ? vi_arg1 : xrow;
+					xtop = MAX(0, n - xrows + 1);
 					break;
 				case 'l':
 				case 'r':
@@ -991,42 +1014,42 @@ static void vi(void)
 				break;
 			case 'x':
 				vi_back(' ');
-				vc_motion('d', pre1);
-				redraw = 1;
+				if (!vc_motion('d'))
+					redraw = 1;
 				break;
 			case 'X':
 				vi_back(TK_CTL('h'));
-				vc_motion('d', pre1);
-				redraw = 1;
+				if (!vc_motion('d'))
+					redraw = 1;
 				break;
 			case 'C':
 				vi_back('$');
-				vc_motion('c', pre1);
-				redraw = 1;
+				if (!vc_motion('c'))
+					redraw = 1;
 				break;
 			case 'D':
 				vi_back('$');
-				vc_motion('d', pre1);
-				redraw = 1;
+				if (vc_motion('d'))
+					redraw = 1;
 				break;
 			case 'r':
-				vc_replace(pre1);
-				redraw = 1;
+				if (!vc_replace())
+					redraw = 1;
 				break;
 			case 's':
 				vi_back(' ');
-				vc_motion('c', pre1);
-				redraw = 1;
+				if (!vc_motion('c'))
+					redraw = 1;
 				break;
 			case 'S':
 				vi_back('c');
-				vc_motion('c', pre1);
-				redraw = 1;
+				if (!vc_motion('c'))
+					redraw = 1;
 				break;
 			case 'Y':
 				vi_back('y');
-				vc_motion('y', pre1);
-				redraw = 1;
+				if (!vc_motion('y'))
+					redraw = 1;
 				break;
 			default:
 				continue;

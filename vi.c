@@ -62,6 +62,13 @@ static char *vi_char(void)
 	return TK_INT(key) ? NULL : led_keymap(key);
 }
 
+static char *vi_prompt(char *msg)
+{
+	term_pos(xrows, led_pos(msg, 0));
+	term_kill();
+	return led_prompt(msg, "");
+}
+
 static int vi_yankbuf(void)
 {
 	int c = vi_read();
@@ -189,10 +196,8 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 	char *off = "";
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
-		char *kw;
-		term_pos(xrows, led_pos(sign, 0));
-		term_kill();
-		if (!(kw = led_prompt(sign, "")))
+		char *kw = vi_prompt(sign);
+		if (!kw)
 			return 1;
 		vi_finddir = cmd == '/' ? +1 : -1;
 		if (kw[0])
@@ -332,7 +337,7 @@ static int vi_motionln(int *row, int cmd)
 		break;
 	default:
 		if (c == cmd) {
-			*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
+			*row = MAX(0, MIN(*row + cnt - 1, lbuf_len(xb) - 1));
 			break;
 		}
 		vi_back(c);
@@ -667,6 +672,26 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(post);
 }
 
+static void vi_pipe(int r1, int c1, int r2, int c2, int lnmode, int closed)
+{
+	char *text;
+	char *rep;
+	char *cmd = vi_prompt("!");
+	if (!cmd)
+		return;
+	if (r2 < r1)
+		swap(&r1, &r2);
+	text = lbuf_cp(xb, r1, r2 + 1);
+	rep = cmd_pipe(cmd, text);
+	if (rep) {
+		lbuf_rm(xb, r1, r2 + 1);
+		lbuf_put(xb, r1, rep);
+	}
+	free(cmd);
+	free(text);
+	free(rep);
+}
+
 static int vc_motion(int cmd)
 {
 	int r1 = xrow, r2 = xrow;	/* region rows */
@@ -698,6 +723,8 @@ static int vc_motion(int cmd)
 		vi_delete(r1, c1, r2, c2, lnmode, closed);
 	if (cmd == 'c')
 		vi_change(r1, c1, r2, c2, lnmode, closed);
+	if (cmd == '!')
+		vi_pipe(r1, c1, r2, c2, lnmode, closed);
 	return 0;
 }
 
@@ -950,9 +977,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case ':':
-				term_pos(xrows, led_pos(":", 0));
-				term_kill();
-				ln = led_prompt(":", "");
+				ln = vi_prompt(":");
 				if (ln && ln[0]) {
 					ex_command(ln);
 					redraw = 1;
@@ -964,6 +989,7 @@ static void vi(void)
 			case 'c':
 			case 'd':
 			case 'y':
+			case '!':
 				if (!vc_motion(c))
 					redraw = 1;
 				break;

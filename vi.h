@@ -119,6 +119,9 @@ int led_pos(char *s, int pos);
 void ex(void);
 void ex_command(char *cmd);
 
+/* process management */
+char *cmd_pipe(char *cmd, char *s);
+
 /* global variables */
 extern int xvis;
 extern struct lbuf *xb;

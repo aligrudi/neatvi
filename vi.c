@@ -1023,7 +1023,7 @@ static void vi(void)
 			vi_ybuf = vi_yankbuf();
 		mv = vi_motion(&xrow, &xcol);
 		if (mv > 0) {
-			if (strchr("\'GHML/?", mv))
+			if (strchr("\'GHML/?{}[]", mv))
 				lbuf_mark(xb, '\'', orow);
 			if (xcol < 0) {
 				if (strchr("jk", mv))

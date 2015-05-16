@@ -552,27 +552,11 @@ static char *lbuf_region(struct lbuf *lb, int r1, int l1, int r2, int l2)
 /* insertion offset before or after the given visual position */
 static int vi_insertionoffset(char *s, int c1, int before)
 {
-	int l1, l2, c2;
-	c2 = ren_next(s, c1, before ? -1 : +1);
-	l2 = c2 >= 0 ? ren_off(s, c2) : 0;
-	if (c1 == c2 || c2 < 0 || uc_chr(s, l2)[0] == '\n') {
-		c2 = ren_next(s, c1, before ? +1 : -1);
-		l1 = ren_off(s, c1);
-		l2 = c2 >= 0 ? ren_off(s, c2) : 0;
-		if (c1 == c2 || c2 < 0 || uc_chr(s, l2)[0] == '\n')
-			return before ? l1 : l1 + 1;
-		if (before)
-			return l1 < l2 ? l1 : l1 + 1;
-		else
-			return l2 < l1 ? l1 + 1 : l1;
-	}
-	ren_region(s, c1, c2, &l1, &l2, 0);
-	c1 = ren_pos(s, l1);
-	c2 = ren_pos(s, l2);
-	if (c1 < c2)
-		return l1 < l2 ? l2 : l1;
-	else
-		return l1 < l2 ? l1 : l2;
+	int l;
+	if (!s || !*s)
+		return 0;
+	l = ren_off(s, c1);
+	return before || s[l] == '\n' ? l : l + 1;
 }
 
 static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l2, int closed)
@@ -581,8 +565,8 @@ static void vi_commandregion(int *r1, int *r2, int *c1, int *c2, int *l1, int *l
 		swap(r1, r2);
 		swap(c1, c2);
 	}
-	*l1 = lbuf_get(xb, *r1) ? vi_insertionoffset(lbuf_get(xb, *r1), *c1, 1) : 0;
-	*l2 = lbuf_get(xb, *r2) ? vi_insertionoffset(lbuf_get(xb, *r2), *c2, !closed) : 0;
+	*l1 = vi_insertionoffset(lbuf_get(xb, *r1), *c1, 1);
+	*l2 = vi_insertionoffset(lbuf_get(xb, *r2), *c2, !closed);
 	if (*r1 == *r2 && lbuf_get(xb, *r1))
 		ren_region(lbuf_get(xb, *r1), *c1, *c2, l1, l2, closed);
 	if (*r1 == *r2 && *l2 < *l1)
@@ -814,9 +798,9 @@ static int vc_insert(int cmd)
 	if (cmd == 'o')
 		xrow += 1;
 	if (cmd == 'i' || cmd == 'I')
-		off = ln ? vi_insertionoffset(ln, xcol, 1) : 0;
+		off = vi_insertionoffset(ln, xcol, 1);
 	if (cmd == 'a' || cmd == 'A')
-		off = ln ? vi_insertionoffset(ln, xcol, 0) : 0;
+		off = vi_insertionoffset(ln, xcol, 0);
 	pref = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, 0, off) : vi_indents(ln);
 	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
 	rep = vi_input(pref, post, &row, &col);
@@ -847,7 +831,7 @@ static int vc_put(int cmd)
 	if (!buf)
 		return 1;
 	ln = lnmode ? NULL : lbuf_get(xb, xrow);
-	off = ln ? vi_insertionoffset(ln, xcol, cmd == 'P') : 0;
+	off = vi_insertionoffset(ln, xcol, cmd == 'P');
 	if (cmd == 'p' && !ln)
 		xrow++;
 	sb = sbuf_make();

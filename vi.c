@@ -659,7 +659,7 @@ static int lastline(char *str)
 	char *r = s;
 	while (s && s[0]) {
 		r = s;
-		s = strchr(s == str ? s : s + 1, '\n');
+		s = strchr(s + 1, '\n');
 	}
 	return r - str;
 }

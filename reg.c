@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vi.h"
@@ -13,11 +14,13 @@ char *reg_get(int c, int *ln)
 
 void reg_put(int c, char *s, int ln)
 {
-	char *buf = malloc(strlen(s) + 1);
-	strcpy(buf, s);
-	free(bufs[c]);
-	bufs[c] = buf;
-	lnmode[c] = ln;
+	char *pre = isupper(c) ? bufs[tolower(c)] : "";
+	char *buf = malloc(strlen(pre) + strlen(s) + 1);
+	strcpy(buf, pre);
+	strcat(buf, s);
+	free(bufs[tolower(c)]);
+	bufs[tolower(c)] = buf;
+	lnmode[tolower(c)] = ln;
 }
 
 void reg_done(void)

@@ -717,7 +717,7 @@ static void vi_change(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(post);
 }
 
-static void vi_pipe(int r1, int c1, int r2, int c2, int lnmode, int closed)
+static void vi_pipe(int r1, int r2)
 {
 	char *text;
 	char *rep;
@@ -735,6 +735,30 @@ static void vi_pipe(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(cmd);
 	free(text);
 	free(rep);
+}
+
+static void vi_shift(int r1, int r2, int dir)
+{
+	struct sbuf *sb;
+	char *ln;
+	int i;
+	if (r2 < r1)
+		swap(&r1, &r2);
+	for (i = r1; i <= r2; i++) {
+		if (!(ln = lbuf_get(xb, i)))
+			continue;
+		sb = sbuf_make();
+		if (dir > 0)
+			sbuf_chr(sb, '\t');
+		else
+			ln = ln[0] == ' ' || ln[0] == '\t' ? ln + 1 : ln;
+		sbuf_str(sb, ln);
+		lbuf_rm(xb, i, i + 1);
+		lbuf_put(xb, i, sbuf_buf(sb));
+		sbuf_free(sb);
+	}
+	xrow = r1;
+	lbuf_postindents(xb, &xrow, &xcol);
 }
 
 static int vc_motion(int cmd)
@@ -769,7 +793,9 @@ static int vc_motion(int cmd)
 	if (cmd == 'c')
 		vi_change(r1, c1, r2, c2, lnmode, closed);
 	if (cmd == '!')
-		vi_pipe(r1, c1, r2, c2, lnmode, closed);
+		vi_pipe(r1, r2);
+	if (cmd == '>' || cmd == '<')
+		vi_shift(r1, r2, cmd == '>' ? +1 : -1);
 	return 0;
 }
 
@@ -1039,6 +1065,8 @@ static void vi(void)
 			case 'd':
 			case 'y':
 			case '!':
+			case '>':
+			case '<':
 				if (!vc_motion(c))
 					redraw = 1;
 				break;

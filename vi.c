@@ -830,7 +830,7 @@ static int vc_put(int cmd)
 		sbuf_str(sb, s);
 		free(s);
 	}
-	for (i = 0; i < MAX(cnt, 1); i++)
+	for (i = 0; i < cnt; i++)
 		sbuf_str(sb, buf);
 	if (ln) {
 		char *s = uc_sub(ln, off, -1);
@@ -842,6 +842,10 @@ static int vc_put(int cmd)
 	if (ln)
 		lbuf_rm(xb, xrow, xrow + 1);
 	lbuf_put(xb, xrow, sbuf_buf(sb));
+	if (ln)
+		xcol = ren_pos(lbuf_get(xb, xrow), off + uc_slen(buf) * cnt - 1);
+	else
+		lbuf_postindents(xb, &xrow, &xcol);
 	sbuf_free(sb);
 	return 0;
 }

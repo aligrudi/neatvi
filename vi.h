@@ -1,7 +1,5 @@
 /* neatvi main header */
 
-#define PATHLEN		512
-
 /* helper macros */
 #define LEN(a)		(sizeof(a) / sizeof((a)[0]))
 #define MIN(a, b)	((a) < (b) ? (a) : (b))
@@ -118,11 +116,15 @@ int led_pos(char *s, int pos);
 /* ex commands */
 void ex(void);
 void ex_command(char *cmd);
+char *ex_read(char *msg);
+void ex_show(char *msg);
 
 /* process management */
 char *cmd_pipe(char *cmd, char *s);
 
 /* global variables */
+#define PATHLEN		512
+
 extern int xvis;
 extern struct lbuf *xb;
 extern int xrow;

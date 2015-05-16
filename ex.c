@@ -9,41 +9,6 @@
 
 #define EXLEN		512
 
-/* read an input line; ex's input function */
-static char *ex_read(char *msg)
-{
-	struct sbuf *sb;
-	char c;
-	if (xled) {
-		char *s = led_prompt(msg, "");
-		if (s)
-			printf("\n");
-		return s;
-	}
-	sb = sbuf_make();
-	while ((c = getchar()) != EOF) {
-		if (c == '\n')
-			break;
-		sbuf_chr(sb, c);
-	}
-	if (c == EOF) {
-		sbuf_free(sb);
-		return NULL;
-	}
-	return sbuf_done(sb);
-}
-
-/* print an output line; ex's output function */
-static void ex_show(char *msg)
-{
-	if (xled) {
-		led_print(msg, -1);
-		term_chr('\n');
-	} else {
-		printf("%s", msg);
-	}
-}
-
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
 {
@@ -188,6 +153,7 @@ static void ec_quit(char *ec)
 
 static void ec_edit(char *ec)
 {
+	char msg[128];
 	char arg[EXLEN];
 	int fd;
 	ex_arg(ec, arg);
@@ -214,6 +180,9 @@ static void ec_edit(char *ec)
 	if (fd >= 0) {
 		lbuf_rd(xb, fd, 0);
 		close(fd);
+		snprintf(msg, sizeof(msg), "\"%s\" %d lines [r]\n",
+				xpath, lbuf_len(xb));
+		ex_show(msg);
 	}
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	lbuf_undofree(xb);
@@ -222,22 +191,29 @@ static void ec_edit(char *ec)
 static void ec_read(char *ec)
 {
 	char arg[EXLEN], loc[EXLEN];
+	char msg[128];
+	char *path;
 	int fd;
 	int beg, end;
 	int n = lbuf_len(xb);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
-	fd = open(arg[0] ? arg : xpath, O_RDONLY);
+	path = arg[0] ? arg : xpath;
+	fd = open(path, O_RDONLY);
 	if (fd >= 0 && !ex_region(loc, &beg, &end)) {
 		lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
 		close(fd);
 		xrow = end + lbuf_len(xb) - n;
+		snprintf(msg, sizeof(msg), "\"%s\" %d lines [r]\n",
+				path, lbuf_len(xb) - n);
+		ex_show(msg);
 	}
 }
 
 static void ec_write(char *ec)
 {
 	char cmd[EXLEN], arg[EXLEN], loc[EXLEN];
+	char msg[128];
 	char *path;
 	int beg, end;
 	int fd;
@@ -255,6 +231,9 @@ static void ec_write(char *ec)
 	if (fd >= 0) {
 		lbuf_wr(xb, fd, beg, end);
 		close(fd);
+		snprintf(msg, sizeof(msg), "\"%s\" %d lines [w]\n",
+				path, end - beg);
+		ex_show(msg);
 	}
 	if (!strcmp("wq", cmd))
 		ec_quit("wq");

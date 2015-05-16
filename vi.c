@@ -14,6 +14,7 @@
 
 char xpath[PATHLEN];		/* current file */
 char xpath_alt[PATHLEN];	/* alternate file */
+char xmsg[512];			/* current message */
 struct lbuf *xb;		/* current buffer */
 int xrow, xcol, xtop;		/* current row, column, and top row */
 int xrow_alt;			/* alternate row, column, and top row */
@@ -29,6 +30,12 @@ static int vi_charcmd;		/* the character finding command */
 static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
 
+static void vi_drawmsg(void)
+{
+	led_print(xmsg, xrows);
+	xmsg[0] = '\0';
+}
+
 static void vi_draw(void)
 {
 	int i;
@@ -37,7 +44,7 @@ static void vi_draw(void)
 		char *s = lbuf_get(xb, i);
 		led_print(s ? s : "~", i - xtop);
 	}
-	led_print("", xrows);
+	vi_drawmsg();
 	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 	term_commit();
 }
@@ -67,6 +74,38 @@ static char *vi_prompt(char *msg)
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
 	return led_prompt(msg, "");
+}
+
+char *ex_read(char *msg)
+{
+	struct sbuf *sb;
+	char c;
+	if (xled) {
+		char *s = led_prompt(msg, "");
+		if (s)
+			term_chr('\n');
+		return s;
+	}
+	sb = sbuf_make();
+	while ((c = getchar()) != EOF && c != '\n')
+		sbuf_chr(sb, c);
+	if (c == EOF) {
+		sbuf_free(sb);
+		return NULL;
+	}
+	return sbuf_done(sb);
+}
+
+void ex_show(char *msg)
+{
+	if (xvis) {
+		snprintf(xmsg, sizeof(xmsg), "%s", msg);
+	} else if (xled) {
+		led_print(msg, -1);
+		term_chr('\n');
+	} else {
+		printf("%s", msg);
+	}
 }
 
 static int vi_yankbuf(void)
@@ -233,6 +272,8 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 				*row += atoi(off);
 		}
 	}
+	if (failed)
+		snprintf(xmsg, sizeof(xmsg), "\"%s\" not found\n", vi_findlast);
 	return failed;
 }
 
@@ -920,12 +961,10 @@ static int vi_scrollbackward(int cnt)
 	return 0;
 }
 
-static void vi_status(void)
+static void vc_status(void)
 {
-	char stat[128];
-	sprintf(stat, "[%s] %d lines, %d,%d\n",
-		xpath[0] ? xpath : "unnamed", lbuf_len(xb), xrow + 1, xcol + 1);
-	led_print(stat, xrows);
+	snprintf(xmsg, sizeof(xmsg), "\"%s\" line %d of %d, col %d\n",
+		xpath[0] ? xpath : "unnamed", xrow + 1, lbuf_len(xb), xcol + 1);
 }
 
 static int vc_replace(void)
@@ -1029,7 +1068,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case TK_CTL('g'):
-				vi_status();
+				vc_status();
 				break;
 			case TK_CTL('^'):
 				ex_command("e #");
@@ -1116,7 +1155,7 @@ static void vi(void)
 				break;
 			case 'D':
 				vi_back('$');
-				if (vc_motion('d'))
+				if (!vc_motion('d'))
 					redraw = 1;
 				break;
 			case 'r':
@@ -1150,6 +1189,8 @@ static void vi(void)
 		}
 		if (redraw)
 			vi_draw();
+		if (xmsg[0])
+			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
 		lbuf_undomark(xb);

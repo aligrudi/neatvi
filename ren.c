@@ -38,7 +38,7 @@ int ren_wid(char *s)
 	return ret;
 }
 
-/* find the next character after visual position p; if cur start from p itself */
+/* find the next character after visual position p; if cur, start from p itself */
 static int pos_next(int *pos, int n, int p, int cur)
 {
 	int i, ret = -1;
@@ -48,7 +48,7 @@ static int pos_next(int *pos, int n, int p, int cur)
 	return ret >= 0 ? pos[ret] : -1;
 }
 
-/* find the previous character after visual position p; if cur start from p itself */
+/* find the previous character after visual position p; if cur, start from p itself */
 static int pos_prev(int *pos, int n, int p, int cur)
 {
 	int i, ret = -1;
@@ -93,8 +93,26 @@ int ren_cursor(char *s, int p)
 	n = uc_slen(s);
 	pos = ren_position(s);
 	p = pos_prev(pos, n, p, 1);
+	if (uc_code(uc_chr(s, ren_off(s, p))) == '\n')
+		p = pos_prev(pos, n, p, 0);
 	next = pos_next(pos, n, p, 0);
 	p = (next >= 0 ? next : pos[n]) - 1;
+	free(pos);
+	return p >= 0 ? p : 0;
+}
+
+/* real cursor position; never past EOL */
+int ren_noeol(char *s, int p)
+{
+	int n;
+	int *pos;
+	if (!s)
+		return 0;
+	n = uc_slen(s);
+	pos = ren_position(s);
+	p = pos_prev(pos, n, p, 1);
+	if (uc_code(uc_chr(s, ren_off(s, p))) == '\n')
+		p = pos_prev(pos, n, p, 0);
 	free(pos);
 	return p >= 0 ? p : 0;
 }

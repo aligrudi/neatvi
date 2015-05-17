@@ -45,10 +45,11 @@ void rset_free(struct rset *re);
 
 /* rendering lines */
 int *ren_position(char *s);
-int ren_cursor(char *s, int pos);
 int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
 int ren_pos(char *s, int off);
+int ren_cursor(char *s, int pos);
+int ren_noeol(char *s, int p);
 int ren_off(char *s, int pos);
 int ren_wid(char *s);
 int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed);

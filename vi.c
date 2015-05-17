@@ -529,8 +529,7 @@ static int vi_motion(int *row, int *col)
 		lbuf_postindents(xb, row, col);
 		break;
 	case '$':
-		lbuf_eol(xb, row, col, +1);
-		lbuf_lnnext(xb, row, col, -1);
+		*col = 1024;
 		break;
 	case '|':
 		*col = cnt - 1;
@@ -796,6 +795,8 @@ static int vc_motion(int cmd)
 	vi_arg2 = vi_prefix();
 	if (vi_arg2 < 0)
 		return 1;
+	c1 = ren_noeol(lbuf_get(xb, r1), xcol);
+	c2 = c1;
 	if ((mv = vi_motionln(&r2, cmd))) {
 		c2 = -1;
 	} else if (!(mv = vi_motion(&r2, &c2))) {
@@ -804,7 +805,7 @@ static int vc_motion(int cmd)
 	}
 	if (mv < 0)
 		return 1;
-	if (!strchr("fFtTeE$", mv))
+	if (!strchr("fFtTeE", mv))
 		closed = 0;
 	lnmode = c2 < 0;
 	if (lnmode) {
@@ -1013,23 +1014,27 @@ static void vi(void)
 	term_pos(xrow, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
 		int redraw = 0;
-		int orow = xrow;
-		int ocol = xcol;
+		int nrow = xrow;
+		int ncol = ren_noeol(lbuf_get(xb, xrow), xcol);
 		int mv, n;
 		vi_arg2 = 0;
 		vi_ybuf = vi_yankbuf();
 		vi_arg1 = vi_prefix();
 		if (!vi_ybuf)
 			vi_ybuf = vi_yankbuf();
-		mv = vi_motion(&xrow, &xcol);
+		mv = vi_motion(&nrow, &ncol);
 		if (mv > 0) {
 			if (strchr("\'GHML/?{}[]", mv))
-				lbuf_mark(xb, '\'', orow);
-			if (xcol < 0) {
-				if (strchr("jk", mv))
-					xcol = ocol;
-				else
+				lbuf_mark(xb, '\'', xrow);
+			xrow = nrow;
+			if (ncol < 0) {
+				if (!strchr("jk", mv))
 					lbuf_postindents(xb, &xrow, &xcol);
+			} else {
+				if (strchr("|$", mv))
+					xcol = ncol;
+				else
+					xcol = ren_noeol(lbuf_get(xb, xrow), ncol);
 			}
 		} else if (mv == 0) {
 			int c = vi_read();

@@ -3,7 +3,7 @@
 #include <string.h>
 #include "vi.h"
 
-#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟"
+#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
 /* direction context patterns */

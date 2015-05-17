@@ -31,33 +31,45 @@ static char *led_render(char *s0)
 	int *pos;	/* pos[i]: the screen position of the i-th character */
 	int *off;	/* off[i]: the character at screen position i */
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
-	char *s1;
 	struct sbuf *out;
-	int i;
-	s1 = ren_translate(s0 ? s0 : "");
-	chrs = uc_chop(s1, &n);
+	int i, j;
+	chrs = uc_chop(s0, &n);
 	pos = ren_position(s0);
 	off = malloc(xcols * sizeof(off[0]));
 	memset(off, 0xff, xcols * sizeof(off[0]));
 	for (i = 0; i < n; i++) {
-		int curpos = led_pos(s0, pos[i]);
-		if (curpos >= 0 && curpos < xcols) {
-			off[curpos] = i;
-			if (curpos > maxcol)
-				maxcol = curpos;
+		int curpos = pos[i];
+		int curwid = ren_cwid(chrs[i], curpos);
+		if (curpos >= 0 && curpos + curwid < xcols) {
+			for (j = 0; j < curwid; j++) {
+				off[led_pos(s0, curpos + j)] = i;
+				if (led_pos(s0, curpos + j) > maxcol)
+					maxcol = led_pos(s0, curpos + j);
+			}
 		}
 	}
 	out = sbuf_make();
-	for (i = 0; i <= maxcol; i++) {
-		if (off[i] >= 0 && uc_isprint(chrs[off[i]]))
-			sbuf_mem(out, chrs[off[i]], uc_len(chrs[off[i]]));
-		else
+	i = 0;
+	while (i <= maxcol) {
+		int o = off[i];
+		if (o >= 0) {
+			if (ren_translate(chrs[o], s0))
+				sbuf_str(out, ren_translate(chrs[o], s0));
+			else if (uc_isprint(chrs[o]))
+				sbuf_mem(out, chrs[o], uc_len(chrs[o]));
+			else
+				for (j = i; j <= maxcol && off[j] == o; j++)
+					sbuf_chr(out, ' ');
+			while (i <= maxcol && off[i] == o)
+				i++;
+		} else {
 			sbuf_chr(out, ' ');
+			i++;
+		}
 	}
 	free(pos);
 	free(off);
 	free(chrs);
-	free(s1);
 	return sbuf_done(out);
 }
 
@@ -99,15 +111,16 @@ static void led_printparts(char *ai, char *pref, char *main, char *post)
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
 	off = uc_slen(sbuf_buf(ln));
-	sbuf_str(ln, post);
 	/* cursor position for inserting the next character */
-	if (post[0]) {
+	if (post[0] && post[0] != '\n') {
+		sbuf_str(ln, post);
 		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
 	} else {
 		int len = sbuf_len(ln);
 		sbuf_str(ln, keymap(led_kmap, 'a'));
 		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
 		sbuf_cut(ln, len);
+		sbuf_str(ln, post);
 	}
 	led_print(sbuf_buf(ln), -1);
 	term_pos(-1, led_pos(sbuf_buf(ln), pos));

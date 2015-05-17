@@ -11,7 +11,7 @@ int *ren_position(char *s)
 	int i, n;
 	char **chrs = uc_chop(s, &n);
 	int *off, *pos;
-	int diff = 0;
+	int cpos = 0;
 	pos = malloc((n + 1) * sizeof(pos[0]));
 	for (i = 0; i < n; i++)
 		pos[i] = i;
@@ -20,11 +20,10 @@ int *ren_position(char *s)
 	for (i = 0; i < n; i++)
 		off[pos[i]] = i;
 	for (i = 0; i < n; i++) {
-		pos[off[i]] += diff;
-		if (*chrs[i] == '\t')
-			diff += 8 - (pos[off[i]] & 7) - 1;
+		pos[off[i]] = cpos;
+		cpos += ren_cwid(chrs[off[i]], cpos);
 	}
-	pos[n] = n + diff;
+	pos[n] = cpos;
 	free(chrs);
 	free(off);
 	return pos;
@@ -37,22 +36,6 @@ int ren_wid(char *s)
 	int ret = pos[n];
 	free(pos);
 	return ret;
-}
-
-char *ren_translate(char *s)
-{
-	struct sbuf *sb = sbuf_make();
-	char *r = s;
-	while (*r) {
-		char *c = uc_shape(s, r);
-		if (!strcmp(c, "‌"))
-			c = "-";
-		if (!strcmp(c, "‍"))
-			c = "-";
-		sbuf_str(sb, c);
-		r = uc_next(r);
-	}
-	return sbuf_done(sb);
 }
 
 /* find the next character after visual position p; if cur start from p itself */
@@ -174,4 +157,43 @@ int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
 	*l2 = i;
 	free(ord);
 	return 0;
+}
+
+static struct placeholder {
+	char *s;	/* the source character */
+	char *d;	/* the placeholder */
+} placeholders[] = {
+	{"‌", "-"},
+	{"‍", "-"},
+	{"ْ", "ـْ"},
+	{"ٌ", "ـٌ"},
+	{"ٍ", "ـٍ"},
+	{"ً", "ـً"},
+	{"ُ", "ـُ"},
+	{"ِ", "ـِ"},
+	{"َ", "ـَ"},
+	{"ّ", "ـّ"},
+};
+
+static char *ren_placeholder(char *s)
+{
+	int i = 0;
+	int c = uc_code(s);
+	for (i = 0; i < LEN(placeholders); i++)
+		if (uc_code(placeholders[i].s) == c)
+			return placeholders[i].d;
+	return NULL;
+}
+
+int ren_cwid(char *s, int pos)
+{
+	if (s[0] == '\t')
+		return 8 - (pos & 7);
+	return 1;
+}
+
+char *ren_translate(char *s, char *ln)
+{
+	char *p = ren_placeholder(s);
+	return p ? p : uc_shape(ln, s);
 }

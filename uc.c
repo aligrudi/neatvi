@@ -323,10 +323,8 @@ char *uc_shape(char *beg, char *s)
 	int prev = 0;
 	int next = 0;
 	int curr = uc_code(s);
-	if (!curr || !UC_R2L(curr)) {
-		uc_cput(out, curr);
-		return out;
-	}
+	if (!curr || !UC_R2L(curr))
+		return NULL;
 	r = s;
 	while (r > beg) {
 		r = uc_beg(beg, r - 1);

@@ -12,17 +12,7 @@
 #include <string.h>
 #include "vi.h"
 
-char xpath[PATHLEN];		/* current file */
-char xpath_alt[PATHLEN];	/* alternate file */
-char xmsg[512];			/* current message */
-struct lbuf *xb;		/* current buffer */
-int xrow, xcol, xtop;		/* current row, column, and top row */
-int xrow_alt;			/* alternate row, column, and top row */
-int xled = 1;			/* use the line editor */
-int xdir = 'L';			/* current direction context */
-int xvis;			/* visual mode */
-int xquit;
-int xautoindent = 1;
+char vi_msg[512];		/* current message */
 static char vi_findlast[256];	/* the last searched keyword */
 static int vi_finddir;		/* the last search direction */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
@@ -32,8 +22,8 @@ static int vi_ybuf;		/* current yank buffer */
 
 static void vi_drawmsg(void)
 {
-	led_print(xmsg, xrows);
-	xmsg[0] = '\0';
+	led_print(vi_msg, xrows);
+	vi_msg[0] = '\0';
 }
 
 static void vi_draw(void)
@@ -99,7 +89,7 @@ char *ex_read(char *msg)
 void ex_show(char *msg)
 {
 	if (xvis) {
-		snprintf(xmsg, sizeof(xmsg), "%s", msg);
+		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
 	} else if (xled) {
 		led_print(msg, -1);
 		term_chr('\n');
@@ -202,7 +192,7 @@ static int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *c, int *
 	int found = 0;
 	int row = *r, col = *c;
 	int i;
-	struct rset *re = rset_make(1, &kw, 0);
+	struct rset *re = rset_make(1, &kw, xic ? RE_ICASE : 0);
 	if (!re)
 		return 1;
 	for (i = row; !found && i >= 0 && i < lbuf_len(lb); i += dir) {
@@ -273,7 +263,7 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 		}
 	}
 	if (failed)
-		snprintf(xmsg, sizeof(xmsg), "\"%s\" not found\n", vi_findlast);
+		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", vi_findlast);
 	return failed;
 }
 
@@ -693,9 +683,9 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 	char *rep;
 	struct sbuf *sb;
 	int last, off;
-	if (xautoindent)
+	if (xai)
 		pref += indentscopy(ai, pref, sizeof(ai));
-	rep = led_input(pref, post, ai, xautoindent ? sizeof(ai) - 1 : 0);
+	rep = led_input(pref, post, ai, xai ? sizeof(ai) - 1 : 0);
 	if (!rep)
 		return NULL;
 	sb = sbuf_make();
@@ -705,7 +695,7 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 	last = lastline(sbuf_buf(sb));
 	off = uc_slen(sbuf_buf(sb) + last);
 	if (last)
-		while (xautoindent && (post[0] == ' ' || post[0] == '\t'))
+		while (xai && (post[0] == ' ' || post[0] == '\t'))
 			post++;
 	sbuf_str(sb, post);
 	*row = linecount(sbuf_buf(sb)) - 1;
@@ -717,7 +707,7 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 static char *vi_indents(char *ln)
 {
 	struct sbuf *sb = sbuf_make();
-	while (xautoindent && ln && (*ln == ' ' || *ln == '\t'))
+	while (xai && ln && (*ln == ' ' || *ln == '\t'))
 		sbuf_chr(sb, *ln++);
 	return sbuf_done(sb);
 }
@@ -972,7 +962,7 @@ static int vi_scrollbackward(int cnt)
 static void vc_status(void)
 {
 	int pos = ren_noeol(lbuf_get(xb, xrow), xcol);
-	snprintf(xmsg, sizeof(xmsg), "\"%s\" line %d of %d, col %d\n",
+	snprintf(vi_msg, sizeof(vi_msg), "\"%s\" line %d of %d, col %d\n",
 		xpath[0] ? xpath : "unnamed", xrow + 1, lbuf_len(xb),
 		ren_cursor(lbuf_get(xb, xrow), pos) + 1);
 }
@@ -1206,7 +1196,7 @@ static void vi(void)
 					xrow - xrows / 2 : xrow - xrows + 1;
 		if (redraw || xtop != otop)
 			vi_draw();
-		if (xmsg[0])
+		if (vi_msg[0])
 			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));

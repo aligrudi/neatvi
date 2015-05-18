@@ -9,6 +9,18 @@
 
 #define EXLEN		512
 
+char xpath[PATHLEN];		/* current file */
+char xpath_alt[PATHLEN];	/* alternate file */
+int xquit;			/* exit if set */
+int xvis;			/* visual mode */
+int xai = 1;			/* autoindent option */
+int xic = 1;			/* ignorecase option */
+struct lbuf *xb;		/* current buffer */
+int xrow, xcol, xtop;		/* current row, column, and top row */
+int xrow_alt;			/* alternate row, column, and top row */
+int xled = 1;			/* use the line editor */
+int xdir = 'L';			/* current direction context */
+
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
 {
@@ -76,7 +88,7 @@ static int ex_search(char *pat)
 			e++;
 	}
 	re_kw[0] = sbuf_buf(kw);
-	re = rset_make(1, re_kw, 0);
+	re = rset_make(1, re_kw, xic ? RE_ICASE : 0);
 	sbuf_free(kw);
 	if (!re)
 		return i;
@@ -409,7 +421,7 @@ static void ec_substitute(char *ec)
 	delim = (unsigned char) *s++;
 	pat = readuntil(&s, delim);
 	rep = readuntil(&s, delim);
-	re = rset_make(1, &pat, 0);
+	re = rset_make(1, &pat, xic ? RE_ICASE : 0);
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		if (rset_find(re, ln, LEN(offs) / 2, offs, 0)) {
@@ -425,6 +437,60 @@ static void ec_substitute(char *ec)
 	rset_free(re);
 	free(pat);
 	free(rep);
+}
+
+static struct option {
+	char *abbr;
+	char *name;
+	int *var;
+} options[] = {
+	{"ai", "autoindent", &xai},
+	{"ic", "ignorecase", &xic},
+};
+
+static char *cutword(char *s, char *d)
+{
+	while (isspace(*s))
+		s++;
+	while (*s && !isspace(*s))
+		*d++ = *s++;
+	while (isspace(*s))
+		s++;
+	*d = '\0';
+	return s;
+}
+
+static void ec_set(char *ec)
+{
+	char arg[EXLEN];
+	char tok[EXLEN];
+	char opt[EXLEN];
+	char *s = arg;
+	int val = 0;
+	int i;
+	ex_arg(ec, arg);
+	if (*s) {
+		s = cutword(s, tok);
+		if (tok[0] == 'n' && tok[1] == 'o') {
+			strcpy(opt, tok + 2);
+			val = 0;
+		} else {
+			char *r = strchr(tok, '=');
+			if (r) {
+				*r = '\0';
+				strcpy(opt, tok);
+				val = atoi(r + 1);
+			} else {
+				strcpy(opt, tok);
+				val = 1;
+			}
+		}
+		for (i = 0; i < LEN(options); i++) {
+			struct option *o = &options[i];
+			if (!strcmp(o->abbr, opt) || !strcmp(o->name, opt))
+				*o->var = val;
+		}
+	}
 }
 
 static struct excmd {
@@ -447,6 +513,7 @@ static struct excmd {
 	{"wq", "wq", ec_write},
 	{"u", "undo", ec_undo},
 	{"r", "redo", ec_redo},
+	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"ya", "yank", ec_yank},
 	{"", "", ec_print},

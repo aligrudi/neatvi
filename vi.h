@@ -138,3 +138,5 @@ extern char xpath[];
 extern char xpath_alt[];
 extern int xquit;
 extern int xdir;
+extern int xic;
+extern int xai;

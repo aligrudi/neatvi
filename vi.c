@@ -1025,6 +1025,7 @@ static void vi(void)
 		int redraw = 0;
 		int nrow = xrow;
 		int ncol = ren_noeol(lbuf_get(xb, xrow), xcol);
+		int otop = xtop;
 		int mv, n;
 		vi_arg2 = 0;
 		vi_ybuf = vi_yankbuf();
@@ -1197,11 +1198,13 @@ static void vi(void)
 		}
 		if (xrow < 0 || xrow >= lbuf_len(xb))
 			xrow = lbuf_len(xb) ? lbuf_len(xb) - 1 : 0;
-		if (xrow < xtop || xrow >= xtop + xrows) {
-			xtop = xrow < xtop ? xrow : MAX(0, xrow - xrows + 1);
-			redraw = 1;
-		}
-		if (redraw)
+		if (xtop > xrow)
+			xtop = xtop - xrows / 2 > xrow ?
+					MAX(0, xrow - xrows / 2) : xrow;
+		if (xtop + xrows <= xrow)
+			xtop = xtop + xrows + xrows / 2 <= xrow ?
+					xrow - xrows / 2 : xrow - xrows + 1;
+		if (redraw || xtop != otop)
 			vi_draw();
 		if (xmsg[0])
 			vi_drawmsg();

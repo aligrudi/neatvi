@@ -429,24 +429,28 @@ static int vi_motion(int *row, int *col)
 				break;
 		break;
 	case 'f':
-		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
-				return -1;
+		if (!(cs = vi_char()))
+			return -1;
+		if (lbuf_findchar(xb, row, col, cs, mv, cnt))
+			return -1;
 		break;
 	case 'F':
-		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
-				return -1;
+		if (!(cs = vi_char()))
+			return -1;
+		if (lbuf_findchar(xb, row, col, cs, mv, cnt))
+			return -1;
 		break;
 	case ';':
-		if (vi_charlast[0])
-			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, cnt))
-				return -1;
+		if (!vi_charlast[0])
+			return -1;
+		if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, cnt))
+			return -1;
 		break;
 	case ',':
-		if (vi_charlast[0])
-			if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -cnt))
-				return -1;
+		if (!vi_charlast[0])
+			return -1;
+		if (lbuf_findchar(xb, row, col, vi_charlast, vi_charcmd, -cnt))
+			return -1;
 		break;
 	case 'h':
 		for (i = 0; i < cnt; i++)
@@ -459,14 +463,16 @@ static int vi_motion(int *row, int *col)
 				break;
 		break;
 	case 't':
-		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
-				return -1;
+		if (!(cs = vi_char()))
+			return -1;
+		if (lbuf_findchar(xb, row, col, cs, mv, cnt))
+			return -1;
 		break;
 	case 'T':
-		if ((cs = vi_char()))
-			if (lbuf_findchar(xb, row, col, cs, mv, cnt))
-				return -1;
+		if (!(cs = vi_char()))
+			return -1;
+		if (lbuf_findchar(xb, row, col, cs, mv, cnt))
+			return -1;
 		break;
 	case 'B':
 		for (i = 0; i < cnt; i++)

@@ -106,24 +106,25 @@ static void led_printparts(char *ai, char *pref, char *main, char *post)
 {
 	struct sbuf *ln;
 	int off, pos;
+	int idir = 0;
 	ln = sbuf_make();
 	sbuf_str(ln, ai);
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
 	off = uc_slen(sbuf_buf(ln));
 	/* cursor position for inserting the next character */
-	if (post[0] && post[0] != '\n') {
-		sbuf_str(ln, post);
-		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
-	} else {
+	if (*pref || *main || *ai) {
 		int len = sbuf_len(ln);
 		sbuf_str(ln, keymap(led_kmap, 'a'));
-		pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off));
-		sbuf_cut(ln, len);
 		sbuf_str(ln, post);
+		idir = ren_pos(sbuf_buf(ln), off) -
+			ren_pos(sbuf_buf(ln), off - 1) < 0 ? -1 : +1;
+		sbuf_cut(ln, len);
 	}
+	sbuf_str(ln, post);
 	led_print(sbuf_buf(ln), -1);
-	term_pos(-1, led_pos(sbuf_buf(ln), pos));
+	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off - 1));
+	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
 }
 

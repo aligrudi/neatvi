@@ -843,6 +843,7 @@ static int vc_insert(int cmd)
 		lbuf_eol(xb, &xrow, &xcol, +1);
 		lbuf_lnnext(xb, &xrow, &xcol, -1);
 	}
+	xcol = ren_noeol(ln, xcol);
 	if (cmd == 'o')
 		xrow += 1;
 	if (cmd == 'i' || cmd == 'I')
@@ -970,8 +971,10 @@ static int vi_scrollbackward(int cnt)
 
 static void vc_status(void)
 {
+	int pos = ren_noeol(lbuf_get(xb, xrow), xcol);
 	snprintf(xmsg, sizeof(xmsg), "\"%s\" line %d of %d, col %d\n",
-		xpath[0] ? xpath : "unnamed", xrow + 1, lbuf_len(xb), xcol + 1);
+		xpath[0] ? xpath : "unnamed", xrow + 1, lbuf_len(xb),
+		ren_cursor(lbuf_get(xb, xrow), pos) + 1);
 }
 
 static int vc_replace(void)

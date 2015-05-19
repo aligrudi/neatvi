@@ -124,6 +124,12 @@ void ex_show(char *msg);
 /* process management */
 char *cmd_pipe(char *cmd, char *s);
 
+/* configuration variables */
+char *conf_kmapalt(void);
+int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
+int conf_dircontext(int idx, char **pat, int *ctx);
+int conf_placeholder(int idx, char **s, char **d, int *wid);
+
 /* global variables */
 #define PATHLEN		512
 

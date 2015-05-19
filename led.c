@@ -5,9 +5,19 @@
 #include "vi.h"
 #include "kmap.h"
 
-static char **led_kmap = kmap_def;
+static char **kmaps[] = {kmap_en, kmap_fa};
+static char **led_kmap = kmap_en;
 
-static char *keymap(char **kmap, int c)
+static char **kmap_find(char *name)
+{
+	int i;
+	for (i = 0; i < LEN(kmaps); i++)
+		if (kmaps[i][0] && !strcmp(name, kmaps[i][0]))
+			return kmaps[i];
+	return kmap_en;
+}
+
+static char *kmap_map(char **kmap, int c)
 {
 	static char cs[4];
 	cs[0] = c;
@@ -22,7 +32,7 @@ int led_pos(char *s, int pos)
 
 char *led_keymap(int c)
 {
-	return c >= 0 ? keymap(led_kmap, c) : NULL;
+	return c >= 0 ? kmap_map(led_kmap, c) : NULL;
 }
 
 static char *led_render(char *s0)
@@ -115,7 +125,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post)
 	/* cursor position for inserting the next character */
 	if (*pref || *main || *ai) {
 		int len = sbuf_len(ln);
-		sbuf_str(ln, keymap(led_kmap, 'a'));
+		sbuf_str(ln, kmap_map(led_kmap, 'a'));
 		sbuf_str(ln, post);
 		idir = ren_pos(sbuf_buf(ln), off) -
 			ren_pos(sbuf_buf(ln), off - 1) < 0 ? -1 : +1;
@@ -143,10 +153,10 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		c = term_read(-1);
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = kmap_farsi;
+			*kmap = kmap_find(conf_kmapalt());
 			continue;
 		case TK_CTL('e'):
-			*kmap = kmap_def;
+			*kmap = kmap_en;
 			continue;
 		case TK_CTL('h'):
 		case 127:
@@ -174,7 +184,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
-			sbuf_str(sb, keymap(*kmap, c));
+			sbuf_str(sb, kmap_map(*kmap, c));
 		}
 		if (c == '\n' || TK_INT(c))
 			break;
@@ -186,7 +196,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 /* read an ex command */
 char *led_prompt(char *pref, char *post)
 {
-	char **kmap = kmap_def;
+	char **kmap = kmap_en;
 	char *s;
 	int key;
 	s = led_line(pref, post, "", 0, &key, &kmap);

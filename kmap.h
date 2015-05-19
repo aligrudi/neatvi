@@ -1,6 +1,9 @@
-static char *kmap_def[256];
+static char *kmap_en[256] = {
+	[0] = "en",
+};
 
-static char *kmap_farsi[256] = {
+static char *kmap_fa[256] = {
+	[0] = "fa",
 	['`'] = "‍",
 	['1'] = "۱",
 	['2'] = "۲",

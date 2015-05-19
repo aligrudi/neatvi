@@ -32,7 +32,7 @@ static void vi_draw(void)
 	term_record();
 	for (i = xtop; i < xtop + xrows; i++) {
 		char *s = lbuf_get(xb, i);
-		led_print(s ? s : "~", i - xtop);
+		led_print(s ? s : (i ? "~" : ""), i - xtop);
 	}
 	vi_drawmsg();
 	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));

@@ -177,36 +177,26 @@ int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
 	return 0;
 }
 
-static struct placeholder {
-	char *s;	/* the source character */
-	char *d;	/* the placeholder */
-} placeholders[] = {
-	{"‌", "-"},
-	{"‍", "-"},
-	{"ْ", "ـْ"},
-	{"ٌ", "ـٌ"},
-	{"ٍ", "ـٍ"},
-	{"ً", "ـً"},
-	{"ُ", "ـُ"},
-	{"ِ", "ـِ"},
-	{"َ", "ـَ"},
-	{"ّ", "ـّ"},
-};
-
 static char *ren_placeholder(char *s)
 {
-	int i = 0;
+	char *src, *dst;
+	int wid, i;
 	int c = uc_code(s);
-	for (i = 0; i < LEN(placeholders); i++)
-		if (uc_code(placeholders[i].s) == c)
-			return placeholders[i].d;
+	for (i = 0; !conf_placeholder(i, &src, &dst, &wid); i++)
+		if (uc_code(src) == c)
+			return dst;
 	return NULL;
 }
 
 int ren_cwid(char *s, int pos)
 {
+	char *src, *dst;
+	int wid, i;
 	if (s[0] == '\t')
 		return 8 - (pos & 7);
+	for (i = 0; !conf_placeholder(i, &src, &dst, &wid); i++)
+		if (uc_code(src) == uc_code(s))
+			return wid;
 	return 1;
 }
 

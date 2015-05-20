@@ -21,6 +21,7 @@ int xrow_alt;			/* alternate row, column, and top row */
 int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
+int xorder = 1;			/* change the order of characters */
 
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
@@ -449,6 +450,7 @@ static struct option {
 	{"ic", "ignorecase", &xic},
 	{"td", "textdirection", &xdir},
 	{"shape", "shape", &xshape},
+	{"order", "xorder", &xorder},
 };
 
 static char *cutword(char *s, char *d)

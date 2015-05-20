@@ -147,3 +147,4 @@ extern int xic;
 extern int xai;
 extern int xdir;
 extern int xshape;
+extern int xorder;

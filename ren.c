@@ -15,7 +15,8 @@ int *ren_position(char *s)
 	pos = malloc((n + 1) * sizeof(pos[0]));
 	for (i = 0; i < n; i++)
 		pos[i] = i;
-	dir_reorder(s, pos);
+	if (xorder)
+		dir_reorder(s, pos);
 	off = malloc(n * sizeof(off[0]));
 	for (i = 0; i < n; i++)
 		off[pos[i]] = i;
@@ -154,7 +155,8 @@ int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
 	ord = malloc(n * sizeof(ord[0]));
 	for (i = 0; i < n; i++)
 		ord[i] = i;
-	dir_reorder(s, ord);
+	if (xorder)
+		dir_reorder(s, ord);
 
 	if (c2 < c1)
 		swap(&c1, &c2);

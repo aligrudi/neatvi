@@ -19,7 +19,7 @@ struct lbuf *xb;		/* current buffer */
 int xrow, xcol, xtop;		/* current row, column, and top row */
 int xrow_alt;			/* alternate row, column, and top row */
 int xled = 1;			/* use the line editor */
-int xdir = 'L';			/* current direction context */
+int xdir = +1;			/* current direction context */
 
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
@@ -446,6 +446,7 @@ static struct option {
 } options[] = {
 	{"ai", "autoindent", &xai},
 	{"ic", "ignorecase", &xic},
+	{"td", "textdirection", &xdir},
 };
 
 static char *cutword(char *s, char *d)

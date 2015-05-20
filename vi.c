@@ -1136,9 +1136,11 @@ static void vi(void)
 					break;
 				case 'l':
 				case 'r':
+					xdir = z == 'r' ? -1 : +1;
+					break;
 				case 'L':
 				case 'R':
-					xdir = z;
+					xdir = z == 'R' ? -2 : +2;
 					break;
 				}
 				redraw = 1;

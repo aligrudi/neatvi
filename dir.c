@@ -68,14 +68,14 @@ int dir_context(char *s)
 {
 	int found;
 	int dir;
-	if (xdir == 'L')
+	if (xdir > +1)
 		return +1;
-	if (xdir == 'R')
+	if (xdir < -1)
 		return -1;
 	found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (!conf_dircontext(found, NULL, &dir))
 		return dir;
-	return xdir == 'r' ? -1 : +1;
+	return xdir < 0 ? -1 : +1;
 }
 
 /* reorder the characters in s */

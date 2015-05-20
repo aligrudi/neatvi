@@ -872,7 +872,7 @@ static int vc_put(int cmd)
 	if (!buf)
 		return 1;
 	ln = lnmode ? NULL : lbuf_get(xb, xrow);
-	off = vi_insertionoffset(ln, xcol, cmd == 'P');
+	off = vi_insertionoffset(ln, ren_noeol(ln, xcol), cmd == 'P');
 	if (cmd == 'p' && !ln)
 		xrow++;
 	sb = sbuf_make();

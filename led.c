@@ -6,22 +6,22 @@
 #include "kmap.h"
 
 static char **kmaps[] = {kmap_en, kmap_fa};
-static char **led_kmap = kmap_en;
 
 static char **kmap_find(char *name)
 {
 	int i;
 	for (i = 0; i < LEN(kmaps); i++)
-		if (kmaps[i][0] && !strcmp(name, kmaps[i][0]))
+		if (name && kmaps[i][0] && !strcmp(name, kmaps[i][0]))
 			return kmaps[i];
 	return kmap_en;
 }
 
-static char *kmap_map(char **kmap, int c)
+static char *kmap_map(char *kmap, int c)
 {
 	static char cs[4];
+	char **keymap = kmap_find(kmap);
 	cs[0] = c;
-	return kmap[c] ? kmap[c] : cs;
+	return keymap[c] ? keymap[c] : cs;
 }
 
 /* map cursor horizontal position to terminal column number */
@@ -30,9 +30,9 @@ int led_pos(char *s, int pos)
 	return dir_context(s) >= 0 ? pos : xcols - pos - 1;
 }
 
-char *led_keymap(int c)
+char *led_keymap(char *kmap, int c)
 {
-	return c >= 0 ? kmap_map(led_kmap, c) : NULL;
+	return c >= 0 ? kmap_map(kmap, c) : NULL;
 }
 
 static char *led_render(char *s0)
@@ -112,7 +112,7 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *ai, char *pref, char *main, char *post)
+static void led_printparts(char *ai, char *pref, char *main, char *post, char *kmap)
 {
 	struct sbuf *ln;
 	int off, pos;
@@ -125,7 +125,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post)
 	/* cursor position for inserting the next character */
 	if (*pref || *main || *ai) {
 		int len = sbuf_len(ln);
-		sbuf_str(ln, kmap_map(led_kmap, 'a'));
+		sbuf_str(ln, kmap_map(kmap, 'a'));
 		sbuf_str(ln, post);
 		idir = ren_pos(sbuf_buf(ln), off) -
 			ren_pos(sbuf_buf(ln), off - 1) < 0 ? -1 : +1;
@@ -138,7 +138,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post)
 	sbuf_free(ln);
 }
 
-static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char ***kmap)
+static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char **kmap)
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
@@ -149,14 +149,14 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 	if (!post)
 		post = "";
 	while (1) {
-		led_printparts(ai, pref, sbuf_buf(sb), post);
+		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap);
 		c = term_read(-1);
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = kmap_find(conf_kmapalt());
+			*kmap = conf_kmapalt();
 			continue;
 		case TK_CTL('e'):
-			*kmap = kmap_en;
+			*kmap = kmap_en[0];
 			continue;
 		case TK_CTL('h'):
 		case 127:
@@ -194,12 +194,11 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 }
 
 /* read an ex command */
-char *led_prompt(char *pref, char *post)
+char *led_prompt(char *pref, char *post, char **kmap)
 {
-	char **kmap = kmap_en;
 	char *s;
 	int key;
-	s = led_line(pref, post, "", 0, &key, &kmap);
+	s = led_line(pref, post, "", 0, &key, kmap);
 	if (key == '\n')
 		return s;
 	free(s);
@@ -207,13 +206,13 @@ char *led_prompt(char *pref, char *post)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, char *ai, int ai_max)
+char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 {
 	struct sbuf *sb = sbuf_make();
 	char *first_ai = NULL;
 	int key;
 	while (1) {
-		char *ln = led_line(pref, post, ai, ai_max, &key, &led_kmap);
+		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
 		if (pref)
 			first_ai = uc_dup(ai);
 		if (!pref)
@@ -221,7 +220,7 @@ char *led_input(char *pref, char *post, char *ai, int ai_max)
 		sbuf_str(sb, ln);
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
-		led_printparts(ai, pref ? pref : "", ln, key == '\n' ? "" : post);
+		led_printparts(ai, pref ? pref : "", ln, key == '\n' ? "" : post, *kmap);
 		if (key == '\n')
 			term_chr('\n');
 		pref = NULL;

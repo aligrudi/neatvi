@@ -19,6 +19,7 @@ static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
 static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
+static char *vi_kmap;		/* current insertion keymap */
 
 static void vi_drawmsg(void)
 {
@@ -56,14 +57,14 @@ static void vi_back(int c)
 static char *vi_char(void)
 {
 	int key = vi_read();
-	return TK_INT(key) ? NULL : led_keymap(key);
+	return TK_INT(key) ? NULL : led_keymap(vi_kmap, key);
 }
 
-static char *vi_prompt(char *msg)
+static char *vi_prompt(char *msg, char **kmap)
 {
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	return led_prompt(msg, "");
+	return led_prompt(msg, "", kmap);
 }
 
 char *ex_read(char *msg)
@@ -71,7 +72,7 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	char c;
 	if (xled) {
-		char *s = led_prompt(msg, "");
+		char *s = led_prompt(msg, "", &vi_kmap);
 		if (s)
 			term_chr('\n');
 		return s;
@@ -225,7 +226,7 @@ static int vi_search(int cmd, int cnt, int *row, int *col)
 	char *off = "";
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
-		char *kw = vi_prompt(sign);
+		char *kw = vi_prompt(sign, &vi_kmap);
 		if (!kw)
 			return 1;
 		vi_finddir = cmd == '/' ? +1 : -1;
@@ -685,7 +686,7 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 	int last, off;
 	if (xai)
 		pref += indentscopy(ai, pref, sizeof(ai));
-	rep = led_input(pref, post, ai, xai ? sizeof(ai) - 1 : 0);
+	rep = led_input(pref, post, ai, xai ? sizeof(ai) - 1 : 0, &vi_kmap);
 	if (!rep)
 		return NULL;
 	sb = sbuf_make();
@@ -741,7 +742,8 @@ static void vi_pipe(int r1, int r2)
 {
 	char *text;
 	char *rep;
-	char *cmd = vi_prompt("!");
+	char *kmap = NULL;
+	char *cmd = vi_prompt("!", &kmap);
 	if (!cmd)
 		return;
 	if (r2 < r1)
@@ -1005,6 +1007,7 @@ static void vi(void)
 {
 	int mark;
 	char *ln;
+	char *kmap = NULL;
 	term_init();
 	xtop = 0;
 	xrow = 0;
@@ -1080,7 +1083,7 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case ':':
-				ln = vi_prompt(":");
+				ln = vi_prompt(":", &kmap);
 				if (ln && ln[0]) {
 					ex_command(ln);
 					redraw = 1;

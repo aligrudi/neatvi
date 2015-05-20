@@ -20,6 +20,7 @@ int xrow, xcol, xtop;		/* current row, column, and top row */
 int xrow_alt;			/* alternate row, column, and top row */
 int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
+int xshape = 1;			/* perform letter shaping */
 
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
@@ -447,6 +448,7 @@ static struct option {
 	{"ai", "autoindent", &xai},
 	{"ic", "ignorecase", &xic},
 	{"td", "textdirection", &xdir},
+	{"shape", "shape", &xshape},
 };
 
 static char *cutword(char *s, char *d)

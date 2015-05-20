@@ -30,6 +30,11 @@ int led_pos(char *s, int pos)
 	return dir_context(s) >= 0 ? pos : xcols - pos - 1;
 }
 
+static int led_posctx(int dir, int pos)
+{
+	return dir >= 0 ? pos : xcols - pos - 1;
+}
+
 char *led_keymap(char *kmap, int c)
 {
 	return c >= 0 ? kmap_map(kmap, c) : NULL;
@@ -43,6 +48,7 @@ static char *led_render(char *s0)
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
 	struct sbuf *out;
 	int i, j;
+	int ctx = dir_context(s0);
 	chrs = uc_chop(s0, &n);
 	pos = ren_position(s0);
 	off = malloc(xcols * sizeof(off[0]));
@@ -52,9 +58,9 @@ static char *led_render(char *s0)
 		int curwid = ren_cwid(chrs[i], curpos);
 		if (curpos >= 0 && curpos + curwid < xcols) {
 			for (j = 0; j < curwid; j++) {
-				off[led_pos(s0, curpos + j)] = i;
-				if (led_pos(s0, curpos + j) > maxcol)
-					maxcol = led_pos(s0, curpos + j);
+				off[led_posctx(ctx, curpos + j)] = i;
+				if (led_posctx(ctx, curpos + j) > maxcol)
+					maxcol = led_posctx(ctx, curpos + j);
 			}
 		}
 	}

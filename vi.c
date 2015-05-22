@@ -399,6 +399,28 @@ static int vi_motionln(int *row, int cmd)
 	return c;
 }
 
+static char *lbuf_curword(struct lbuf *lb, int row, int col)
+{
+	struct sbuf *sb;
+	char *ln = lbuf_get(lb, row);
+	char *beg, *end;
+	if (!ln)
+		return NULL;
+	beg = uc_chr(ln, ren_off(ln, ren_noeol(ln, col)));
+	end = beg;
+	while (*end && uc_kind(end) == 1)
+		end = uc_next(end);
+	while (beg > ln && uc_kind(uc_beg(ln, beg - 1)) == 1)
+		beg = uc_beg(ln, beg - 1);
+	if (beg >= end)
+		return NULL;
+	sb = sbuf_make();
+	sbuf_str(sb, "\\<");
+	sbuf_mem(sb, beg, end - beg);
+	sbuf_str(sb, "\\>");
+	return sbuf_done(sb);
+}
+
 /* read a motion */
 static int vi_motion(int *row, int *col)
 {
@@ -545,6 +567,15 @@ static int vi_motion(int *row, int *col)
 		break;
 	case 'N':
 		if (vi_search(mv, cnt, row, col))
+			return -1;
+		break;
+	case TK_CTL('a'):
+		if (!(cs = lbuf_curword(xb, *row, *col)))
+			return -1;
+		strcpy(vi_findlast, cs);
+		free(cs);
+		vi_finddir = +1;
+		if (vi_search('n', cnt, row, col))
 			return -1;
 		break;
 	case 127:

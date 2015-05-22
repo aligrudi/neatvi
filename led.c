@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -147,7 +148,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 	}
 	sbuf_str(ln, post);
 	led_print(sbuf_buf(ln), -1);
-	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), off - 1));
+	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(0, off - 1)));
 	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
 }
@@ -156,14 +157,14 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
-	int c;
+	int c, lnmode;
 	sb = sbuf_make();
 	if (!pref)
 		pref = "";
 	if (!post)
 		post = "";
 	while (1) {
-		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap);
+		led_printparts(ai, pref, uc_lastline(sbuf_buf(sb)), post, *kmap);
 		c = term_read(-1);
 		switch (c) {
 		case TK_CTL('f'):
@@ -190,10 +191,15 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		case TK_CTL('t'):
 			if (ai_len < ai_max)
 				ai[ai_len++] = '\t';
+			ai[ai_len] = '\0';
 			break;
 		case TK_CTL('d'):
 			if (ai_len > 0)
 				ai[--ai_len] = '\0';
+			break;
+		case TK_CTL('p'):
+			if (reg_get(0, &lnmode))
+				sbuf_str(sb, reg_get(0, &lnmode));
 			break;
 		default:
 			if (c == '\n' || TK_INT(c))
@@ -224,7 +230,7 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 {
 	struct sbuf *sb = sbuf_make();
 	char *first_ai = NULL;
-	int key;
+	int key, i, ai_len;
 	while (1) {
 		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
 		if (pref)
@@ -234,11 +240,17 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 		sbuf_str(sb, ln);
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
-		led_printparts(ai, pref ? pref : "", ln, key == '\n' ? "" : post, *kmap);
+		led_printparts(ai, pref ? pref : "", uc_lastline(ln),
+				key == '\n' ? "" : post, *kmap);
 		if (key == '\n')
 			term_chr('\n');
 		pref = NULL;
 		term_kill();
+		ai_len = ai_max ? strlen(ai) : 0;
+		for (i = 0; isspace((unsigned char) ln[i]); i++)
+			if (ai_len < ai_max)
+				ai[ai_len++] = ln[i];
+		ai[ai_len] = '\0';
 		free(ln);
 		if (key != '\n')
 			break;

@@ -680,17 +680,6 @@ static void vi_delete(int r1, int c1, int r2, int c2, int lnmode, int closed)
 	free(post);
 }
 
-static int lastline(char *str)
-{
-	char *s = str;
-	char *r = s;
-	while (s && s[0]) {
-		r = s;
-		s = strchr(s + 1, '\n');
-	}
-	return r - str;
-}
-
 static int linecount(char *s)
 {
 	int n;
@@ -712,7 +701,7 @@ static int indentscopy(char *d, char *s, int len)
 static char *vi_input(char *pref, char *post, int *row, int *col)
 {
 	char ai[64] = "";
-	char *rep;
+	char *rep, *s;
 	struct sbuf *sb;
 	int last, off;
 	if (xai)
@@ -724,7 +713,8 @@ static char *vi_input(char *pref, char *post, int *row, int *col)
 	sbuf_str(sb, ai);
 	sbuf_str(sb, pref);
 	sbuf_str(sb, rep);
-	last = lastline(sbuf_buf(sb));
+	s = sbuf_buf(sb);
+	last = uc_lastline(s) - s;
 	off = uc_slen(sbuf_buf(sb) + last);
 	if (last)
 		while (xai && (post[0] == ' ' || post[0] == '\t'))

@@ -86,6 +86,7 @@ char *uc_next(char *s);
 char *uc_beg(char *beg, char *s);
 char *uc_end(char *beg, char *s);
 char *uc_shape(char *beg, char *s);
+char *uc_lastline(char *s);
 
 /* managing the terminal */
 #define xrows		(term_rows() - 1)

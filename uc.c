@@ -80,6 +80,12 @@ int uc_wid(char *s)
 	return 1;
 }
 
+char *uc_lastline(char *s)
+{
+	char *r = strrchr(s, '\n');
+	return r ? r + 1 : s;
+}
+
 /* allocate and return an array for the characters in s */
 char **uc_chop(char *s, int *n)
 {

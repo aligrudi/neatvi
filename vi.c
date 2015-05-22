@@ -980,7 +980,7 @@ static int vc_replace(void)
 	int off, i;
 	if (!ln || !cs)
 		return 1;
-	off = ren_off(ln, xcol);
+	off = ren_off(ln, ren_noeol(ln, xcol));
 	s = uc_chr(ln, off);
 	for (i = 0; s[0] != '\n' && i < cnt; i++)
 		s = uc_next(s);

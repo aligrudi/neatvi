@@ -11,6 +11,7 @@
 
 char xpath[PATHLEN];		/* current file */
 char xpath_alt[PATHLEN];	/* alternate file */
+char xft[32];			/* filetype */
 int xquit;			/* exit if set */
 int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
@@ -189,6 +190,7 @@ static void ec_edit(char *ec)
 		xrow_alt = xrow;
 		xrow = xvis ? 0 : 1 << 20;
 	}
+	strcpy(xft, syn_filetype(xpath));
 	fd = open(xpath, O_RDONLY);
 	lbuf_rm(xb, 0, lbuf_len(xb));
 	if (fd >= 0) {

@@ -45,7 +45,9 @@ static char *led_render(char *s0)
 	int n, maxcol = 0;
 	int *pos;	/* pos[i]: the screen position of the i-th character */
 	int *off;	/* off[i]: the character at screen position i */
+	int *att;	/* att[i]: the attributes of i-th character */
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
+	int att_old = 0;
 	struct sbuf *out;
 	int i, j;
 	int ctx = dir_context(s0);
@@ -64,10 +66,14 @@ static char *led_render(char *s0)
 			}
 		}
 	}
+	att = syn_highlight(xft, s0);
 	out = sbuf_make();
 	i = 0;
 	while (i <= maxcol) {
 		int o = off[i];
+		int att_new = o >= 0 ? att[o] : 0;
+		sbuf_str(out, term_att(att_new, att_old));
+		att_old = att_new;
 		if (o >= 0) {
 			if (ren_translate(chrs[o], s0))
 				sbuf_str(out, ren_translate(chrs[o], s0));
@@ -83,6 +89,8 @@ static char *led_render(char *s0)
 			i++;
 		}
 	}
+	sbuf_str(out, term_att(0, att_old));
+	free(att);
 	free(pos);
 	free(off);
 	free(chrs);

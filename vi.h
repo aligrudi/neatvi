@@ -103,6 +103,7 @@ int term_cols(void);
 int term_read(int timeout);
 void term_record(void);
 void term_commit(void);
+char *term_att(int att, int old);
 
 #define TK_CTL(x)	((x) & 037)
 #define TK_INT(c)	((c) < 0 || (c) == TK_ESC || (c) == TK_CTL('c'))
@@ -124,11 +125,26 @@ void ex_show(char *msg);
 /* process management */
 char *cmd_pipe(char *cmd, char *s);
 
+/* syntax highlighting */
+#define SYN_BD		0x100
+#define SYN_IT		0x200
+#define SYN_RV		0x400
+#define SYN_ATTR(f, b)	(((b) << 16) | (f))
+#define SYN_FG(a)	((a) & 0xffff)
+#define SYN_BG(a)	((a) >> 16)
+
+int *syn_highlight(char *ft, char *s);
+char *syn_filetype(char *path);
+void syn_init(void);
+void syn_done(void);
+
 /* configuration variables */
 char *conf_kmapalt(void);
 int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
 int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_placeholder(int idx, char **s, char **d, int *wid);
+int conf_highlight(int idx, char **ft, int *att, int *grp, char **pat);
+int conf_filetype(int idx, char **ft, char **pat);
 
 /* global variables */
 #define PATHLEN		512
@@ -148,3 +164,4 @@ extern int xai;
 extern int xdir;
 extern int xshape;
 extern int xorder;
+extern char xft[];

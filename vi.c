@@ -1227,6 +1227,7 @@ int main(int argc, char *argv[])
 			xvis = 1;
 	}
 	dir_init();
+	syn_init();
 	if (i < argc) {
 		snprintf(ecmd, PATHLEN, "e %s", argv[i]);
 		ex_command(ecmd);
@@ -1237,6 +1238,7 @@ int main(int argc, char *argv[])
 		ex();
 	lbuf_free(xb);
 	reg_done();
+	syn_done();
 	dir_done();
 	return 0;
 }

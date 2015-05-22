@@ -1,5 +1,6 @@
-#include "conf.h"
+#include <stdio.h>
 #include "vi.h"
+#include "conf.h"
 
 char *conf_kmapalt(void)
 {
@@ -42,5 +43,31 @@ int conf_placeholder(int idx, char **s, char **d, int *wid)
 		*d = placeholders[idx].d;
 	if (wid)
 		*wid = placeholders[idx].wid;
+	return 0;
+}
+
+int conf_highlight(int idx, char **ft, int *att, int *grp, char **pat)
+{
+	if (idx < 0 || idx >= LEN(highlights))
+		return 1;
+	if (ft)
+		*ft = highlights[idx].ft;
+	if (att)
+		*att = highlights[idx].att;
+	if (grp)
+		*grp = highlights[idx].grp;
+	if (pat)
+		*pat = highlights[idx].pat;
+	return 0;
+}
+
+int conf_filetype(int idx, char **ft, char **pat)
+{
+	if (idx < 0 || idx >= LEN(filetypes))
+		return 1;
+	if (ft)
+		*ft = filetypes[idx].ft;
+	if (pat)
+		*pat = filetypes[idx].pat;
 	return 0;
 }

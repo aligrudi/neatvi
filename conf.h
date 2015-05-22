@@ -3,9 +3,9 @@
 /* the alternate keymap (^F and ^E in insert mode to switch) */
 #define KMAPALT		"fa"
 
-/* right-to-left characters (used only in dircontexts and dirmarks) */
+/* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"
-/* neutral characters (used only in dircontexts and dirmarks) */
+/* neutral characters (used only in dircontexts[] and dirmarks[]) */
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
 /* direction context patterns; specifies the direction of a whole line */
@@ -50,27 +50,6 @@ static struct placeholder {
 	{"ّ", "ـّ", 1},
 };
 
-/* syntax highlighting patterns */
-static struct highlight {
-	char *ft;		/* the filetype of this pattern */
-	int att;		/* attributes of the matched region */
-	int grp;		/* regular expression subgroup to highlight */
-	char *pat;		/* regular expression */
-} highlights[] = {
-	{"c", 5, 0, "\\<(char|short|int|long|float|double|void|struct|enum|union)\\>"},
-	{"c", 5, 0, "\\<(static|extern|register)\\>"},
-	{"c", 5, 0, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
-	{"c", SYN_IT | 2, 0, "//.*$"},
-	{"c", SYN_IT | 2, 0, "/\\*([^*]|\\*[^/])*\\*/"},
-	{"c", 6, 0, "^#[ \t]*[a-zA-Z0-9_]+"},
-	{"c", SYN_BD, 1, "([a-zA-Z][a-zA-Z0-9_]+)\\("},
-	{"c", 4, 0, "\"([^\"]|\\\\\")*\""},
-	{"c", 4, 0, "'([^\\]|\\\\.)'"},
-
-	{"tr", SYN_BD, 0, "^\\.SH.*$"},
-	{"tr", 4, 0, "^\\.[a-zA-Z0-9]{2}.*$"},
-};
-
 /* map file names to file types */
 static struct filetype {
 	char *ft;		/* file type */
@@ -78,4 +57,25 @@ static struct filetype {
 } filetypes[] = {
 	{"c", "\\.[hc]$"},
 	{"tr", "\\.(ms|tr|roff)$"},
+};
+
+/* syntax highlighting patterns */
+static struct highlight {
+	char *ft;		/* the filetype of this pattern */
+	int att;		/* attributes of the matched region */
+	int grp;		/* regular expression subgroup to highlight */
+	char *pat;		/* regular expression */
+} highlights[] = {
+	{"c", 5, 0, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
+	{"c", 5, 0, "\\<(static|extern|register)\\>"},
+	{"c", 5, 0, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
+	{"c", 2 | SYN_IT, 0, "//.*$"},
+	{"c", 2 | SYN_IT, 0, "/\\*([^*]|\\*[^/])*\\*/"},
+	{"c", 6, 0, "^#[ \t]*[a-zA-Z0-9_]+"},
+	{"c", SYN_BD, 1, "([a-zA-Z][a-zA-Z0-9_]+)\\("},
+	{"c", 4, 0, "\"([^\"]|\\\\\")*\""},
+	{"c", 4, 0, "'([^\\]|\\\\.)'"},
+
+	{"tr", SYN_BD, 0, "^\\.SH.*$"},
+	{"tr", 4, 0, "^\\.[a-zA-Z0-9]{2}.*$"},
 };

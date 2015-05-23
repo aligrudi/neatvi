@@ -230,7 +230,7 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 {
 	struct sbuf *sb = sbuf_make();
 	char *first_ai = NULL;
-	int key, i, ai_len;
+	int key, i;
 	while (1) {
 		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
 		if (pref)
@@ -244,13 +244,15 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 				key == '\n' ? "" : post, *kmap);
 		if (key == '\n')
 			term_chr('\n');
+		if (!pref || !pref[0]) {	/* updating autoindent */
+			int ai_len = ai_max ? strlen(ai) : 0;
+			for (i = 0; isspace((unsigned char) ln[i]); i++)
+				if (ai_len < ai_max)
+					ai[ai_len++] = ln[i];
+			ai[ai_len] = '\0';
+		}
 		pref = NULL;
 		term_kill();
-		ai_len = ai_max ? strlen(ai) : 0;
-		for (i = 0; isspace((unsigned char) ln[i]); i++)
-			if (ai_len < ai_max)
-				ai[ai_len++] = ln[i];
-		ai[ai_len] = '\0';
 		free(ln);
 		if (key != '\n')
 			break;

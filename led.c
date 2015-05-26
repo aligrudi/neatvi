@@ -36,11 +36,6 @@ static int led_posctx(int dir, int pos)
 	return dir >= 0 ? pos : xcols - pos - 1;
 }
 
-char *led_keymap(char *kmap, int c)
-{
-	return c >= 0 ? kmap_map(kmap, c) : NULL;
-}
-
 static char *led_render(char *s0)
 {
 	int n, maxcol = 0;
@@ -151,6 +146,30 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(0, off - 1)));
 	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
+}
+
+char *led_read(char **kmap)
+{
+	static char buf[8];
+	int c = term_read(-1);
+	while (!TK_INT(c)) {
+		switch (c) {
+		case TK_CTL('f'):
+			*kmap = conf_kmapalt();
+			break;
+		case TK_CTL('e'):
+			*kmap = kmap_en[0];
+			break;
+		case TK_CTL('v'):
+			buf[0] = term_read(-1);
+			buf[1] = '\0';
+			return buf;
+		default:
+			return kmap_map(*kmap, c);
+		}
+		c = term_read(-1);
+	}
+	return NULL;
 }
 
 static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char **kmap)

@@ -113,8 +113,8 @@ char *term_att(int att, int old);
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post, char **kmap);
 char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap);
+char *led_read(char **kmap);
 void led_print(char *msg, int row);
-char *led_keymap(char *kmap, int c);
 int led_pos(char *s, int pos);
 
 /* ex commands */

@@ -56,8 +56,7 @@ static void vi_back(int c)
 
 static char *vi_char(void)
 {
-	int key = vi_read();
-	return TK_INT(key) ? NULL : led_keymap(vi_kmap, key);
+	return led_read(&vi_kmap);
 }
 
 static char *vi_prompt(char *msg, char **kmap)

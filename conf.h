@@ -27,7 +27,7 @@ static struct dirmark {
 	{+0, +1, 1, "\\\\\\*\\[([^]]+)\\]"},
 	{+1, -1, 0, "[" CR2L "][" CNEUT CR2L "]*[" CR2L "]"},
 	{-1, +1, 0, "[a-zA-Z0-9_][^" CR2L "\\\\`$']*[a-zA-Z0-9_]"},
-	{+0, +1, 0, "$([^$]+)\\$"},
+	{+0, +1, 0, "\\$([^$]+)\\$"},
 	{+0, +1, 1, "\\\\[a-zA-Z0-9_]+\\{([^}]+)\\}"},
 	{-1, +1, 0, "\\\\[^ \t" CR2L "]+"},
 };
@@ -79,3 +79,6 @@ static struct highlight {
 	{"tr", SYN_BD, 0, "^\\.SH.*$"},
 	{"tr", 4, 0, "^\\.[a-zA-Z0-9]{2}.*$"},
 };
+
+/* how to hightlight text in the reverse direction */
+#define SYN_REVDIR		(SYN_BGMK(7))

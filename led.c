@@ -36,6 +36,40 @@ static int led_posctx(int dir, int pos)
 	return dir >= 0 ? pos : xcols - pos - 1;
 }
 
+static int led_offdir(char **chrs, int *pos, int i)
+{
+	if (pos[i] + ren_cwid(chrs[i], pos[i]) == pos[i + 1])
+		return +1;
+	if (pos[i + 1] + ren_cwid(chrs[i + 1], pos[i + 1]) == pos[i])
+		return -1;
+	return 0;
+}
+
+static int syn_merge(int old, int new)
+{
+	int fg = SYN_FG(new) ? SYN_FG(new) : SYN_FG(old);
+	int bg = SYN_BG(new) ? SYN_BG(new) : SYN_BG(old);
+	return fg | SYN_BGMK(bg);
+}
+
+static void led_markrev(int n, char **chrs, int *pos, int *att)
+{
+	int i = 0, j;
+	int hl = 0;
+	conf_highlight_revdir(&hl);
+	while (i + 1 < n) {
+		int dir = led_offdir(chrs, pos, i);
+		int beg = i;
+		while (i + 1 < n && led_offdir(chrs, pos, i) == dir)
+			i++;
+		if (dir < 0)
+			for (j = beg; j <= i; j++)
+				att[j] = syn_merge(att[j], hl);
+		if (i == beg)
+			i++;
+	}
+}
+
 static char *led_render(char *s0)
 {
 	int n, maxcol = 0;
@@ -63,6 +97,7 @@ static char *led_render(char *s0)
 		}
 	}
 	att = syn_highlight(xft, s0);
+	led_markrev(n, chrs, pos, att);
 	out = sbuf_make();
 	i = 0;
 	while (i <= maxcol) {

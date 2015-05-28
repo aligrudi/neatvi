@@ -71,3 +71,9 @@ int conf_filetype(int idx, char **ft, char **pat)
 		*pat = filetypes[idx].pat;
 	return 0;
 }
+
+int conf_highlight_revdir(int *att)
+{
+	*att = SYN_REVDIR;
+	return 0;
+}

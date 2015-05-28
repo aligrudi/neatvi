@@ -156,6 +156,7 @@ int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_placeholder(int idx, char **s, char **d, int *wid);
 int conf_highlight(int idx, char **ft, int *att, int *grp, char **pat);
 int conf_filetype(int idx, char **ft, char **pat);
+int conf_highlight_revdir(int *att);
 
 /* global variables */
 #define PATHLEN		512

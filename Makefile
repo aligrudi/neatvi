@@ -2,7 +2,7 @@ CC = cc
 CFLAGS = -Wall -O2
 LDFLAGS =
 
-OBJS = vi.o ex.o lbuf.o sbuf.o ren.o dir.o syn.o reg.o led.o \
+OBJS = vi.o ex.o lbuf.o mot.o sbuf.o ren.o dir.o syn.o reg.o led.o \
 	uc.o term.o rset.o cmd.o conf.o
 
 all: vi

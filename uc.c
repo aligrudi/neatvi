@@ -57,7 +57,7 @@ char *uc_beg(char *beg, char *s)
 }
 
 /* find the end of the character at s[i] */
-char *uc_end(char *beg, char *s)
+char *uc_end(char *s)
 {
 	if (!*s || !((unsigned char) *s & 0x80))
 		return s;
@@ -71,8 +71,14 @@ char *uc_end(char *beg, char *s)
 /* return a pointer to the character following s */
 char *uc_next(char *s)
 {
-	s = uc_end(s, s);
+	s = uc_end(s);
 	return *s ? s + 1 : s;
+}
+
+/* return a pointer to the character preceding s */
+char *uc_prev(char *beg, char *s)
+{
+	return s == beg ? beg : uc_beg(beg, s - 1);
 }
 
 int uc_wid(char *s)
@@ -153,7 +159,7 @@ int uc_isprint(char *s)
 int uc_isalpha(char *s)
 {
 	int c = s ? (unsigned char) *s : 0;
-	return c <= 0x7f && isalpha(c);
+	return c > 0x7f || isalpha(c);
 }
 
 int uc_isdigit(char *s)

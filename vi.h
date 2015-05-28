@@ -21,6 +21,15 @@ void lbuf_undo(struct lbuf *lbuf);
 void lbuf_redo(struct lbuf *lbuf);
 void lbuf_undomark(struct lbuf *lbuf);
 void lbuf_undofree(struct lbuf *lbuf);
+int lbuf_indents(struct lbuf *lb, int r);
+int lbuf_eol(struct lbuf *lb, int r);
+/* motions */
+int lbuf_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *r, int *o);
+int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len);
+int lbuf_paragraphbeg(struct lbuf *lb, int dir, int *row, int *off);
+int lbuf_sectionbeg(struct lbuf *lb, int dir, int *row, int *off);
+int lbuf_wordbeg(struct lbuf *lb, int big, int dir, int *row, int *off);
+int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
 
 /* string buffer, variable-sized string */
 struct sbuf *sbuf_make(void);
@@ -83,8 +92,9 @@ int uc_isalpha(char *s);
 int uc_kind(char *c);
 char **uc_chop(char *s, int *n);
 char *uc_next(char *s);
+char *uc_prev(char *beg, char *s);
 char *uc_beg(char *beg, char *s);
-char *uc_end(char *beg, char *s);
+char *uc_end(char *s);
 char *uc_shape(char *beg, char *s);
 char *uc_lastline(char *s);
 
@@ -130,7 +140,7 @@ char *cmd_pipe(char *cmd, char *s);
 #define SYN_BD		0x100
 #define SYN_IT		0x200
 #define SYN_RV		0x400
-#define SYN_ATTR(f, b)	(((b) << 16) | (f))
+#define SYN_BGMK(b)	((b) << 16)
 #define SYN_FG(a)	((a) & 0xffff)
 #define SYN_BG(a)	((a) >> 16)
 
@@ -153,7 +163,7 @@ int conf_filetype(int idx, char **ft, char **pat);
 extern int xvis;
 extern struct lbuf *xb;
 extern int xrow;
-extern int xcol;
+extern int xoff;
 extern int xtop;
 extern int xled;
 extern int xrow_alt;

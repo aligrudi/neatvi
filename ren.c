@@ -102,20 +102,13 @@ int ren_cursor(char *s, int p)
 	return p >= 0 ? p : 0;
 }
 
-/* real cursor position; never past EOL */
-int ren_noeol(char *s, int p)
+/* return an offset before EOL */
+int ren_noeol(char *s, int o)
 {
-	int n;
-	int *pos;
-	if (!s)
-		return 0;
-	n = uc_slen(s);
-	pos = ren_position(s);
-	p = pos_prev(pos, n, p, 1);
-	if (uc_code(uc_chr(s, ren_off(s, p))) == '\n')
-		p = pos_prev(pos, n, p, 0);
-	free(pos);
-	return p >= 0 ? p : 0;
+	int n = s ? uc_slen(s) : 0;
+	if (o >= n)
+		o = MAX(0, n - 1);
+	return o > 0 && uc_chr(s, o)[0] == '\n' ? o - 1 : o;
 }
 
 /* the position of the next character */
@@ -129,54 +122,7 @@ int ren_next(char *s, int p, int dir)
 	else
 		p = pos_prev(pos, n, p, 0);
 	free(pos);
-	return p;
-}
-
-static void swap(int *i1, int *i2)
-{
-	int t = *i1;
-	*i1 = *i2;
-	*i2 = t;
-}
-
-/* the region specified by two visual positions */
-int ren_region(char *s, int c1, int c2, int *l1, int *l2, int closed)
-{
-	int *ord;		/* ord[i]: the order of the i-th char on the screen */
-	int o1, o2;
-	int beg, end;
-	int n = uc_slen(s);
-	int i;
-	if (c1 == c2 && !closed) {
-		*l1 = ren_off(s, c1);
-		*l2 = ren_off(s, c2);
-		return 0;
-	}
-	ord = malloc(n * sizeof(ord[0]));
-	for (i = 0; i < n; i++)
-		ord[i] = i;
-	if (xorder)
-		dir_reorder(s, ord);
-
-	if (c2 < c1)
-		swap(&c1, &c2);
-	if (!closed)
-		c2 = ren_next(s, c2, -1);
-	beg = ren_off(s, c1);
-	end = ren_off(s, c2);
-	if (end < beg)
-		swap(&beg, &end);
-	o1 = ord[beg];
-	o2 = ord[end];
-	if (o2 < o1)
-		swap(&o1, &o2);
-	for (i = beg; i <= end; i++)
-		if (ord[i] < o1 || ord[i] > o2)
-			break;
-	*l1 = beg;
-	*l2 = i;
-	free(ord);
-	return 0;
+	return s && uc_chr(s, ren_off(s, p))[0] != '\n' ? p : -1;
 }
 
 static char *ren_placeholder(char *s)

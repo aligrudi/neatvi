@@ -17,7 +17,7 @@ int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
 struct lbuf *xb;		/* current buffer */
-int xrow, xcol, xtop;		/* current row, column, and top row */
+int xrow, xoff, xtop;		/* current row, column, and top row */
 int xrow_alt;			/* alternate row, column, and top row */
 int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
@@ -182,7 +182,7 @@ static void ec_edit(char *ec)
 		strcpy(xpath, xpath_tmp);
 		xrow = xrow_alt;
 		xrow_alt = xrow_tmp;
-		xcol = 0;
+		xoff = 0;
 		xtop = 0;
 	} else {
 		strcpy(xpath_alt, xpath);

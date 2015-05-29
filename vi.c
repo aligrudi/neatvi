@@ -942,9 +942,9 @@ static void vi(void)
 				noff = lbuf_indents(xb, xrow);
 			if (strchr("jk", mv))
 				noff = vi_col2off(xb, xrow, xcol);
-			xoff = noff;
+			xoff = ren_noeol(lbuf_get(xb, xrow), noff);
 			if (!strchr("|jk", mv))
-				xcol = vi_off2col(xb, xrow, noff);
+				xcol = vi_off2col(xb, xrow, xoff);
 			if (mv == '|')
 				xcol = vi_pcol;
 		} else if (mv == 0) {

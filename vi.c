@@ -603,6 +603,44 @@ static void vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	free(post);
 }
 
+static void vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
+{
+	char *pref, *post;
+	char *region, *s;
+	region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
+	s = region;
+	while (*s) {
+		int c = (unsigned char) s[0];
+		if (c <= 0x7f) {
+			if (cmd == 'u')
+				s[0] = tolower(c);
+			if (cmd == 'U')
+				s[0] = toupper(c);
+			if (cmd == '~')
+				s[0] = islower(c) ? toupper(c) : tolower(c);
+		}
+		s = uc_next(s);
+	}
+	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, o1);
+	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), o2, -1);
+	lbuf_rm(xb, r1, r2 + 1);
+	if (!lnmode) {
+		struct sbuf *sb = sbuf_make();
+		sbuf_str(sb, pref);
+		sbuf_str(sb, region);
+		sbuf_str(sb, post);
+		lbuf_put(xb, r1, sbuf_buf(sb));
+		sbuf_free(sb);
+	} else {
+		lbuf_put(xb, r1, region);
+	}
+	xrow = r2;
+	xoff = lnmode ? lbuf_indents(xb, r2) : o2;
+	free(region);
+	free(pref);
+	free(post);
+}
+
 static void vi_pipe(int r1, int r2)
 {
 	char *text;
@@ -684,6 +722,8 @@ static int vc_motion(int cmd)
 		vi_delete(r1, o1, r2, o2, lnmode);
 	if (cmd == 'c')
 		vi_change(r1, o1, r2, o2, lnmode);
+	if (cmd == '~' || cmd == 'u' || cmd == 'U')
+		vi_case(r1, o1, r2, o2, lnmode, cmd);
 	if (cmd == '!')
 		vi_pipe(r1, r2);
 	if (cmd == '>' || cmd == '<')
@@ -909,7 +949,7 @@ static void vi(void)
 				xcol = vi_pcol;
 		} else if (mv == 0) {
 			int c = vi_read();
-			int z;
+			int z, g;
 			if (c <= 0)
 				continue;
 			switch (c) {
@@ -1016,6 +1056,12 @@ static void vi(void)
 				}
 				redraw = 1;
 				break;
+			case 'g':
+				g = vi_read();
+				if (g == '~' || g == 'u' || g == 'U')
+					if (!vc_motion(g))
+						redraw = 1;
+				break;
 			case 'x':
 				vi_back(' ');
 				if (!vc_motion('d'))
@@ -1053,6 +1099,11 @@ static void vi(void)
 			case 'Y':
 				vi_back('y');
 				if (!vc_motion('y'))
+					redraw = 1;
+				break;
+			case '~':
+				vi_back(' ');
+				if (!vc_motion('~'))
 					redraw = 1;
 				break;
 			default:

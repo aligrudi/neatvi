@@ -1,4 +1,5 @@
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,13 @@ void term_done(void)
 {
 	term_commit();
 	tcsetattr(0, 0, &termios);
+}
+
+void term_suspend(void)
+{
+	term_done();
+	kill(getpid(), SIGSTOP);
+	term_init();
 }
 
 void term_record(void)

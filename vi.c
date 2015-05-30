@@ -975,6 +975,11 @@ static void vi(void)
 					break;
 				redraw = 1;
 				break;
+			case TK_CTL('z'):
+				term_pos(xrows, 0);
+				term_suspend();
+				redraw = 1;
+				break;
 			case 'u':
 				lbuf_undo(xb);
 				redraw = 1;

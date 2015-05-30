@@ -104,6 +104,7 @@ char *uc_lastline(char *s);
 
 void term_init(void);
 void term_done(void);
+void term_suspend(void);
 void term_str(char *s);
 void term_chr(int ch);
 void term_pos(int r, int c);

@@ -172,11 +172,15 @@ static void ec_edit(char *ec)
 	char arg[EXLEN];
 	int fd;
 	ex_arg(ec, arg);
-	if (!strcmp(arg, "%") || !arg[0]) {
+	if (!arg[0] || !strcmp(arg, "%") || !strcmp(xpath, arg)) {
 		strcpy(arg, xpath);
 	} else if (!strcmp(arg, "#")) {
 		char xpath_tmp[PATHLEN];
 		int xrow_tmp = xrow;
+		if (!xpath_alt[0]) {
+			ex_show("\"#\" is unset\n");
+			return;
+		}
 		strcpy(xpath_tmp, xpath_alt);
 		strcpy(xpath_alt, xpath);
 		strcpy(xpath, xpath_tmp);

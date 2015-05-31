@@ -770,40 +770,38 @@ static int vc_put(int cmd)
 {
 	int cnt = MAX(1, vi_arg1);
 	int lnmode;
-	char *ln;
 	char *buf = reg_get(vi_ybuf, &lnmode);
-	struct sbuf *sb;
-	int off;
 	int i;
 	if (!buf)
 		return 1;
-	ln = lnmode ? NULL : lbuf_get(xb, xrow);
-	off = ren_noeol(ln, xoff) + (cmd == 'p');
-	if (cmd == 'p' && !ln)
-		xrow++;
-	sb = sbuf_make();
-	if (ln) {
+	if (lnmode) {
+		struct sbuf *sb = sbuf_make();
+		for (i = 0; i < cnt; i++)
+			sbuf_str(sb, buf);
+		if (!lbuf_len(xb))
+			lbuf_put(xb, 0, "\n");
+		if (cmd == 'p')
+			xrow++;
+		lbuf_put(xb, xrow, sbuf_buf(sb));
+		xoff = lbuf_indents(xb, xrow);
+		sbuf_free(sb);
+	} else {
+		struct sbuf *sb = sbuf_make();
+		char *ln = xrow < lbuf_len(xb) ? lbuf_get(xb, xrow) : "\n";
+		int off = ren_noeol(ln, xoff) + (ln[0] != '\n' && cmd == 'p');
 		char *s = uc_sub(ln, 0, off);
 		sbuf_str(sb, s);
 		free(s);
-	}
-	for (i = 0; i < cnt; i++)
-		sbuf_str(sb, buf);
-	if (ln) {
-		char *s = uc_sub(ln, off, -1);
+		for (i = 0; i < cnt; i++)
+			sbuf_str(sb, buf);
+		s = uc_sub(ln, off, -1);
 		sbuf_str(sb, s);
 		free(s);
-	}
-	if (!ln && !lbuf_len(xb))
-		lbuf_put(xb, 0, "\n");
-	if (ln)
 		lbuf_rm(xb, xrow, xrow + 1);
-	lbuf_put(xb, xrow, sbuf_buf(sb));
-	if (ln)
+		lbuf_put(xb, xrow, sbuf_buf(sb));
 		xoff = off + uc_slen(buf) * cnt - 1;
-	else
-		xoff = lbuf_indents(xb, xrow);
-	sbuf_free(sb);
+		sbuf_free(sb);
+	}
 	return 0;
 }
 

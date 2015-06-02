@@ -16,7 +16,8 @@ struct lopt {
 
 /* line buffers */
 struct lbuf {
-	int mark[32];		/* buffer marks */
+	int mark[32];		/* mark lines */
+	int mark_off[32];	/* mark line offsets */
 	struct lopt hist[128];	/* buffer history */
 	int undo;		/* current index into hist[] */
 	int useq;		/* current operation sequence */
@@ -177,14 +178,20 @@ int lbuf_len(struct lbuf *lb)
 	return lb->ln_n;
 }
 
-void lbuf_mark(struct lbuf *lbuf, int mark, int pos)
+void lbuf_mark(struct lbuf *lbuf, int mark, int pos, int off)
 {
 	lbuf->mark[MARK(mark)] = pos;
+	lbuf->mark_off[MARK(mark)] = off;
 }
 
-int lbuf_markpos(struct lbuf *lbuf, int mark)
+int lbuf_markpos(struct lbuf *lbuf, int mark, int *pos, int *off)
 {
-	return lbuf->mark[MARK(mark)];
+	if (lbuf->mark[MARK(mark)] < 0)
+		return 1;
+	*pos = lbuf->mark[MARK(mark)];
+	if (off)
+		*off = lbuf->mark_off[MARK(mark)];
+	return 0;
 }
 
 static struct lopt *lbuf_lopt(struct lbuf *lb, int i)

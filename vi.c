@@ -218,7 +218,7 @@ static int vi_motionln(int *row, int cmd)
 {
 	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	int c = vi_read();
-	int mark;
+	int mark, mark_row, mark_off;
 	switch (c) {
 	case '\n':
 	case '+':
@@ -231,11 +231,13 @@ static int vi_motionln(int *row, int cmd)
 		*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 		break;
 	case '\'':
-		if ((mark = vi_read()) <= 0 || (!isalpha(mark) && mark != '\''))
+		if ((mark = vi_read()) <= 0)
 			return -1;
-		if (lbuf_markpos(xb, mark) < 0)
+		if (!islower(mark) && !strchr("'`", mark))
 			return -1;
-		*row = lbuf_markpos(xb, mark);
+		if (lbuf_markpos(xb, mark, &mark_row, &mark_off))
+			return -1;
+		*row = mark_row;
 		break;
 	case 'j':
 		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
@@ -303,6 +305,7 @@ static int vi_motion(int *row, int *off)
 	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
+	int mark, mark_row, mark_off;
 	char *cs;
 	int mv;
 	int i;
@@ -460,6 +463,16 @@ static int vi_motion(int *row, int *off)
 		for (i = 0; i < cnt; i++)
 			if (vi_nextoff(xb, -1, row, off))
 				break;
+		break;
+	case '`':
+		if ((mark = vi_read()) <= 0)
+			return -1;
+		if (!islower(mark) && !strchr("'`", mark))
+			return -1;
+		if (lbuf_markpos(xb, mark, &mark_row, &mark_off))
+			return -1;
+		*row = mark_row;
+		*off = mark_off;
 		break;
 	default:
 		vi_back(mv);
@@ -958,8 +971,10 @@ static void vi(void)
 			vi_ybuf = vi_yankbuf();
 		mv = vi_motion(&nrow, &noff);
 		if (mv > 0) {
-			if (strchr("\'GHML/?{}[]nN", mv))
-				lbuf_mark(xb, '\'', xrow);
+			if (strchr("\'`GHML/?{}[]nN", mv)) {
+				lbuf_mark(xb, '\'', xrow, xoff);
+				lbuf_mark(xb, '`', xrow, xoff);
+			}
 			xrow = nrow;
 			if (noff < 0 && !strchr("jk", mv))
 				noff = lbuf_indents(xb, xrow);
@@ -1052,8 +1067,8 @@ static void vi(void)
 					redraw = 1;
 				break;
 			case 'm':
-				if ((mark = vi_read()) > 0 && isalpha(mark))
-					lbuf_mark(xb, mark, xrow);
+				if ((mark = vi_read()) > 0 && islower(mark))
+					lbuf_mark(xb, mark, xrow, xoff);
 				break;
 			case 'p':
 			case 'P':

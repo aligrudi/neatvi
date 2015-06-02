@@ -116,6 +116,8 @@ int term_read(int timeout);
 void term_record(void);
 void term_commit(void);
 char *term_att(int att, int old);
+void term_push(char *s, int n);
+char *term_cmd(int *n);
 
 #define TK_CTL(x)	((x) & 037)
 #define TK_INT(c)	((c) < 0 || (c) == TK_ESC || (c) == TK_CTL('c'))

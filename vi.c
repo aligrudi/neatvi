@@ -907,6 +907,30 @@ static int vc_replace(void)
 	return 0;
 }
 
+static char rep_cmd[4096];	/* the last command */
+static int rep_len;
+
+static void vc_repeat(void)
+{
+	term_push(rep_cmd, rep_len);
+}
+
+static void vc_execute(void)
+{
+	static int exec_buf;
+	int lnmode;
+	int c = vi_read();
+	char *buf;
+	if (TK_INT(c))
+		return;
+	if (c == '@')
+		c = exec_buf;
+	exec_buf = c;
+	buf = reg_get(exec_buf, &lnmode);
+	if (buf)
+		term_push(buf, strlen(buf));
+}
+
 static void vi(void)
 {
 	int xcol;
@@ -926,6 +950,7 @@ static void vi(void)
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
 		int mv, n;
+		term_cmd(&n);
 		vi_arg2 = 0;
 		vi_ybuf = vi_yankbuf();
 		vi_arg1 = vi_prefix();
@@ -946,6 +971,7 @@ static void vi(void)
 			if (mv == '|')
 				xcol = vi_pcol;
 		} else if (mv == 0) {
+			char *cmd;
 			int c = vi_read();
 			int z, g;
 			if (c <= 0)
@@ -1109,8 +1135,21 @@ static void vi(void)
 				if (!vc_motion('~'))
 					redraw = 1;
 				break;
+			case '.':
+				vc_repeat();
+				break;
+			case '@':
+				vc_execute();
+				break;
 			default:
 				continue;
+			}
+			cmd = term_cmd(&n);
+			if (strchr("!<>ACDIJOPRSXYacdioprsxy~", c)) {
+				if (n < sizeof(rep_cmd)) {
+					memcpy(rep_cmd, cmd, n);
+					rep_len = n;
+				}
 			}
 		}
 		if (xrow < 0 || xrow >= lbuf_len(xb))

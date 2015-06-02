@@ -109,17 +109,46 @@ int term_cols(void)
 	return cols;
 }
 
+static char ibuf[4096];		/* input character buffer */
+static char icmd[4096];		/* read after the last term_cmd() */
+static int ibuf_pos, ibuf_cnt;	/* ibuf[] position and length */
+static int icmd_pos;		/* icmd[] position */
+
+/* read s before reading from the terminal */
+void term_push(char *s, int n)
+{
+	n = MIN(n, sizeof(ibuf) - ibuf_cnt);
+	memcpy(ibuf + ibuf_cnt, s, n);
+	ibuf_cnt += n;
+}
+
+/* return a static buffer containing inputs read since the last term_cmd() */
+char *term_cmd(int *n)
+{
+	*n = icmd_pos;
+	icmd_pos = 0;
+	return icmd;
+}
+
 int term_read(int ms)
 {
 	struct pollfd ufds[1];
-	char b;
-	ufds[0].fd = 0;
-	ufds[0].events = POLLIN;
-	if (poll(ufds, 1, ms * 1000) <= 0)
-		return -1;
-	if (read(0, &b, 1) <= 0)
-		return -1;
-	return (unsigned char) b;
+	char n, c;
+	if (ibuf_pos >= ibuf_cnt) {
+		ufds[0].fd = 0;
+		ufds[0].events = POLLIN;
+		if (poll(ufds, 1, ms * 1000) <= 0)
+			return -1;
+		/* read a single input character */
+		if ((n = read(0, ibuf, 1)) <= 0)
+			return -1;
+		ibuf_cnt = n;
+		ibuf_pos = 0;
+	}
+	c = ibuf_pos < ibuf_cnt ? (unsigned char) ibuf[ibuf_pos++] : -1;
+	if (icmd_pos < sizeof(icmd))
+		icmd[icmd_pos++] = c;
+	return c;
 }
 
 /* return a static string that changes text attributes from old to att */

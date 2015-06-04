@@ -233,9 +233,7 @@ static int vi_motionln(int *row, int cmd)
 	case '\'':
 		if ((mark = vi_read()) <= 0)
 			return -1;
-		if (!islower(mark) && !strchr("'`", mark))
-			return -1;
-		if (lbuf_markpos(xb, mark, &mark_row, &mark_off))
+		if (lbuf_jump(xb, mark, &mark_row, &mark_off))
 			return -1;
 		*row = mark_row;
 		break;
@@ -467,9 +465,7 @@ static int vi_motion(int *row, int *off)
 	case '`':
 		if ((mark = vi_read()) <= 0)
 			return -1;
-		if (!islower(mark) && !strchr("'`", mark))
-			return -1;
-		if (lbuf_markpos(xb, mark, &mark_row, &mark_off))
+		if (lbuf_jump(xb, mark, &mark_row, &mark_off))
 			return -1;
 		*row = mark_row;
 		*off = mark_off;
@@ -1020,12 +1016,22 @@ static void vi(void)
 				redraw = 1;
 				break;
 			case 'u':
-				lbuf_undo(xb);
-				redraw = 1;
+				if (!lbuf_undo(xb)) {
+					lbuf_jump(xb, '[', &xrow, &xoff);
+					xoff = lbuf_indents(xb, xrow);
+					redraw = 1;
+				} else {
+					snprintf(vi_msg, sizeof(vi_msg), "undo failed\n");
+				}
 				break;
 			case TK_CTL('r'):
-				lbuf_redo(xb);
-				redraw = 1;
+				if (!lbuf_redo(xb)) {
+					lbuf_jump(xb, '[', &xrow, &xoff);
+					xoff = lbuf_indents(xb, xrow);
+					redraw = 1;
+				} else {
+					snprintf(vi_msg, sizeof(vi_msg), "redo failed\n");
+				}
 				break;
 			case TK_CTL('g'):
 				vc_status();

@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include "vi.h"
 
-#define MARK(c)		((c) >= 'a' && (c) <= 'z' ? (c) - 'a' : 30)
+#define NMARKS		128
 
 /* line operations */
 struct lopt {
@@ -16,14 +16,15 @@ struct lopt {
 
 /* line buffers */
 struct lbuf {
-	int mark[32];		/* mark lines */
-	int mark_off[32];	/* mark line offsets */
+	int mark[NMARKS];	/* mark lines */
+	int mark_off[NMARKS];	/* mark line offsets */
 	struct lopt hist[128];	/* buffer history */
 	int undo;		/* current index into hist[] */
 	int useq;		/* current operation sequence */
 	char **ln;		/* lines */
 	int ln_n;		/* number of lbuf in l[] */
 	int ln_sz;		/* size of l[] */
+	int mark_mod;		/* clear modification marks */
 };
 
 struct lbuf *lbuf_make(void)
@@ -70,6 +71,7 @@ static void lbuf_insert(struct lbuf *lb, int pos, char *s)
 	int len = strlen(s);
 	struct sbuf *sb;
 	int lb_len = lbuf_len(lb);
+	int beg = pos, end;
 	int i;
 	sb = sbuf_make();
 	for (i = 0; i < len; i++) {
@@ -83,6 +85,12 @@ static void lbuf_insert(struct lbuf *lb, int pos, char *s)
 	for (i = 0; i < LEN(lb->mark); i++)	/* updating marks */
 		if (lb->mark[i] >= pos)
 			lb->mark[i] += lbuf_len(lb) - lb_len;
+	end = beg + lbuf_len(lb) - lb_len;
+	if (lb->mark_mod || lb->mark['['] < 0 || lb->mark['['] > beg)
+		lbuf_mark(lb, '[', beg, 0);
+	if (lb->mark_mod || lb->mark[']'] < 0 || lb->mark[']'] < end - 1)
+		lbuf_mark(lb, ']', end - 1, 0);
+	lb->mark_mod = 0;
 }
 
 /* low-level deletion */
@@ -96,6 +104,11 @@ static void lbuf_delete(struct lbuf *lb, int beg, int end)
 	for (i = 0; i < LEN(lb->mark); i++)	/* updating marks */
 		if (lb->mark[i] > beg)
 			lb->mark[i] = MAX(beg, lb->mark[i] + beg - end);
+	if (lb->mark_mod || lb->mark['['] < 0 || lb->mark['['] > beg)
+		lbuf_mark(lb, '[', beg, 0);
+	if (lb->mark_mod || lb->mark[']'] < 0 || lb->mark[']'] < beg)
+		lbuf_mark(lb, ']', beg, 0);
+	lb->mark_mod = 0;
 }
 
 /* append undo/redo history */
@@ -180,17 +193,19 @@ int lbuf_len(struct lbuf *lb)
 
 void lbuf_mark(struct lbuf *lbuf, int mark, int pos, int off)
 {
-	lbuf->mark[MARK(mark)] = pos;
-	lbuf->mark_off[MARK(mark)] = off;
+	if (mark >= NMARKS)
+		return;
+	lbuf->mark[mark] = pos;
+	lbuf->mark_off[mark] = off;
 }
 
-int lbuf_markpos(struct lbuf *lbuf, int mark, int *pos, int *off)
+int lbuf_jump(struct lbuf *lbuf, int mark, int *pos, int *off)
 {
-	if (lbuf->mark[MARK(mark)] < 0)
+	if (mark >= NMARKS || lbuf->mark[mark] < 0)
 		return 1;
-	*pos = lbuf->mark[MARK(mark)];
+	*pos = lbuf->mark[mark];
 	if (off)
-		*off = lbuf->mark_off[MARK(mark)];
+		*off = lbuf->mark_off[mark];
 	return 0;
 }
 
@@ -200,10 +215,13 @@ static struct lopt *lbuf_lopt(struct lbuf *lb, int i)
 	return i >= 0 && i < LEN(lb->hist) && lo->buf ? lo : NULL;
 }
 
-void lbuf_undo(struct lbuf *lb)
+int lbuf_undo(struct lbuf *lb)
 {
 	struct lopt *lo = lbuf_lopt(lb, lb->undo);
 	int useq = lo ? lo->seq : 0;
+	if (!lo)
+		return 1;
+	lb->mark_mod = 1;
 	while (lo && lo->seq == useq) {
 		lb->undo++;
 		if (lo->ins)
@@ -212,12 +230,16 @@ void lbuf_undo(struct lbuf *lb)
 			lbuf_insert(lb, lo->beg, lo->buf);
 		lo = lbuf_lopt(lb, lb->undo);
 	}
+	return 0;
 }
 
-void lbuf_redo(struct lbuf *lb)
+int lbuf_redo(struct lbuf *lb)
 {
 	struct lopt *lo = lbuf_lopt(lb, lb->undo - 1);
 	int useq = lo ? lo->seq : 0;
+	if (!lo)
+		return 1;
+	lb->mark_mod = 1;
 	while (lo && lo->seq == useq) {
 		lb->undo--;
 		if (lo->ins)
@@ -226,6 +248,7 @@ void lbuf_redo(struct lbuf *lb)
 			lbuf_delete(lb, lo->beg, lo->end);
 		lo = lbuf_lopt(lb, lb->undo - 1);
 	}
+	return 0;
 }
 
 void lbuf_undofree(struct lbuf *lb)
@@ -239,5 +262,6 @@ void lbuf_undofree(struct lbuf *lb)
 
 void lbuf_undomark(struct lbuf *lbuf)
 {
+	lbuf->mark_mod = 1;
 	lbuf->useq++;
 }

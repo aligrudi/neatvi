@@ -19,8 +19,8 @@ void lbuf_mark(struct lbuf *lbuf, int mark, int pos, int off);
 int lbuf_jump(struct lbuf *lbuf, int mark, int *pos, int *off);
 int lbuf_undo(struct lbuf *lbuf);
 int lbuf_redo(struct lbuf *lbuf);
-void lbuf_undomark(struct lbuf *lbuf);
-void lbuf_undofree(struct lbuf *lbuf);
+int lbuf_modified(struct lbuf *lb);
+void lbuf_saved(struct lbuf *lb, int clear);
 int lbuf_indents(struct lbuf *lb, int r);
 int lbuf_eol(struct lbuf *lb, int r);
 /* motions */

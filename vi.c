@@ -877,8 +877,11 @@ static int vi_scrollbackward(int cnt)
 static void vc_status(void)
 {
 	int col = vi_off2col(xb, xrow, xoff);
-	snprintf(vi_msg, sizeof(vi_msg), "\"%s\" line %d of %d, col %d\n",
-		xpath[0] ? xpath : "unnamed", xrow + 1, lbuf_len(xb),
+	snprintf(vi_msg, sizeof(vi_msg),
+		"\"%s\"%c %d lines  L%d C%d\n",
+		xpath[0] ? xpath : "unnamed",
+		lbuf_modified(xb) ? '*' : ' ',
+		lbuf_len(xb), xrow + 1,
 		ren_cursor(lbuf_get(xb, xrow), col) + 1);
 }
 
@@ -1190,7 +1193,7 @@ static void vi(void)
 			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
-		lbuf_undomark(xb);
+		lbuf_modified(xb);
 	}
 	term_pos(xrows, 0);
 	term_kill();

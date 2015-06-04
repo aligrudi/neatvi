@@ -24,7 +24,9 @@ struct lbuf {
 	char **ln;		/* lines */
 	int ln_n;		/* number of lbuf in l[] */
 	int ln_sz;		/* size of l[] */
-	int mark_mod;		/* clear modification marks */
+	int mod_new;		/* clear modification marks */
+	int useq_zero;		/* useq for lbuf_saved() */
+	int useq_last;		/* useq before hist[] */
 };
 
 struct lbuf *lbuf_make(void)
@@ -86,11 +88,11 @@ static void lbuf_insert(struct lbuf *lb, int pos, char *s)
 		if (lb->mark[i] >= pos)
 			lb->mark[i] += lbuf_len(lb) - lb_len;
 	end = beg + lbuf_len(lb) - lb_len;
-	if (lb->mark_mod || lb->mark['['] < 0 || lb->mark['['] > beg)
+	if (lb->mod_new || lb->mark['['] < 0 || lb->mark['['] > beg)
 		lbuf_mark(lb, '[', beg, 0);
-	if (lb->mark_mod || lb->mark[']'] < 0 || lb->mark[']'] < end - 1)
+	if (lb->mod_new || lb->mark[']'] < 0 || lb->mark[']'] < end - 1)
 		lbuf_mark(lb, ']', end - 1, 0);
-	lb->mark_mod = 0;
+	lb->mod_new = 0;
 }
 
 /* low-level deletion */
@@ -104,11 +106,11 @@ static void lbuf_delete(struct lbuf *lb, int beg, int end)
 	for (i = 0; i < LEN(lb->mark); i++)	/* updating marks */
 		if (lb->mark[i] > beg)
 			lb->mark[i] = MAX(beg, lb->mark[i] + beg - end);
-	if (lb->mark_mod || lb->mark['['] < 0 || lb->mark['['] > beg)
+	if (lb->mod_new || lb->mark['['] < 0 || lb->mark['['] > beg)
 		lbuf_mark(lb, '[', beg, 0);
-	if (lb->mark_mod || lb->mark[']'] < 0 || lb->mark[']'] < beg)
+	if (lb->mod_new || lb->mark[']'] < 0 || lb->mark[']'] < beg)
 		lbuf_mark(lb, ']', beg, 0);
-	lb->mark_mod = 0;
+	lb->mod_new = 0;
 }
 
 /* append undo/redo history */
@@ -125,6 +127,8 @@ static void lbuf_opt(struct lbuf *lb, int ins, int beg, int end)
 		for (i = n - lb->undo + 1; i < n; i++)
 			lb->hist[i].buf = NULL;
 	} else {
+		if (lb->hist[n - 1].buf)
+			lb->useq_last = lb->hist[n - 1].seq;
 		free(lb->hist[n - 1].buf);
 		memmove(lb->hist + 1, lb->hist, (n - 1) * sizeof(lb->hist[0]));
 	}
@@ -221,7 +225,7 @@ int lbuf_undo(struct lbuf *lb)
 	int useq = lo ? lo->seq : 0;
 	if (!lo)
 		return 1;
-	lb->mark_mod = 1;
+	lb->mod_new = 1;
 	while (lo && lo->seq == useq) {
 		lb->undo++;
 		if (lo->ins)
@@ -239,7 +243,7 @@ int lbuf_redo(struct lbuf *lb)
 	int useq = lo ? lo->seq : 0;
 	if (!lo)
 		return 1;
-	lb->mark_mod = 1;
+	lb->mod_new = 1;
 	while (lo && lo->seq == useq) {
 		lb->undo--;
 		if (lo->ins)
@@ -251,17 +255,30 @@ int lbuf_redo(struct lbuf *lb)
 	return 0;
 }
 
-void lbuf_undofree(struct lbuf *lb)
+static int lbuf_seq(struct lbuf *lb)
 {
-	int i;
-	for (i = 0; i < LEN(lb->hist); i++)
-		free(lb->hist[i].buf);
-	memset(lb->hist, 0, sizeof(lb->hist));
-	lb->undo = 0;
+	struct lopt *lo = lbuf_lopt(lb, lb->undo);
+	return lo ? lo->seq : lb->useq_last;
 }
 
-void lbuf_undomark(struct lbuf *lbuf)
+/* mark buffer as saved and, if clear, clear the undo history */
+void lbuf_saved(struct lbuf *lb, int clear)
 {
-	lbuf->mark_mod = 1;
-	lbuf->useq++;
+	int i;
+	if (clear) {
+		for (i = 0; i < LEN(lb->hist); i++)
+			free(lb->hist[i].buf);
+		memset(lb->hist, 0, sizeof(lb->hist));
+		lb->undo = 0;
+		lb->useq_last = lb->useq;
+	}
+	lb->useq_zero = lbuf_seq(lb);
+}
+
+/* was the file modified since the last lbuf_modreset() */
+int lbuf_modified(struct lbuf *lb)
+{
+	lb->mod_new = 1;
+	lb->useq++;
+	return lbuf_seq(lb) != lb->useq_zero;
 }

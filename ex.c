@@ -200,12 +200,12 @@ static void ec_edit(char *ec)
 	if (fd >= 0) {
 		lbuf_rd(xb, fd, 0);
 		close(fd);
-		snprintf(msg, sizeof(msg), "\"%s\" %d lines [r]\n",
+		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 				xpath, lbuf_len(xb));
 		ex_show(msg);
 	}
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
-	lbuf_undofree(xb);
+	lbuf_saved(xb, 1);
 }
 
 static void ec_read(char *ec)
@@ -224,7 +224,7 @@ static void ec_read(char *ec)
 		lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
 		close(fd);
 		xrow = end + lbuf_len(xb) - n;
-		snprintf(msg, sizeof(msg), "\"%s\" %d lines [r]\n",
+		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 				path, lbuf_len(xb) - n);
 		ex_show(msg);
 	}
@@ -251,9 +251,11 @@ static void ec_write(char *ec)
 	if (fd >= 0) {
 		lbuf_wr(xb, fd, beg, end);
 		close(fd);
-		snprintf(msg, sizeof(msg), "\"%s\" %d lines [w]\n",
+		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
 				path, end - beg);
 		ex_show(msg);
+		if (!strcmp(xpath, path))
+			lbuf_saved(xb, 0);
 	}
 	if (!strcmp("wq", cmd))
 		ec_quit("wq");
@@ -542,7 +544,7 @@ void ex_command(char *ln)
 			break;
 		}
 	}
-	lbuf_undomark(xb);
+	lbuf_modified(xb);
 }
 
 /* ex main loop */

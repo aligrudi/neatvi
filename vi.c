@@ -990,6 +990,7 @@ static void vi(void)
 			int z, g;
 			if (c <= 0)
 				continue;
+			lbuf_mark(xb, '*', xrow, xoff);
 			switch (c) {
 			case TK_CTL('b'):
 				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
@@ -1020,8 +1021,7 @@ static void vi(void)
 				break;
 			case 'u':
 				if (!lbuf_undo(xb)) {
-					lbuf_jump(xb, '[', &xrow, &xoff);
-					xoff = lbuf_indents(xb, xrow);
+					lbuf_jump(xb, '*', &xrow, &xoff);
 					redraw = 1;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "undo failed\n");
@@ -1029,8 +1029,7 @@ static void vi(void)
 				break;
 			case TK_CTL('r'):
 				if (!lbuf_redo(xb)) {
-					lbuf_jump(xb, '[', &xrow, &xoff);
-					xoff = lbuf_indents(xb, xrow);
+					lbuf_jump(xb, '*', &xrow, &xoff);
 					redraw = 1;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "redo failed\n");

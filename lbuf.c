@@ -12,6 +12,7 @@ struct lopt {
 	int ins;		/* insertion operation if non-zero */
 	int beg, end;
 	int seq;		/* operation number */
+	int *mark, *mark_off;	/* saved marks */
 };
 
 /* line buffers */
@@ -39,13 +40,20 @@ struct lbuf *lbuf_make(void)
 	return lb;
 }
 
+static void lopt_done(struct lopt *lo)
+{
+	free(lo->buf);
+	free(lo->mark);
+	free(lo->mark_off);
+}
+
 void lbuf_free(struct lbuf *lb)
 {
 	int i;
 	for (i = 0; i < lb->ln_n; i++)
 		free(lb->ln[i]);
 	for (i = 0; i < LEN(lb->hist); i++)
-		free(lb->hist[i].buf);
+		lopt_done(&lb->hist[i]);
 	free(lb->ln);
 	free(lb);
 }
@@ -121,17 +129,18 @@ static void lbuf_opt(struct lbuf *lb, int ins, int beg, int end)
 	int i;
 	if (lb->undo) {
 		for (i = 0; i < lb->undo; i++)
-			free(lb->hist[i].buf);
+			lopt_done(&lb->hist[i]);
 		memmove(lb->hist + 1, lb->hist + lb->undo,
 			(n - lb->undo) * sizeof(lb->hist[0]));
-		for (i = n - lb->undo + 1; i < n; i++)
-			lb->hist[i].buf = NULL;
+		memset(lb->hist + n - lb->undo + 1, 0,
+			(lb->undo - 1) * sizeof(lb->hist[0]));
 	} else {
 		if (lb->hist[n - 1].buf)
 			lb->useq_last = lb->hist[n - 1].seq;
-		free(lb->hist[n - 1].buf);
+		lopt_done(&lb->hist[n - 1]);
 		memmove(lb->hist + 1, lb->hist, (n - 1) * sizeof(lb->hist[0]));
 	}
+	memset(lo, 0, sizeof(*lo));
 	lo->ins = ins;
 	lo->beg = beg;
 	lo->end = end;
@@ -163,6 +172,8 @@ void lbuf_rm(struct lbuf *lb, int beg, int end)
 {
 	if (end > lb->ln_n)
 		end = lb->ln_n;
+	if (beg == end)
+		return;
 	lbuf_opt(lb, 0, beg, end);
 	lbuf_delete(lb, beg, end);
 }
@@ -170,6 +181,8 @@ void lbuf_rm(struct lbuf *lb, int beg, int end)
 void lbuf_put(struct lbuf *lb, int pos, char *s)
 {
 	int lb_len = lbuf_len(lb);
+	if (!*s)
+		return;
 	lbuf_insert(lb, pos, s);
 	lbuf_opt(lb, 1, pos, pos + lbuf_len(lb) - lb_len);
 }
@@ -219,6 +232,28 @@ static struct lopt *lbuf_lopt(struct lbuf *lb, int i)
 	return i >= 0 && i < LEN(lb->hist) && lo->buf ? lo : NULL;
 }
 
+static void lbuf_savemarks(struct lbuf *lb, struct lopt *lo)
+{
+	int i;
+	lo->mark = malloc(sizeof(lb->mark));
+	lo->mark_off = malloc(sizeof(lb->mark_off));
+	for (i = 0; i < LEN(lb->mark); i++)
+		lo->mark[i] = -1;
+	lo->mark['*'] = lb->mark['*'];
+	lo->mark_off['*'] = lb->mark_off['*'];
+}
+
+static void lbuf_loadmarks(struct lbuf *lb, struct lopt *lo)
+{
+	int i;
+	for (i = 0; lo->mark && i < LEN(lb->mark); i++) {
+		if (lo->mark[i] >= 0) {
+			lb->mark[i] = lo->mark[i];
+			lb->mark_off[i] = lo->mark_off[i];
+		}
+	}
+}
+
 int lbuf_undo(struct lbuf *lb)
 {
 	struct lopt *lo = lbuf_lopt(lb, lb->undo);
@@ -232,6 +267,7 @@ int lbuf_undo(struct lbuf *lb)
 			lbuf_delete(lb, lo->beg, lo->end);
 		else
 			lbuf_insert(lb, lo->beg, lo->buf);
+		lbuf_loadmarks(lb, lo);
 		lo = lbuf_lopt(lb, lb->undo);
 	}
 	return 0;
@@ -250,6 +286,7 @@ int lbuf_redo(struct lbuf *lb)
 			lbuf_insert(lb, lo->beg, lo->buf);
 		else
 			lbuf_delete(lb, lo->beg, lo->end);
+		lbuf_loadmarks(lb, lo);
 		lo = lbuf_lopt(lb, lb->undo - 1);
 	}
 	return 0;
@@ -267,7 +304,7 @@ void lbuf_saved(struct lbuf *lb, int clear)
 	int i;
 	if (clear) {
 		for (i = 0; i < LEN(lb->hist); i++)
-			free(lb->hist[i].buf);
+			lopt_done(&lb->hist[i]);
 		memset(lb->hist, 0, sizeof(lb->hist));
 		lb->undo = 0;
 		lb->useq_last = lb->useq;
@@ -278,6 +315,9 @@ void lbuf_saved(struct lbuf *lb, int clear)
 /* was the file modified since the last lbuf_modreset() */
 int lbuf_modified(struct lbuf *lb)
 {
+	struct lopt *lo = lbuf_lopt(lb, 0);
+	if (!lb->undo && lo && !lo->mark)
+		lbuf_savemarks(lb, lo);
 	lb->mod_new = 1;
 	lb->useq++;
 	return lbuf_seq(lb) != lb->useq_zero;

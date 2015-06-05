@@ -37,6 +37,7 @@ struct lbuf *lbuf_make(void)
 	memset(lb, 0, sizeof(*lb));
 	for (i = 0; i < LEN(lb->mark); i++)
 		lb->mark[i] = -1;
+	lb->useq = 1;
 	return lb;
 }
 

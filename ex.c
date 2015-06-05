@@ -166,13 +166,14 @@ static int ex_region(char *loc, int *beg, int *end)
 
 static int ec_write(char *ec);
 
-static int ex_modifiedbuffer(void)
+static int ex_modifiedbuffer(char *msg)
 {
 	if (!lbuf_modified(xb))
 		return 0;
 	if (xaw && xpath[0])
 		return ec_write("w");
-	ex_show("buffer modified\n");
+	if (msg)
+		ex_show(msg);
 	return 1;
 }
 
@@ -181,7 +182,7 @@ static int ec_quit(char *ec)
 	char cmd[EXLEN];
 	ex_cmd(ec, cmd);
 	if (!strchr(cmd, '!'))
-		if (ex_modifiedbuffer())
+		if (ex_modifiedbuffer("buffer modified\n"))
 			return 1;
 	xquit = 1;
 	return 0;
@@ -195,7 +196,7 @@ static int ec_edit(char *ec)
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	if (!strchr(cmd, '!'))
-		if (ex_modifiedbuffer())
+		if (ex_modifiedbuffer("buffer modified\n"))
 			return 1;
 	if (!arg[0] || !strcmp(arg, "%") || !strcmp(xpath, arg)) {
 		strcpy(arg, xpath);
@@ -499,6 +500,7 @@ static int ec_substitute(char *ec)
 static int ec_exec(char *ec)
 {
 	char cmd[EXLEN];
+	ex_modifiedbuffer(NULL);
 	return cmd_exec(ex_cmd(ec, cmd));
 }
 
@@ -506,6 +508,7 @@ static int ec_make(char *ec)
 {
 	char cmd[EXLEN];
 	char make[EXLEN];
+	ex_modifiedbuffer(NULL);
 	sprintf(make, "make %s", ex_cmd(ec, cmd));
 	return cmd_exec(make);
 }

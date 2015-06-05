@@ -30,7 +30,7 @@ static char *ex_loc(char *s, char *loc)
 {
 	while (*s == ':' || isspace((unsigned char) *s))
 		s++;
-	while (*s && !isalpha((unsigned char) *s) && *s != '=') {
+	while (*s && !isalpha((unsigned char) *s) && *s != '=' && *s != '!') {
 		if (*s == '\'')
 			*loc++ = *s++;
 		if (*s == '/' || *s == '?') {
@@ -55,9 +55,11 @@ static char *ex_cmd(char *s, char *cmd)
 	s = ex_loc(s, cmd);
 	while (isspace((unsigned char) *s))
 		s++;
-	while (isalpha((unsigned char) *s) || *s == '=' || *s == '!')
+	while (isalpha((unsigned char) *s))
 		if ((*cmd++ = *s++) == 'k' && cmd == cmd0 + 1)
 			break;
+	if (*s == '!' || *s == '=')
+		*cmd++ = *s++;
 	*cmd = '\0';
 	return s;
 }
@@ -494,6 +496,20 @@ static int ec_substitute(char *ec)
 	return 0;
 }
 
+static int ec_exec(char *ec)
+{
+	char cmd[EXLEN];
+	return cmd_exec(ex_cmd(ec, cmd));
+}
+
+static int ec_make(char *ec)
+{
+	char cmd[EXLEN];
+	char make[EXLEN];
+	sprintf(make, "make %s", ex_cmd(ec, cmd));
+	return cmd_exec(make);
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -582,6 +598,8 @@ static struct excmd {
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"ya", "yank", ec_yank},
+	{"!", "!", ec_exec},
+	{"make", "make", ec_make},
 	{"", "", ec_print},
 };
 

@@ -138,6 +138,7 @@ void ex_show(char *msg);
 
 /* process management */
 char *cmd_pipe(char *cmd, char *s);
+int cmd_exec(char *cmd);
 
 /* syntax highlighting */
 #define SYN_BD		0x100

@@ -1,4 +1,5 @@
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +53,7 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 char *cmd_pipe(char *cmd, char *s)
 {
 	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
-	struct pollfd fds[2];
+	struct pollfd fds[3];
 	struct sbuf *sb;
 	char buf[512];
 	int ifd = 0, ofd = 0;
@@ -66,6 +67,8 @@ char *cmd_pipe(char *cmd, char *s)
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;
 	fds[1].events = POLLOUT;
+	fds[2].fd = 0;
+	fds[2].events = POLLIN;
 	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 3, 200) >= 0) {
 		if (fds[0].revents & POLLIN) {
 			int ret = read(fds[0].fd, buf, sizeof(buf));
@@ -85,7 +88,34 @@ char *cmd_pipe(char *cmd, char *s)
 		} else if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			fds[1].fd = -1;
 		}
+		if (fds[2].revents & POLLIN) {
+			int ret = read(fds[2].fd, buf, sizeof(buf));
+			int i;
+			for (i = 0; i < ret; i++)
+				if ((unsigned char) buf[i] == TK_CTL('c'))
+					kill(pid, SIGINT);
+		} else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			fds[2].fd = -1;
+		}
 	}
+	close(ifd);
+	close(ofd);
 	waitpid(pid, NULL, 0);
 	return sbuf_done(sb);
+}
+
+int cmd_exec(char *cmd)
+{
+	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
+	int pid = cmd_make(argv, NULL, NULL);
+	if (pid <= 0)
+		return 1;
+	signal(SIGINT, SIG_IGN);
+	term_done();
+	printf("\n");
+	waitpid(pid, NULL, 0);
+	printf("[terminated]\n");
+	getchar();
+	term_init();
+	return 0;
 }

@@ -16,6 +16,7 @@ int xquit;			/* exit if set */
 int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
+int xaw;			/* autowrite option */
 struct lbuf *xb;		/* current buffer */
 int xrow, xoff, xtop;		/* current row, column, and top row */
 int xrow_alt;			/* alternate row, column, and top row */
@@ -161,17 +162,39 @@ static int ex_region(char *loc, int *beg, int *end)
 	return 0;
 }
 
-static void ec_quit(char *ec)
+static int ec_write(char *ec);
+
+static int ex_modifiedbuffer(void)
 {
-	xquit = 1;
+	if (!lbuf_modified(xb))
+		return 0;
+	if (xaw && xpath[0])
+		return ec_write("w");
+	ex_show("buffer modified\n");
+	return 1;
 }
 
-static void ec_edit(char *ec)
+static int ec_quit(char *ec)
+{
+	char cmd[EXLEN];
+	ex_cmd(ec, cmd);
+	if (!strchr(cmd, '!'))
+		if (ex_modifiedbuffer())
+			return 1;
+	xquit = 1;
+	return 0;
+}
+
+static int ec_edit(char *ec)
 {
 	char msg[128];
-	char arg[EXLEN];
+	char arg[EXLEN], cmd[EXLEN];
 	int fd;
+	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
+	if (!strchr(cmd, '!'))
+		if (ex_modifiedbuffer())
+			return 1;
 	if (!arg[0] || !strcmp(arg, "%") || !strcmp(xpath, arg)) {
 		strcpy(arg, xpath);
 	} else if (!strcmp(arg, "#")) {
@@ -179,7 +202,7 @@ static void ec_edit(char *ec)
 		int xrow_tmp = xrow;
 		if (!xpath_alt[0]) {
 			ex_show("\"#\" is unset\n");
-			return;
+			return 1;
 		}
 		strcpy(xpath_tmp, xpath_alt);
 		strcpy(xpath_alt, xpath);
@@ -206,9 +229,10 @@ static void ec_edit(char *ec)
 	}
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	lbuf_saved(xb, 1);
+	return 0;
 }
 
-static void ec_read(char *ec)
+static int ec_read(char *ec)
 {
 	char arg[EXLEN], loc[EXLEN];
 	char msg[128];
@@ -220,17 +244,22 @@ static void ec_read(char *ec)
 	ex_loc(ec, loc);
 	path = arg[0] ? arg : xpath;
 	fd = open(path, O_RDONLY);
-	if (fd >= 0 && !ex_region(loc, &beg, &end)) {
-		lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
-		close(fd);
-		xrow = end + lbuf_len(xb) - n;
-		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
-				path, lbuf_len(xb) - n);
-		ex_show(msg);
+	if (fd < 0) {
+		ex_show("read failed\n");
+		return 1;
 	}
+	if (ex_region(loc, &beg, &end))
+		return 1;
+	lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
+	close(fd);
+	xrow = end + lbuf_len(xb) - n;
+	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
+			path, lbuf_len(xb) - n);
+	ex_show(msg);
+	return 0;
 }
 
-static void ec_write(char *ec)
+static int ec_write(char *ec)
 {
 	char cmd[EXLEN], arg[EXLEN], loc[EXLEN];
 	char msg[128];
@@ -242,26 +271,31 @@ static void ec_write(char *ec)
 	ex_loc(ec, loc);
 	path = arg[0] ? arg : xpath;
 	if (ex_region(loc, &beg, &end))
-		return;
+		return 1;
 	if (!loc[0]) {
 		beg = 0;
 		end = lbuf_len(xb);
 	}
 	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (fd >= 0) {
-		lbuf_wr(xb, fd, beg, end);
-		close(fd);
-		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
-				path, end - beg);
-		ex_show(msg);
-		if (!strcmp(xpath, path))
-			lbuf_saved(xb, 0);
+	if (fd < 0) {
+		ex_show("write failed\n");
+		return 1;
 	}
+	lbuf_wr(xb, fd, beg, end);
+	close(fd);
+	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
+			path, end - beg);
+	ex_show(msg);
+	if (!xpath[0])
+		strcpy(xpath, path);
+	if (!strcmp(xpath, path))
+		lbuf_saved(xb, 0);
 	if (!strcmp("wq", cmd))
 		ec_quit("wq");
+	return 0;
 }
 
-static void ec_insert(char *ec)
+static int ec_insert(char *ec)
 {
 	char arg[EXLEN], cmd[EXLEN], loc[EXLEN];
 	struct sbuf *sb;
@@ -272,7 +306,7 @@ static void ec_insert(char *ec)
 	ex_cmd(ec, cmd);
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end) && (beg != 0 || end != 0))
-		return;
+		return 1;
 	if (cmd[0] == 'c') {
 		if (lbuf_len(xb))
 			lbuf_rm(xb, beg, end);
@@ -295,9 +329,10 @@ static void ec_insert(char *ec)
 	lbuf_put(xb, end, sbuf_buf(sb));
 	xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
 	sbuf_free(sb);
+	return 0;
 }
 
-static void ec_print(char *ec)
+static int ec_print(char *ec)
 {
 	char cmd[EXLEN], loc[EXLEN];
 	int beg, end;
@@ -306,14 +341,15 @@ static void ec_print(char *ec)
 	ex_loc(ec, loc);
 	if (!cmd[0] && !loc[0]) {
 		if (xrow >= lbuf_len(xb) - 1)
-			return;
+			return 1;
 		xrow = xrow + 1;
 	}
-	if (!ex_region(loc, &beg, &end)) {
-		for (i = beg; i < end; i++)
-			ex_show(lbuf_get(xb, i));
-		xrow = end;
-	}
+	if (ex_region(loc, &beg, &end))
+		return 1;
+	for (i = beg; i < end; i++)
+		ex_show(lbuf_get(xb, i));
+	xrow = end;
+	return 0;
 }
 
 static void ex_yank(int reg, int beg, int end)
@@ -323,32 +359,35 @@ static void ex_yank(int reg, int beg, int end)
 	free(buf);
 }
 
-static void ec_delete(char *ec)
+static int ec_delete(char *ec)
 {
 	char loc[EXLEN];
 	char arg[EXLEN];
 	int beg, end;
 	ex_loc(ec, loc);
 	ex_arg(ec, arg);
-	if (!ex_region(loc, &beg, &end) && lbuf_len(xb)) {
-		ex_yank(arg[0], beg, end);
-		lbuf_rm(xb, beg, end);
-		xrow = beg;
-	}
+	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+		return 1;
+	ex_yank(arg[0], beg, end);
+	lbuf_rm(xb, beg, end);
+	xrow = beg;
+	return 0;
 }
 
-static void ec_yank(char *ec)
+static int ec_yank(char *ec)
 {
 	char loc[EXLEN];
 	char arg[EXLEN];
 	int beg, end;
 	ex_loc(ec, loc);
 	ex_arg(ec, arg);
-	if (!ex_region(loc, &beg, &end) && lbuf_len(xb))
-		ex_yank(arg[0], beg, end);
+	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+		return 1;
+	ex_yank(arg[0], beg, end);
+	return 0;
 }
 
-static void ec_put(char *ec)
+static int ec_put(char *ec)
 {
 	char loc[EXLEN];
 	char arg[EXLEN];
@@ -359,43 +398,46 @@ static void ec_put(char *ec)
 	ex_loc(ec, loc);
 	ex_arg(ec, arg);
 	buf = reg_get(arg[0], &lnmode);
-	if (buf && !ex_region(loc, &beg, &end)) {
-		lbuf_put(xb, end, buf);
-		xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
-	}
+	if (!buf || ex_region(loc, &beg, &end))
+		return 1;
+	lbuf_put(xb, end, buf);
+	xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
+	return 0;
 }
 
-static void ec_lnum(char *ec)
+static int ec_lnum(char *ec)
 {
 	char loc[EXLEN];
 	char msg[128];
 	int beg, end;
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end))
-		return;
+		return 1;
 	sprintf(msg, "%d\n", end);
 	ex_show(msg);
+	return 0;
 }
 
-static void ec_undo(char *ec)
+static int ec_undo(char *ec)
 {
-	lbuf_undo(xb);
+	return lbuf_undo(xb);
 }
 
-static void ec_redo(char *ec)
+static int ec_redo(char *ec)
 {
-	lbuf_redo(xb);
+	return lbuf_redo(xb);
 }
 
-static void ec_mark(char *ec)
+static int ec_mark(char *ec)
 {
 	char loc[EXLEN], arg[EXLEN];
 	int beg, end;
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end))
-		return;
+		return 1;
 	lbuf_mark(xb, arg[0], end - 1, 0);
+	return 0;
 }
 
 static char *readuntil(char **src, int delim)
@@ -414,7 +456,7 @@ static char *readuntil(char **src, int delim)
 	return sbuf_done(sbuf);
 }
 
-static void ec_substitute(char *ec)
+static int ec_substitute(char *ec)
 {
 	char loc[EXLEN], arg[EXLEN];
 	struct rset *re;
@@ -427,11 +469,13 @@ static void ec_substitute(char *ec)
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end))
-		return;
+		return 1;
 	delim = (unsigned char) *s++;
 	pat = readuntil(&s, delim);
 	rep = readuntil(&s, delim);
 	re = rset_make(1, &pat, xic ? RE_ICASE : 0);
+	if (!re)
+		return 1;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		if (rset_find(re, ln, LEN(offs) / 2, offs, 0)) {
@@ -447,6 +491,7 @@ static void ec_substitute(char *ec)
 	rset_free(re);
 	free(pat);
 	free(rep);
+	return 0;
 }
 
 static struct option {
@@ -455,6 +500,7 @@ static struct option {
 	int *var;
 } options[] = {
 	{"ai", "autoindent", &xai},
+	{"aw", "autowrite", &xaw},
 	{"ic", "ignorecase", &xic},
 	{"td", "textdirection", &xdir},
 	{"shape", "shape", &xshape},
@@ -473,7 +519,7 @@ static char *cutword(char *s, char *d)
 	return s;
 }
 
-static void ec_set(char *ec)
+static int ec_set(char *ec)
 {
 	char arg[EXLEN];
 	char tok[EXLEN];
@@ -500,16 +546,21 @@ static void ec_set(char *ec)
 		}
 		for (i = 0; i < LEN(options); i++) {
 			struct option *o = &options[i];
-			if (!strcmp(o->abbr, opt) || !strcmp(o->name, opt))
+			if (!strcmp(o->abbr, opt) || !strcmp(o->name, opt)) {
 				*o->var = val;
+				return 0;
+			}
 		}
+		ex_show("unknown option");
+		return 1;
 	}
+	return 0;
 }
 
 static struct excmd {
 	char *abbr;
 	char *name;
-	void (*ec)(char *s);
+	int (*ec)(char *s);
 } excmds[] = {
 	{"p", "print", ec_print},
 	{"a", "append", ec_insert},
@@ -517,10 +568,12 @@ static struct excmd {
 	{"d", "delete", ec_delete},
 	{"c", "change", ec_insert},
 	{"e", "edit", ec_edit},
+	{"e!", "edit!", ec_edit},
 	{"=", "=", ec_lnum},
 	{"k", "mark", ec_mark},
 	{"pu", "put", ec_put},
 	{"q", "quit", ec_quit},
+	{"q!", "quit!", ec_quit},
 	{"r", "read", ec_read},
 	{"w", "write", ec_write},
 	{"wq", "wq", ec_write},

@@ -96,7 +96,7 @@ static char *led_render(char *s0)
 			}
 		}
 	}
-	att = syn_highlight(xft, s0);
+	att = syn_highlight(ex_filetype(), s0);
 	led_markrev(n, chrs, pos, att);
 	out = sbuf_make();
 	i = 0;

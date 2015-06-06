@@ -879,7 +879,7 @@ static void vc_status(void)
 	int col = vi_off2col(xb, xrow, xoff);
 	snprintf(vi_msg, sizeof(vi_msg),
 		"\"%s\"%c %d lines  L%d C%d\n",
-		xpath[0] ? xpath : "unnamed",
+		ex_path()[0] ? ex_path() : "unnamed",
 		lbuf_modified(xb) ? '*' : ' ',
 		lbuf_len(xb), xrow + 1,
 		ren_cursor(lbuf_get(xb, xrow), col) + 1);
@@ -1201,9 +1201,7 @@ static void vi(void)
 
 int main(int argc, char *argv[])
 {
-	char ecmd[PATHLEN];
 	int i;
-	xb = lbuf_make();
 	xvis = 1;
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
 		if (argv[i][1] == 's')
@@ -1215,15 +1213,12 @@ int main(int argc, char *argv[])
 	}
 	dir_init();
 	syn_init();
-	if (i < argc) {
-		snprintf(ecmd, PATHLEN, "e %s", argv[i]);
-		ex_command(ecmd);
-	}
+	ex_init(argv + i);
 	if (xvis)
 		vi();
 	else
 		ex();
-	lbuf_free(xb);
+	ex_done();
 	reg_done();
 	syn_done();
 	dir_done();

@@ -135,6 +135,13 @@ void ex(void);
 void ex_command(char *cmd);
 char *ex_read(char *msg);
 void ex_show(char *msg);
+void ex_init(char **files);
+void ex_done(void);
+char *ex_path(void);
+char *ex_filetype(void);
+struct lbuf *ex_lbuf(void);
+
+#define xb 	ex_lbuf()
 
 /* process management */
 char *cmd_pipe(char *cmd, char *s);
@@ -165,19 +172,14 @@ int conf_highlight_revdir(int *att);
 /* global variables */
 #define PATHLEN		512
 
-extern int xvis;
-extern struct lbuf *xb;
 extern int xrow;
 extern int xoff;
 extern int xtop;
+extern int xvis;
 extern int xled;
-extern int xrow_alt;
-extern char xpath[];
-extern char xpath_alt[];
 extern int xquit;
 extern int xic;
 extern int xai;
 extern int xdir;
 extern int xshape;
 extern int xorder;
-extern char xft[];

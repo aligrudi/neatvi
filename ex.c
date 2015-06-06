@@ -9,21 +9,88 @@
 
 #define EXLEN		512
 
-char xpath[PATHLEN];		/* current file */
-char xpath_alt[PATHLEN];	/* alternate file */
-char xft[32];			/* filetype */
+int xrow, xoff, xtop;		/* current row, column, and top row */
 int xquit;			/* exit if set */
 int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
 int xaw;			/* autowrite option */
-struct lbuf *xb;		/* current buffer */
-int xrow, xoff, xtop;		/* current row, column, and top row */
-int xrow_alt;			/* alternate row, column, and top row */
 int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
+
+static struct buf {
+	char ft[32];
+	char *path;
+	struct lbuf *lb;
+	int row;
+} bufs[8];
+
+static int bufs_find(char *path)
+{
+	int i;
+	for (i = 0; i < LEN(bufs); i++)
+		if (bufs[i].lb && !strcmp(bufs[i].path, path))
+			return i;
+	return -1;
+}
+
+static void bufs_free(int idx)
+{
+	if (bufs[idx].lb) {
+		free(bufs[idx].path);
+		lbuf_free(bufs[idx].lb);
+		memset(&bufs[idx], 0, sizeof(bufs[idx]));
+	}
+}
+
+static int bufs_open(char *path)
+{
+	int i;
+	for (i = 0; i < LEN(bufs) - 1; i++)
+		if (!bufs[i].lb)
+			break;
+	bufs_free(i);
+	bufs[i].path = uc_dup(path);
+	bufs[i].lb = lbuf_make();
+	bufs[i].row = 0;
+	strcpy(bufs[i].ft, syn_filetype(path));
+	return i;
+}
+
+static void bufs_swap(int i, int j)
+{
+	struct buf tmp;
+	if (i == j)
+		return;
+	memcpy(&tmp, &bufs[i], sizeof(tmp));
+	memcpy(&bufs[i], &bufs[j], sizeof(tmp));
+	memcpy(&bufs[j], &tmp, sizeof(tmp));
+}
+
+static void bufs_switch(int idx)
+{
+	if (idx > 1)
+		bufs_swap(0, 1);
+	bufs_swap(0, idx);
+	xrow = bufs[0].row;
+}
+
+char *ex_path(void)
+{
+	return bufs[0].path;
+}
+
+struct lbuf *ex_lbuf(void)
+{
+	return bufs[0].lb;
+}
+
+char *ex_filetype(void)
+{
+	return bufs[0].ft;
+}
 
 /* read ex command location */
 static char *ex_loc(char *s, char *loc)
@@ -170,7 +237,7 @@ static int ex_modifiedbuffer(char *msg)
 {
 	if (!lbuf_modified(xb))
 		return 0;
-	if (xaw && xpath[0])
+	if (xaw && ex_path()[0])
 		return ec_write("w");
 	if (msg)
 		ex_show(msg);
@@ -188,50 +255,68 @@ static int ec_quit(char *ec)
 	return 0;
 }
 
+static int ex_expand(char *d, char *s)
+{
+	while (*s) {
+		int c = (unsigned char) *s++;
+		if (c == '%') {
+			if (!bufs[0].path || !bufs[0].path[0]) {
+				ex_show("\"%\" is unset\n");
+				return 1;
+			}
+			strcpy(d, bufs[0].path);
+			d = strchr(d, '\0');
+			continue;
+		}
+		if (c == '#') {
+			if (!bufs[1].path || !bufs[1].path[0]) {
+				ex_show("\"#\" is unset\n");
+				return 1;
+			}
+			strcpy(d, bufs[1].path);
+			d = strchr(d, '\0');
+			continue;
+		}
+		if (c == '\\' && (*s == '%' || *s == '#'))
+			c = *s++;
+		*d++ = c;
+	}
+	*d = '\0';
+	return 0;
+}
+
 static int ec_edit(char *ec)
 {
 	char msg[128];
 	char arg[EXLEN], cmd[EXLEN];
+	char path[PATHLEN];
 	int fd;
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	if (!strchr(cmd, '!'))
-		if (ex_modifiedbuffer("buffer modified\n"))
+		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
-	if (!arg[0] || !strcmp(arg, "%") || !strcmp(xpath, arg)) {
-		strcpy(arg, xpath);
-	} else if (!strcmp(arg, "#")) {
-		char xpath_tmp[PATHLEN];
-		int xrow_tmp = xrow;
-		if (!xpath_alt[0]) {
-			ex_show("\"#\" is unset\n");
-			return 1;
-		}
-		strcpy(xpath_tmp, xpath_alt);
-		strcpy(xpath_alt, xpath);
-		strcpy(xpath, xpath_tmp);
-		xrow = xrow_alt;
-		xrow_alt = xrow_tmp;
-		xoff = 0;
-		xtop = 0;
-	} else {
-		strcpy(xpath_alt, xpath);
-		snprintf(xpath, PATHLEN, "%s", arg);
-		xrow_alt = xrow;
-		xrow = xvis ? 0 : 1 << 20;
+	if (ex_expand(path, arg))
+		return 1;
+	bufs[0].row = xrow;
+	if (arg[0] && bufs_find(path) >= 0) {
+		bufs_switch(bufs_find(path));
+		return 0;
 	}
-	strcpy(xft, syn_filetype(xpath));
-	fd = open(xpath, O_RDONLY);
-	lbuf_rm(xb, 0, lbuf_len(xb));
+	if (path[0] || !bufs[0].path)
+		bufs_switch(bufs_open(path));
+	fd = open(ex_path(), O_RDONLY);
 	if (fd >= 0) {
+		lbuf_rm(xb, 0, lbuf_len(xb));
 		lbuf_rd(xb, fd, 0);
 		close(fd);
 		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
-				xpath, lbuf_len(xb));
+				ex_path(), lbuf_len(xb));
 		ex_show(msg);
 	}
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
-	lbuf_saved(xb, 1);
+	lbuf_modified(xb);
+	lbuf_saved(xb, path[0] != '\0');
 	return 0;
 }
 
@@ -245,7 +330,7 @@ static int ec_read(char *ec)
 	int n = lbuf_len(xb);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
-	path = arg[0] ? arg : xpath;
+	path = arg[0] ? arg : ex_path();
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		ex_show("read failed\n");
@@ -272,7 +357,7 @@ static int ec_write(char *ec)
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
-	path = arg[0] ? arg : xpath;
+	path = arg[0] ? arg : ex_path();
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	if (!loc[0]) {
@@ -289,9 +374,11 @@ static int ec_write(char *ec)
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
 			path, end - beg);
 	ex_show(msg);
-	if (!xpath[0])
-		strcpy(xpath, path);
-	if (!strcmp(xpath, path))
+	if (!ex_path()[0]) {
+		free(bufs[0].path);
+		bufs[0].path = uc_dup(path);
+	}
+	if (!strcmp(ex_path(), path))
 		lbuf_saved(xb, 0);
 	if (!strcmp("wq", cmd))
 		ec_quit("wq");
@@ -500,16 +587,22 @@ static int ec_substitute(char *ec)
 static int ec_exec(char *ec)
 {
 	char cmd[EXLEN];
+	char arg[EXLEN];
 	ex_modifiedbuffer(NULL);
-	return cmd_exec(ex_cmd(ec, cmd));
+	if (ex_expand(arg, ex_cmd(ec, cmd)))
+		return 1;
+	return cmd_exec(arg);
 }
 
 static int ec_make(char *ec)
 {
 	char cmd[EXLEN];
+	char arg[EXLEN];
 	char make[EXLEN];
 	ex_modifiedbuffer(NULL);
-	sprintf(make, "make %s", ex_cmd(ec, cmd));
+	if (ex_expand(arg, ex_cmd(ec, cmd)))
+		return 1;
+	sprintf(make, "make %s", arg);
 	return cmd_exec(make);
 }
 
@@ -634,4 +727,18 @@ void ex(void)
 	}
 	if (xled)
 		term_done();
+}
+
+void ex_init(char **files)
+{
+	char cmd[EXLEN];
+	snprintf(cmd, sizeof(cmd), "e %s", files[0] ? files[0] : "");
+	ec_edit(cmd);
+}
+
+void ex_done(void)
+{
+	int i;
+	for (i = 0; i < LEN(bufs); i++)
+		bufs_free(i);
 }

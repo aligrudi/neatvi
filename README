@@ -1,0 +1,35 @@
+NEATVI
+======
+
+Neatvi is a vi/ex editor.  It can edit bidirectional UTF-8 text.
+
+Edit conf.h to adjust syntax highlighting rules, direction adjustment
+patterns, and the alternate keymap.  To define a new keymap, create a
+new array in kmap.h, like kmap_fa, and add it to kmaps array in led.c.
+When in input mode, ^f switches to the alternate keymap and ^e
+switches back to the default keymap.
+
+The following options are supported:
+
+td, textdirection
+	Current direction context.  The following values are meaningful:
+	
+	* +2: always left-to-right.
+	* +1: follow conf.h's dircontexts[]; left-to-right for others.
+	* -1: follow conf.h's dircontexts[]; right-to-left for others.
+	* -2: always right-to-left.
+
+shape
+	If set (default), performs Arabic/Farsi letter shaping.
+
+order
+	If set, reorder characters based on the rules defined in conf.h.
+
+ai, autoindent
+	As in vi(1).
+
+aw, autowrite
+	As in vi(1).
+
+ic, ignorecase
+	As in vi(1).

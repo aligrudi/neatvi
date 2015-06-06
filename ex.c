@@ -568,15 +568,18 @@ static int ec_substitute(char *ec)
 		return 1;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
-		if (rset_find(re, ln, LEN(offs) / 2, offs, 0)) {
-			struct sbuf *r = sbuf_make();
+		struct sbuf *r = sbuf_make();
+		while (rset_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
 			sbuf_mem(r, ln, offs[0]);
 			sbuf_str(r, rep);
-			sbuf_str(r, ln + offs[1]);
-			lbuf_put(xb, i, sbuf_buf(r));
-			lbuf_rm(xb, i + 1, i + 2);
-			sbuf_free(r);
+			ln += offs[1];
+			if (!strchr(s, 'g'))
+				break;
 		}
+		sbuf_str(r, ln);
+		lbuf_rm(xb, i, i + 1);
+		lbuf_put(xb, i, sbuf_buf(r));
+		sbuf_free(r);
 	}
 	rset_free(re);
 	free(pat);

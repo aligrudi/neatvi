@@ -45,13 +45,6 @@ static int led_offdir(char **chrs, int *pos, int i)
 	return 0;
 }
 
-static int syn_merge(int old, int new)
-{
-	int fg = SYN_FG(new) ? SYN_FG(new) : SYN_FG(old);
-	int bg = SYN_BG(new) ? SYN_BG(new) : SYN_BG(old);
-	return fg | SYN_BGMK(bg);
-}
-
 static void led_markrev(int n, char **chrs, int *pos, int *att)
 {
 	int i = 0, j;

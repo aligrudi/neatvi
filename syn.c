@@ -22,6 +22,14 @@ static struct rset *syn_find(char *ft)
 	return NULL;
 }
 
+int syn_merge(int old, int new)
+{
+	int fg = SYN_FG(new) ? SYN_FG(new) : SYN_FG(old);
+	int bg = SYN_BG(new) ? SYN_BG(new) : SYN_BG(old);
+	int flg = (old | new) & (SYN_IT | SYN_BD | SYN_RV);
+	return flg | fg | SYN_BGMK(bg);
+}
+
 int *syn_highlight(char *ft, char *s)
 {
 	int subs[16 * 2];
@@ -30,19 +38,26 @@ int *syn_highlight(char *ft, char *s)
 	int sidx = 0;
 	struct rset *rs = syn_find(ft);
 	int flg = 0;
-	int hl, j;
+	int hl, j, i;
 	memset(att, 0, n * sizeof(att[0]));
 	if (!rs)
 		return att;
 	while ((hl = rset_find(rs, s + sidx, LEN(subs) / 2, subs, flg)) >= 0) {
-		int beg, end;
-		int catt, cgrp;
-		conf_highlight(hl, NULL, &catt, &cgrp, NULL);
-		beg = uc_off(s, sidx + subs[cgrp * 2 + 0]);
-		end = uc_off(s, sidx + subs[cgrp * 2 + 1]);
-		for (j = beg; j < end; j++)
-			att[j] = catt;
-		sidx += subs[cgrp * 2 + 1] ? subs[cgrp * 2 + 1] : 1;
+		int grp = 0;
+		int cend = 1;
+		int *catt;
+		conf_highlight(hl, NULL, &catt, NULL, &grp);
+		for (i = 0; i < LEN(subs) / 2; i++) {
+			if (subs[i * 2] >= 0) {
+				int beg = uc_off(s, sidx + subs[i * 2 + 0]);
+				int end = uc_off(s, sidx + subs[i * 2 + 1]);
+				for (j = beg; j < end; j++)
+					att[j] = syn_merge(att[j], catt[i]);
+				if (i == grp)
+					cend = MAX(cend, subs[i * 2 + 1]);
+			}
+		}
+		sidx += cend;
 		flg = RE_NOTBOL;
 	}
 	return att;
@@ -53,7 +68,7 @@ static void syn_initft(char *name)
 	char *pats[128] = {NULL};
 	char *ft, *pat;
 	int i, n;
-	for (i = 0; !conf_highlight(i, &ft, NULL, NULL, &pat) && i < LEN(pats); i++)
+	for (i = 0; !conf_highlight(i, &ft, NULL, &pat, NULL) && i < LEN(pats); i++)
 		if (!strcmp(ft, name))
 			pats[i] = pat;
 	n = i;

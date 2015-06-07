@@ -157,6 +157,7 @@ int cmd_exec(char *cmd);
 
 int *syn_highlight(char *ft, char *s);
 char *syn_filetype(char *path);
+int syn_merge(int old, int new);
 void syn_init(void);
 void syn_done(void);
 
@@ -165,7 +166,7 @@ char *conf_kmapalt(void);
 int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
 int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_placeholder(int idx, char **s, char **d, int *wid);
-int conf_highlight(int idx, char **ft, int *att, int *grp, char **pat);
+int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_highlight_revdir(int *att);
 

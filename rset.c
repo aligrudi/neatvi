@@ -19,6 +19,17 @@ static int re_groupcount(char *s)
 	while (*s) {
 		if (s[0] == '(')
 			n++;
+		if (s[0] == '[') {
+			int dep = 0;
+			s += s[1] == '^' ? 3 : 2;
+			while (s[0] && (s[0] != ']' || dep)) {
+				if (s[0] == '[')
+					dep++;
+				if (s[0] == ']')
+					dep--;
+				s++;
+			}
+		}
 		if (s[0] == '\\' && s[1])
 			s++;
 		s++;

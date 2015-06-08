@@ -57,6 +57,7 @@ static struct filetype {
 } filetypes[] = {
 	{"c", "\\.[hc]$"},
 	{"tr", "\\.(ms|tr|roff|tmac)$"},
+	{"tex", "\\.tex$"},
 };
 
 /* syntax highlighting patterns */
@@ -82,6 +83,11 @@ static struct highlight {
 	{"tr", {3}, "\\\\{1,2}[*$fgkmns]([^[(]|\\(..|\\[[^]]*\\])"},
 	{"tr", {3}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
 	{"tr", {3}, "\\$[^$]+\\$"},
+
+	{"tex", {4 | SYN_BD, 0, 3, 0, 5},
+		"\\\\[^[{ \t]+(\\[([^]]+)\\])?(\\{([^}]*)\\})?"},
+	{"tex", {3}, "\\$[^$]+\\$"},
+	{"tex", {2 | SYN_IT}, "%.*$"},
 };
 
 /* how to hightlight text in the reverse direction */

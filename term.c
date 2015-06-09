@@ -85,6 +85,17 @@ void term_kill(void)
 	term_out("\33[K");
 }
 
+void term_room(int n)
+{
+	char cmd[16];
+	if (n < 0)
+		sprintf(cmd, "\33[%dM", -n);
+	if (n > 0)
+		sprintf(cmd, "\33[%dL", n);
+	if (n)
+		term_out(cmd);
+}
+
 void term_pos(int r, int c)
 {
 	char buf[32] = "\r";

@@ -110,6 +110,7 @@ void term_chr(int ch);
 void term_pos(int r, int c);
 void term_clear(void);
 void term_kill(void);
+void term_room(int n);
 int term_rows(void);
 int term_cols(void);
 int term_read(int timeout);

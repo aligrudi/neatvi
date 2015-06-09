@@ -169,11 +169,13 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 			ren_pos(sbuf_buf(ln), off - 1) < 0 ? -1 : +1;
 		sbuf_cut(ln, len);
 	}
+	term_record();
 	sbuf_str(ln, post);
 	led_print(sbuf_buf(ln), -1);
 	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(0, off - 1)));
 	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
+	term_commit();
 }
 
 char *led_read(char **kmap)
@@ -299,10 +301,10 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 			ai[ai_len] = '\0';
 		}
 		pref = NULL;
-		term_kill();
 		free(ln);
 		if (key != '\n')
 			break;
+		term_room(1);
 		while (ai_max && post[0] && (post[0] == ' ' || post[0] == '\t'))
 			post++;
 	}

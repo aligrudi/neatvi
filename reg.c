@@ -12,7 +12,7 @@ char *reg_get(int c, int *ln)
 	return bufs[c];
 }
 
-void reg_put(int c, char *s, int ln)
+static void reg_putraw(int c, char *s, int ln)
 {
 	char *pre = isupper(c) ? bufs[tolower(c)] : "";
 	char *buf = malloc(strlen(pre) + strlen(s) + 1);
@@ -21,6 +21,19 @@ void reg_put(int c, char *s, int ln)
 	free(bufs[tolower(c)]);
 	bufs[tolower(c)] = buf;
 	lnmode[tolower(c)] = ln;
+}
+
+void reg_put(int c, char *s, int ln)
+{
+	int i, i_ln;
+	char *i_s;
+	if (ln || strchr(s, '\n')) {
+		for (i = 8; i > 0; i--)
+			if ((i_s = reg_get('0' + i, &i_ln)))
+				reg_putraw('0' + i + 1, i_s, i_ln);
+		reg_putraw('1', s, ln);
+	}
+	reg_putraw(c, s, ln);
 }
 
 void reg_done(void)

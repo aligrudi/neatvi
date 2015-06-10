@@ -184,3 +184,32 @@ int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off)
 		return 1;
 	return 0;
 }
+
+/* move to the matching character */
+int lbuf_pair(struct lbuf *lb, int *row, int *off)
+{
+	int r = *row, o = *off;
+	char *ln = lbuf_get(lb, *row);
+	char *pairs = "()[]{}";
+	int p;			/* index for pairs[] */
+	int dep = 1;		/* parenthesis depth */
+	if (!ln || !ln[o])
+		return 1;
+	while (!strchr(pairs, ln[o]))
+		if (!ln[++o])
+			return 1;
+	p = strchr(pairs, ln[o]) - pairs;
+	while (!lbuf_next(lb, (p & 1) ? -1 : +1, &r, &o)) {
+		int c = (unsigned char) lbuf_chr(lb, r, o)[0];
+		if (c == pairs[p ^ 1])
+			dep--;
+		if (c == pairs[p])
+			dep++;
+		if (!dep) {
+			*row = r;
+			*off = o;
+			return 0;
+		}
+	}
+	return 1;
+}

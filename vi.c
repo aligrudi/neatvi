@@ -279,6 +279,12 @@ static int vi_motionln(int *row, int cmd)
 			*row = MAX(0, MIN(*row + cnt - 1, lbuf_len(xb) - 1));
 			break;
 		}
+		if (c == '%' && (vi_arg1 || vi_arg2)) {
+			if (cnt > 100)
+				return -1;
+			*row = MAX(0, lbuf_len(xb) - 1) * cnt / 100;
+			break;
+		}
 		vi_back(c);
 		return 0;
 	}
@@ -479,6 +485,10 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		*row = mark_row;
 		*off = mark_off;
+		break;
+	case '%':
+		if (lbuf_pair(xb, row, off))
+			return -1;
 		break;
 	default:
 		vi_back(mv);
@@ -733,7 +743,7 @@ static int vc_motion(int cmd)
 	if (r1 == r2 && o1 > o2)
 		swap(&o1, &o2);
 	o1 = ren_noeol(lbuf_get(xb, r1), o1);
-	if (!lnmode && strchr("fFtTeE", mv))
+	if (!lnmode && strchr("fFtTeE%", mv))
 		if (o2 < lbuf_eol(xb, r2))
 			o2 = ren_noeol(lbuf_get(xb, r2), o2) + 1;
 	if (cmd == 'y')
@@ -793,8 +803,10 @@ static int vc_put(int cmd)
 	int lnmode;
 	char *buf = reg_get(vi_ybuf, &lnmode);
 	int i;
-	if (!buf)
+	if (!buf) {
+		snprintf(vi_msg, sizeof(vi_msg), "yank buffer empty\n");
 		return 1;
+	}
 	if (lnmode) {
 		struct sbuf *sb = sbuf_make();
 		for (i = 0; i < cnt; i++)
@@ -982,7 +994,8 @@ static void vi(void)
 			vi_ybuf = vi_yankbuf();
 		mv = vi_motion(&nrow, &noff);
 		if (mv > 0) {
-			if (strchr("\'`GHML/?{}[]nN", mv)) {
+			if (strchr("\'`GHML/?{}[]nN", mv) ||
+					(mv == '%' && noff < 0)) {
 				lbuf_mark(xb, '\'', xrow, xoff);
 				lbuf_mark(xb, '`', xrow, xoff);
 			}

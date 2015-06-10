@@ -30,6 +30,7 @@ int lbuf_paragraphbeg(struct lbuf *lb, int dir, int *row, int *off);
 int lbuf_sectionbeg(struct lbuf *lb, int dir, int *row, int *off);
 int lbuf_wordbeg(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
+int lbuf_pair(struct lbuf *lb, int *row, int *off);
 
 /* string buffer, variable-sized string */
 struct sbuf *sbuf_make(void);

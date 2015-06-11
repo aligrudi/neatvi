@@ -79,20 +79,17 @@ static void lbuf_insertline(struct lbuf *lb, int pos, char *s)
 /* low-level insertion */
 static void lbuf_insert(struct lbuf *lb, int pos, char *s)
 {
-	int len = strlen(s);
-	struct sbuf *sb;
 	int lb_len = lbuf_len(lb);
 	int beg = pos, end;
+	char *r;
 	int i;
-	sb = sbuf_make();
-	for (i = 0; i < len; i++) {
-		sbuf_chr(sb, (unsigned char) s[i]);
-		if (s[i] == '\n') {
-			lbuf_insertline(lb, pos++, sbuf_done(sb));
-			sb = sbuf_make();
-		}
+	while ((r = strchr(s, '\n'))) {
+		char *n = malloc(r - s + 2);
+		memcpy(n, s, r - s + 1);
+		n[r - s + 1] = '\0';
+		lbuf_insertline(lb, pos++, n);
+		s = r + 1;
 	}
-	sbuf_free(sb);
 	for (i = 0; i < LEN(lb->mark); i++)	/* updating marks */
 		if (lb->mark[i] >= pos)
 			lb->mark[i] += lbuf_len(lb) - lb_len;
@@ -152,7 +149,7 @@ static void lbuf_opt(struct lbuf *lb, int ins, int beg, int end)
 
 void lbuf_rd(struct lbuf *lbuf, int fd, int pos)
 {
-	char buf[1 << 8];
+	char buf[1 << 10];
 	struct sbuf *sb;
 	int nr;
 	sb = sbuf_make();

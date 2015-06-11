@@ -7,6 +7,7 @@
 
 #define SBUFSZ		128
 #define ALIGN(n, a)	(((n) + (a) - 1) & ~((a) - 1))
+#define NEXTSZ(o, r)	ALIGN(MAX((o) * 2, (o) + (r)), SBUFSZ)
 
 struct sbuf {
 	char *s;		/* allocated buffer */
@@ -55,14 +56,14 @@ void sbuf_free(struct sbuf *sb)
 void sbuf_chr(struct sbuf *sbuf, int c)
 {
 	if (sbuf->s_n + 2 >= sbuf->s_sz)
-		sbuf_extend(sbuf, sbuf->s_sz + SBUFSZ);
+		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, 1));
 	sbuf->s[sbuf->s_n++] = c;
 }
 
 void sbuf_mem(struct sbuf *sbuf, char *s, int len)
 {
 	if (sbuf->s_n + len + 1 >= sbuf->s_sz)
-		sbuf_extend(sbuf, ALIGN(sbuf->s_n + len + 1, SBUFSZ));
+		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, len + 1));
 	memcpy(sbuf->s + sbuf->s_n, s, len);
 	sbuf->s_n += len;
 }

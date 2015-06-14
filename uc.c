@@ -28,24 +28,28 @@ int uc_len(char *s)
 /* the number of utf-8 characters in s */
 int uc_slen(char *s)
 {
-	char *e = s + strlen(s);
-	int i;
-	for (i = 0; s < e; i++)
-		s += uc_len(s);
-	return i;
+	int n;
+	for (n = 0; *s; n++)
+		s = uc_end(s) + 1;
+	return n;
 }
 
 /* the unicode codepoint of the given utf-8 character */
 int uc_code(char *s)
 {
-	int result;
-	int l = uc_len(s);
-	if (l <= 1)
-		return (unsigned char) *s;
-	result = (0x3f >> --l) & (unsigned char) *s++;
+	int c = (unsigned char) s[0];
+	int l;
+	if (!(c & 0x80))
+		return c;
+	if (!(c & 0x20))
+		return ((c & 0x1f) << 6) | (s[1] & 0x3f);
+	if (!(c & 0x10))
+		return ((c & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f);
+	l = uc_len(s);
+	c = (0x3f >> --l) & (unsigned char) *s++;
 	while (l--)
-		result = (result << 6) | ((unsigned char) *s++ & 0x3f);
-	return result;
+		c = (c << 6) | ((unsigned char) *s++ & 0x3f);
+	return c;
 }
 
 /* find the beginning of the character at s[i] */

@@ -173,8 +173,6 @@ int conf_filetype(int idx, char **ft, char **pat);
 int conf_highlight_revdir(int *att);
 
 /* global variables */
-#define PATHLEN		512
-
 extern int xrow;
 extern int xoff;
 extern int xtop;

@@ -289,7 +289,7 @@ static int ec_edit(char *ec)
 {
 	char msg[128];
 	char arg[EXLEN], cmd[EXLEN];
-	char path[PATHLEN];
+	char path[EXLEN];
 	int fd;
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);

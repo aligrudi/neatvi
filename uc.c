@@ -10,19 +10,19 @@
 int uc_len(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (c > 0 && c <= 0x7f)
-		return 1;
-	if (c >= 0xfc)
-		return 6;
-	if (c >= 0xf8)
-		return 5;
-	if (c >= 0xf0)
-		return 4;
-	if (c >= 0xe0)
-		return 3;
-	if (c >= 0xc0)
+	if (~c & 0x80)
+		return c > 0;
+	if (~c & 0x20)
 		return 2;
-	return c != 0;
+	if (~c & 0x10)
+		return 3;
+	if (~c & 0x80)
+		return 4;
+	if (~c & 0x40)
+		return 5;
+	if (~c & 0x20)
+		return 6;
+	return 1;
 }
 
 /* the number of utf-8 characters in s */
@@ -121,7 +121,7 @@ char *uc_chr(char *s, int off)
 	return s && (off < 0 || i == off) ? s : "";
 }
 
-/* the number of characters between s and s + off*/
+/* the number of characters between s and s + off */
 int uc_off(char *s, int off)
 {
 	char *e = s + off;

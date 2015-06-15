@@ -171,22 +171,22 @@ char *term_att(int att, int old)
 	int bg = SYN_BG(att);
 	if (att == old)
 		return "";
-	s += sprintf(s, "\33[m\33[");
+	s += sprintf(s, "\33[");
 	if (fg & SYN_BD)
-		s += sprintf(s, "1;");
+		s += sprintf(s, ";1");
 	if (fg & SYN_IT)
-		s += sprintf(s, "3;");
+		s += sprintf(s, ";3");
 	else if (fg & SYN_RV)
-		s += sprintf(s, "7;");
+		s += sprintf(s, ";7");
 	if ((fg & 0xff) < 8)
-		s += sprintf(s, "%d;", 30 + (fg & 0xff));
+		s += sprintf(s, ";%d", 30 + (fg & 0xff));
 	else
-		s += sprintf(s, "38;5;%d;", (fg & 0xff));
+		s += sprintf(s, ";38;5;%d", (fg & 0xff));
 	if (bg) {
 		if ((bg & 0xff) < 8)
-			s += sprintf(s, "%d;", 40 + (bg & 0xff));
+			s += sprintf(s, ";%d", 40 + (bg & 0xff));
 		else
-			s += sprintf(s, "48;5;%d;", (bg & 0xff));
+			s += sprintf(s, ";48;5;%d", (bg & 0xff));
 	}
 	s += sprintf(s, "m");
 	return buf;

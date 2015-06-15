@@ -31,6 +31,7 @@ void term_init(void)
 	}
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;
+	term_str("\33[m");
 }
 
 void term_done(void)

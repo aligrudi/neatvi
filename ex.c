@@ -720,16 +720,12 @@ void ex_command(char *ln)
 /* ex main loop */
 void ex(void)
 {
-	if (xled)
-		term_init();
 	while (!xquit) {
 		char *ln = ex_read(":");
 		if (ln)
 			ex_command(ln);
 		free(ln);
 	}
-	if (xled)
-		term_done();
 }
 
 void ex_init(char **files)

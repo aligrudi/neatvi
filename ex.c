@@ -143,6 +143,15 @@ static char *ex_arg(char *s, char *arg)
 	return s;
 }
 
+static char *ex_argeol(char *ec)
+{
+	char arg[EXLEN];
+	char *s = ex_cmd(ec, arg);
+	while (isspace((unsigned char) *s))
+		s++;
+	return s;
+}
+
 static int ex_search(char *pat)
 {
 	struct sbuf *kw;
@@ -324,23 +333,32 @@ static int ec_read(char *ec)
 {
 	char arg[EXLEN], loc[EXLEN];
 	char msg[128];
-	char *path;
-	int fd;
 	int beg, end;
+	char *path;
+	char *obuf;
 	int n = lbuf_len(xb);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	path = arg[0] ? arg : ex_path();
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		ex_show("read failed\n");
-		return 1;
-	}
 	if (ex_region(loc, &beg, &end))
 		return 1;
-	lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
-	close(fd);
-	xrow = end + lbuf_len(xb) - n;
+	if (arg[0] == '!') {
+		if (ex_expand(arg, ex_argeol(ec)))
+			return 1;
+		obuf = cmd_pipe(arg + 1, NULL, 0, 1);
+		if (obuf)
+			lbuf_put(xb, MIN(xrow + 1, lbuf_len(xb)), obuf);
+		free(obuf);
+	} else {
+		int fd = open(path, O_RDONLY);
+		if (fd < 0) {
+			ex_show("read failed\n");
+			return 1;
+		}
+		lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
+		close(fd);
+	}
+	xrow = end + lbuf_len(xb) - n - 1;
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 			path, lbuf_len(xb) - n);
 	ex_show(msg);
@@ -352,8 +370,8 @@ static int ec_write(char *ec)
 	char cmd[EXLEN], arg[EXLEN], loc[EXLEN];
 	char msg[128];
 	char *path;
+	char *ibuf;
 	int beg, end;
-	int fd;
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
@@ -364,13 +382,22 @@ static int ec_write(char *ec)
 		beg = 0;
 		end = lbuf_len(xb);
 	}
-	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-	if (fd < 0) {
-		ex_show("write failed\n");
-		return 1;
+	if (arg[0] == '!') {
+		if (ex_expand(arg, ex_argeol(ec)))
+			return 1;
+		ibuf = lbuf_cp(xb, beg, end);
+		ex_print(NULL);
+		cmd_pipe(arg + 1, ibuf, 1, 0);
+		free(ibuf);
+	} else {
+		int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		if (fd < 0) {
+			ex_show("write failed\n");
+			return 1;
+		}
+		lbuf_wr(xb, fd, beg, end);
+		close(fd);
 	}
-	lbuf_wr(xb, fd, beg, end);
-	close(fd);
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",
 			path, end - beg);
 	ex_show(msg);
@@ -437,7 +464,7 @@ static int ec_print(char *ec)
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	for (i = beg; i < end; i++)
-		ex_show(lbuf_get(xb, i));
+		ex_print(lbuf_get(xb, i));
 	xrow = end;
 	return 0;
 }
@@ -504,7 +531,7 @@ static int ec_lnum(char *ec)
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	sprintf(msg, "%d\n", end);
-	ex_show(msg);
+	ex_print(msg);
 	return 0;
 }
 
@@ -589,24 +616,28 @@ static int ec_substitute(char *ec)
 
 static int ec_exec(char *ec)
 {
-	char cmd[EXLEN];
 	char arg[EXLEN];
 	ex_modifiedbuffer(NULL);
-	if (ex_expand(arg, ex_cmd(ec, cmd)))
+	if (ex_expand(arg, ex_argeol(ec)))
 		return 1;
-	return cmd_exec(arg);
+	ex_print(NULL);
+	if (cmd_exec(arg))
+		return 1;
+	return 0;
 }
 
 static int ec_make(char *ec)
 {
-	char cmd[EXLEN];
 	char arg[EXLEN];
 	char make[EXLEN];
 	ex_modifiedbuffer(NULL);
-	if (ex_expand(arg, ex_cmd(ec, cmd)))
+	if (ex_expand(arg, ex_argeol(ec)))
 		return 1;
 	sprintf(make, "make %s", arg);
-	return cmd_exec(make);
+	ex_print(NULL);
+	if (cmd_exec(make))
+		return 1;
+	return 0;
 }
 
 static struct option {

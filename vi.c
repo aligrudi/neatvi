@@ -21,6 +21,16 @@ static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
 static char *vi_kmap;		/* current insertion keymap */
 static int vi_pcol;		/* the column requested by | command */
+static int vi_printed;		/* ex_print() calls since the last command */
+
+static void vi_wait(void)
+{
+	if (vi_printed > 1) {
+		free(ex_read("[enter to continue]"));
+		vi_msg[0] = '\0';
+	}
+	vi_printed = 0;
+}
 
 static void vi_drawmsg(void)
 {
@@ -77,6 +87,7 @@ static char *vi_prompt(char *msg, char **kmap)
 	return led_prompt(msg, "", kmap);
 }
 
+/* read an ex input line */
 char *ex_read(char *msg)
 {
 	struct sbuf *sb;
@@ -97,6 +108,7 @@ char *ex_read(char *msg)
 	return sbuf_done(sb);
 }
 
+/* show an ex message */
 void ex_show(char *msg)
 {
 	if (xvis) {
@@ -106,6 +118,22 @@ void ex_show(char *msg)
 		term_chr('\n');
 	} else {
 		printf("%s", msg);
+	}
+}
+
+/* print an ex output line */
+void ex_print(char *line)
+{
+	if (xvis) {
+		vi_printed += line ? 1 : 2;
+		if (line)
+			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
+		if (line)
+			led_print(line, -1);
+		term_chr('\n');
+	} else {
+		if (line)
+			ex_show(line);
 	}
 }
 
@@ -680,7 +708,7 @@ static void vi_pipe(int r1, int r2)
 	if (!cmd)
 		return;
 	text = lbuf_cp(xb, r1, r2 + 1);
-	rep = cmd_pipe(cmd, text);
+	rep = cmd_pipe(cmd, text, 1, 1);
 	if (rep) {
 		lbuf_rm(xb, r1, r2 + 1);
 		lbuf_put(xb, r1, rep);
@@ -1210,6 +1238,7 @@ static void vi(void)
 		xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		if (redraw)
 			xcol = vi_off2col(xb, xrow, xoff);
+		vi_wait();
 		if (redraw || xtop != otop)
 			vi_draw(xcol);
 		if (vi_msg[0])

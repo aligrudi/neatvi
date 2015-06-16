@@ -136,6 +136,7 @@ int led_pos(char *s, int pos);
 void ex(void);
 void ex_command(char *cmd);
 char *ex_read(char *msg);
+void ex_print(char *line);
 void ex_show(char *msg);
 void ex_init(char **files);
 void ex_done(void);
@@ -146,7 +147,7 @@ struct lbuf *ex_lbuf(void);
 #define xb 	ex_lbuf()
 
 /* process management */
-char *cmd_pipe(char *cmd, char *s);
+char *cmd_pipe(char *cmd, char *s, int iproc, int oproc);
 int cmd_exec(char *cmd);
 
 /* syntax highlighting */

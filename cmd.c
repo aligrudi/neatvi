@@ -50,24 +50,30 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 	return pid;
 }
 
-char *cmd_pipe(char *cmd, char *s)
+/* execute a command; process input if iproc and process output if oproc */
+char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 {
 	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
 	struct pollfd fds[3];
-	struct sbuf *sb;
+	struct sbuf *sb = NULL;
 	char buf[512];
-	int ifd = 0, ofd = 0;
-	int slen = strlen(s);
+	int ifd = -1, ofd = -1;
+	int slen = iproc ? strlen(ibuf) : 0;
 	int nw = 0;
-	int pid = cmd_make(argv, &ifd, &ofd);
+	int pid = cmd_make(argv, iproc ? &ifd : NULL, oproc ? &ofd : NULL);
 	if (pid <= 0)
 		return NULL;
-	sb = sbuf_make();
+	if (oproc)
+		sb = sbuf_make();
+	if (!iproc) {
+		signal(SIGINT, SIG_IGN);
+		term_done();
+	}
 	fds[0].fd = ofd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;
 	fds[1].events = POLLOUT;
-	fds[2].fd = 0;
+	fds[2].fd = iproc ? 0 : -1;
 	fds[2].events = POLLIN;
 	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 3, 200) >= 0) {
 		if (fds[0].revents & POLLIN) {
@@ -80,7 +86,7 @@ char *cmd_pipe(char *cmd, char *s)
 			fds[0].fd = -1;
 		}
 		if (fds[1].revents & POLLOUT) {
-			int ret = write(fds[1].fd, s + nw, slen - nw);
+			int ret = write(fds[1].fd, ibuf + nw, slen - nw);
 			if (ret > 0)
 				nw += ret;
 			if (ret <= 0 || nw == slen)
@@ -101,21 +107,17 @@ char *cmd_pipe(char *cmd, char *s)
 	close(ifd);
 	close(ofd);
 	waitpid(pid, NULL, 0);
-	return sbuf_done(sb);
+	if (!iproc) {
+		term_init();
+		signal(SIGINT, SIG_DFL);
+	}
+	if (oproc)
+		return sbuf_done(sb);
+	return NULL;
 }
 
 int cmd_exec(char *cmd)
 {
-	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
-	int pid = cmd_make(argv, NULL, NULL);
-	if (pid <= 0)
-		return 1;
-	signal(SIGINT, SIG_IGN);
-	term_done();
-	printf("\n");
-	waitpid(pid, NULL, 0);
-	printf("[terminated]\n");
-	getchar();
-	term_init();
+	cmd_pipe(cmd, NULL, 0, 0);
 	return 0;
 }

@@ -22,6 +22,7 @@ static int vi_ybuf;		/* current yank buffer */
 static char *vi_kmap;		/* current insertion keymap */
 static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
+static int vi_scroll;		/* scroll amount for ^f and ^d*/
 
 static void vi_wait(void)
 {
@@ -1065,6 +1066,30 @@ static void vi(void)
 				if (vi_scrollbackward(MAX(1, vi_arg1)))
 					break;
 				redraw = 1;
+				break;
+			case TK_CTL('u'):
+				if (xrow == 0)
+					break;
+				if (vi_arg1)
+					vi_scroll = vi_arg1;
+				n = vi_scroll ? vi_scroll : xrows / 2;
+				xrow = MAX(0, xrow - n);
+				if (xtop > 0)
+					xtop = MAX(0, xtop - n);
+				redraw = 1;
+				xoff = lbuf_indents(xb, xrow);
+				break;
+			case TK_CTL('d'):
+				if (xrow == lbuf_len(xb) - 1)
+					break;
+				if (vi_arg1)
+					vi_scroll = vi_arg1;
+				n = vi_scroll ? vi_scroll : xrows / 2;
+				xrow = MIN(MAX(0, lbuf_len(xb) - 1), xrow + n);
+				if (xtop < lbuf_len(xb) - xrows)
+					xtop = MIN(lbuf_len(xb) - xrows, xtop + n);
+				redraw = 1;
+				xoff = lbuf_indents(xb, xrow);
 				break;
 			case TK_CTL('z'):
 				term_pos(xrows, 0);

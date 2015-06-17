@@ -183,7 +183,7 @@ static char *led_readchar(int c, char *kmap)
 {
 	static char buf[8];
 	int c1, c2;
-	int i;
+	int i, n;
 	if (c == TK_CTL('v')) {		/* literal character */
 		buf[0] = term_read();
 		buf[1] = '\0';
@@ -200,6 +200,14 @@ static char *led_readchar(int c, char *kmap)
 			if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
 				return digraphs[i][1];
 		return NULL;
+	}
+	if ((c & 0xc0) == 0xc0) {	/* utf-8 character */
+		buf[0] = c;
+		n = uc_len(buf);
+		for (i = 1; i < n; i++)
+			buf[i] = term_read();
+		buf[n] = '\0';
+		return buf;
 	}
 	return kmap_map(kmap, c);
 }

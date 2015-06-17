@@ -67,7 +67,7 @@ static int vi_buflen;
 
 static int vi_read(void)
 {
-	return vi_buflen ? vi_buf[--vi_buflen] : term_read(1000);
+	return vi_buflen ? vi_buf[--vi_buflen] : term_read();
 }
 
 static void vi_back(int c)

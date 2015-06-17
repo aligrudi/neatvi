@@ -145,7 +145,7 @@ char *term_cmd(int *n)
 int term_read(void)
 {
 	struct pollfd ufds[1];
-	char n, c;
+	int n, c;
 	if (ibuf_pos >= ibuf_cnt) {
 		ufds[0].fd = 0;
 		ufds[0].events = POLLIN;

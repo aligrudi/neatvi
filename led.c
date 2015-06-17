@@ -178,25 +178,34 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 	term_commit();
 }
 
-static char *led_digraph(void)
+/* continue reading the character starting with c */
+static char *led_readchar(int c, char *kmap)
 {
+	static char buf[8];
 	int c1, c2;
 	int i;
-	c1 = term_read(-1);
-	if (TK_INT(c1))
+	if (c == TK_CTL('v')) {		/* literal character */
+		buf[0] = term_read(-1);
+		buf[1] = '\0';
+		return buf;
+	}
+	if (c == TK_CTL('k')) {		/* digraph */
+		c1 = term_read(-1);
+		if (TK_INT(c1))
+			return NULL;
+		c2 = term_read(-1);
+		if (TK_INT(c2))
+			return NULL;
+		for (i = 0; i < LEN(digraphs); i++)
+			if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
+				return digraphs[i][1];
 		return NULL;
-	c2 = term_read(-1);
-	if (TK_INT(c2))
-		return NULL;
-	for (i = 0; i < LEN(digraphs); i++)
-		if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
-			return digraphs[i][1];
-	return NULL;
+	}
+	return kmap_map(kmap, c);
 }
 
 char *led_read(char **kmap)
 {
-	static char buf[8];
 	int c = term_read(-1);
 	while (!TK_INT(c)) {
 		switch (c) {
@@ -206,14 +215,8 @@ char *led_read(char **kmap)
 		case TK_CTL('e'):
 			*kmap = kmap_en[0];
 			break;
-		case TK_CTL('v'):
-			buf[0] = term_read(-1);
-			buf[1] = '\0';
-			return buf;
-		case TK_CTL('k'):
-			return led_digraph();
 		default:
-			return kmap_map(*kmap, c);
+			return led_readchar(c, *kmap);
 		}
 		c = term_read(-1);
 	}
@@ -225,7 +228,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
 	int c, lnmode;
-	char *dig;
+	char *cs;
 	sb = sbuf_make();
 	if (!pref)
 		pref = "";
@@ -249,14 +252,6 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		case TK_CTL('u'):
 			sbuf_cut(sb, 0);
 			break;
-		case TK_CTL('k'):
-			dig = led_digraph();
-			if (dig)
-				sbuf_str(sb, dig);
-			break;
-		case TK_CTL('v'):
-			sbuf_chr(sb, term_read(-1));
-			break;
 		case TK_CTL('w'):
 			if (sbuf_len(sb))
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
@@ -277,7 +272,8 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
-			sbuf_str(sb, kmap_map(*kmap, c));
+			if ((cs = led_readchar(c, *kmap)))
+				sbuf_str(sb, cs);
 		}
 		if (c == '\n' || TK_INT(c))
 			break;

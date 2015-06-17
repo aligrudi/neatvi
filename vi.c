@@ -1040,7 +1040,7 @@ static void vi(void)
 		} else if (mv == 0) {
 			char *cmd;
 			int c = vi_read();
-			int z, g;
+			int k;
 			if (c <= 0)
 				continue;
 			lbuf_mark(xb, '*', xrow, xoff);
@@ -1161,8 +1161,8 @@ static void vi(void)
 					redraw = 1;
 				break;
 			case 'z':
-				z = vi_read();
-				switch (z) {
+				k = vi_read();
+				switch (k) {
 				case '\n':
 					xtop = vi_arg1 ? vi_arg1 : xrow;
 					break;
@@ -1176,19 +1176,19 @@ static void vi(void)
 					break;
 				case 'l':
 				case 'r':
-					xdir = z == 'r' ? -1 : +1;
+					xdir = k == 'r' ? -1 : +1;
 					break;
 				case 'L':
 				case 'R':
-					xdir = z == 'R' ? -2 : +2;
+					xdir = k == 'R' ? -2 : +2;
 					break;
 				}
 				redraw = 1;
 				break;
 			case 'g':
-				g = vi_read();
-				if (g == '~' || g == 'u' || g == 'U')
-					if (!vc_motion(g))
+				k = vi_read();
+				if (k == '~' || k == 'u' || k == 'U')
+					if (!vc_motion(k))
 						redraw = 1;
 				break;
 			case 'x':
@@ -1229,6 +1229,11 @@ static void vi(void)
 				vi_back('y');
 				if (!vc_motion('y'))
 					redraw = 1;
+				break;
+			case 'Z':
+				k = vi_read();
+				if (k == 'Z')
+					ex_command("x");
 				break;
 			case '~':
 				vi_back(' ');

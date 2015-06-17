@@ -178,6 +178,22 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 	term_commit();
 }
 
+static char *led_digraph(void)
+{
+	int c1, c2;
+	int i;
+	c1 = term_read(-1);
+	if (TK_INT(c1))
+		return NULL;
+	c2 = term_read(-1);
+	if (TK_INT(c2))
+		return NULL;
+	for (i = 0; i < LEN(digraphs); i++)
+		if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
+			return digraphs[i][1];
+	return NULL;
+}
+
 char *led_read(char **kmap)
 {
 	static char buf[8];
@@ -194,6 +210,8 @@ char *led_read(char **kmap)
 			buf[0] = term_read(-1);
 			buf[1] = '\0';
 			return buf;
+		case TK_CTL('k'):
+			return led_digraph();
 		default:
 			return kmap_map(*kmap, c);
 		}
@@ -207,6 +225,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
 	int c, lnmode;
+	char *dig;
 	sb = sbuf_make();
 	if (!pref)
 		pref = "";
@@ -229,6 +248,11 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 			break;
 		case TK_CTL('u'):
 			sbuf_cut(sb, 0);
+			break;
+		case TK_CTL('k'):
+			dig = led_digraph();
+			if (dig)
+				sbuf_str(sb, dig);
 			break;
 		case TK_CTL('v'):
 			sbuf_chr(sb, term_read(-1));

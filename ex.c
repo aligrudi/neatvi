@@ -324,7 +324,6 @@ static int ec_edit(char *ec)
 		ex_show(msg);
 	}
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
-	lbuf_modified(xb);
 	lbuf_saved(xb, path[0] != '\0');
 	return 0;
 }
@@ -376,6 +375,8 @@ static int ec_write(char *ec)
 	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	path = arg[0] ? arg : ex_path();
+	if (cmd[0] == 'x' && !lbuf_modified(xb))
+		return ec_quit(cmd);
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	if (!loc[0]) {
@@ -407,8 +408,8 @@ static int ec_write(char *ec)
 	}
 	if (!strcmp(ex_path(), path))
 		lbuf_saved(xb, 0);
-	if (!strcmp("wq", cmd))
-		ec_quit("wq");
+	if (cmd[0] == 'x' || (cmd[0] == 'w' && cmd[1] == 'q'))
+		ec_quit(cmd);
 	return 0;
 }
 
@@ -727,6 +728,8 @@ static struct excmd {
 	{"r", "redo", ec_redo},
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
+	{"x", "xit", ec_write},
+	{"x!", "xit!", ec_write},
 	{"ya", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"make", "make", ec_make},

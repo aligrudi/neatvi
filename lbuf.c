@@ -308,6 +308,7 @@ void lbuf_saved(struct lbuf *lb, int clear)
 		lb->useq_last = lb->useq;
 	}
 	lb->useq_zero = lbuf_seq(lb);
+	lbuf_modified(xb);
 }
 
 /* was the file modified since the last lbuf_modreset() */

@@ -576,18 +576,18 @@ static char *readuntil(char **src, int delim)
 
 static int ec_substitute(char *ec)
 {
-	char loc[EXLEN], arg[EXLEN];
+	char loc[EXLEN];
 	struct rset *re;
 	int offs[32];
 	int beg, end;
 	char *pat, *rep;
-	char *s = arg;
+	char *s;
 	int delim;
 	int i;
-	ex_arg(ec, arg);
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end))
 		return 1;
+	s = ex_argeol(ec);
 	delim = (unsigned char) *s++;
 	pat = readuntil(&s, delim);
 	rep = readuntil(&s, delim);

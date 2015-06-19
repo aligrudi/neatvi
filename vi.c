@@ -12,9 +12,7 @@
 #include <string.h>
 #include "vi.h"
 
-char vi_msg[512];		/* current message */
-static char vi_findlast[256];	/* the last searched keyword */
-static int vi_finddir;		/* the last search direction */
+static char vi_msg[EXLEN];	/* current message */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
 static int vi_arg1, vi_arg2;	/* the first and second arguments */
@@ -213,21 +211,21 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		char *kw = vi_prompt(sign, &vi_kmap);
 		if (!kw)
 			return 1;
-		vi_finddir = cmd == '/' ? +1 : -1;
+		xfinddir = cmd == '/' ? +1 : -1;
 		if (kw[0])
-			snprintf(vi_findlast, sizeof(vi_findlast), "%s", kw);
-		if (strchr(vi_findlast, cmd)) {
-			soff = strchr(vi_findlast, cmd) + 1;
-			*strchr(vi_findlast, cmd) = '\0';
+			snprintf(xfindkwd, sizeof(xfindkwd), "%s", kw);
+		if (strchr(xfindkwd, cmd)) {
+			soff = strchr(xfindkwd, cmd) + 1;
+			*strchr(xfindkwd, cmd) = '\0';
 		}
 		free(kw);
 	}
-	dir = cmd == 'N' ? -vi_finddir : vi_finddir;
-	if (!vi_findlast[0] || !lbuf_len(xb))
+	dir = cmd == 'N' ? -xfinddir : xfinddir;
+	if (!xfindkwd[0] || !lbuf_len(xb))
 		return 1;
 	o = *off;
 	for (i = 0; i < cnt; i++) {
-		if (lbuf_search(xb, vi_findlast, dir, &r, &o, &len)) {
+		if (lbuf_search(xb, xfindkwd, dir, &r, &o, &len)) {
 			failed = 1;
 			break;
 		}
@@ -248,7 +246,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		}
 	}
 	if (failed)
-		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", vi_findlast);
+		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", xfindkwd);
 	return failed;
 }
 
@@ -490,9 +488,9 @@ static int vi_motion(int *row, int *off)
 	case TK_CTL('a'):
 		if (!(cs = vi_curword(xb, *row, *off)))
 			return -1;
-		strcpy(vi_findlast, cs);
+		strcpy(xfindkwd, cs);
 		free(cs);
-		vi_finddir = +1;
+		xfinddir = +1;
 		if (vi_search('n', cnt, row, off))
 			return -1;
 		break;

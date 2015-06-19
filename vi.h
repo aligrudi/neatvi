@@ -185,3 +185,8 @@ extern int xai;
 extern int xdir;
 extern int xshape;
 extern int xorder;
+
+#define EXLEN		512	/* ex line length */
+
+extern char xfindkwd[EXLEN];
+extern int xfinddir;

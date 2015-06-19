@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include "vi.h"
 
-#define EXLEN		512
-
 int xrow, xoff, xtop;		/* current row, column, and top row */
 int xquit;			/* exit if set */
 int xvis;			/* visual mode */
@@ -19,6 +17,8 @@ int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
+char xfindkwd[EXLEN];		/* the last searched keyword */
+int xfinddir = +1;		/* the last search direction */
 
 static struct buf {
 	char ft[32];
@@ -109,7 +109,8 @@ static char *ex_loc(char *s, char *loc)
 				*loc++ = *s++;
 			}
 		}
-		*loc++ = *s++;
+		if (*s)
+			*loc++ = *s++;
 	}
 	*loc = '\0';
 	return s;
@@ -158,9 +159,9 @@ static int ex_search(char *pat)
 	int dir = *pat == '/' ? 1 : -1;
 	char *b = pat;
 	char *e = b;
-	char *re_kw[1];
-	int i = xrow;
+	char *pats[1];
 	struct rset *re;
+	int row;
 	kw = sbuf_make();
 	while (*++e) {
 		if (*e == *pat)
@@ -169,18 +170,24 @@ static int ex_search(char *pat)
 		if (*e == '\\' && e[1])
 			e++;
 	}
-	re_kw[0] = sbuf_buf(kw);
-	re = rset_make(1, re_kw, xic ? RE_ICASE : 0);
+	if (sbuf_len(kw))
+		snprintf(xfindkwd, sizeof(xfindkwd), "%s", sbuf_buf(kw));
 	sbuf_free(kw);
+	if (!xfindkwd[0])
+		return xrow;
+	xfinddir = dir;
+	pats[0] = xfindkwd;
+	re = rset_make(1, pats, xic ? RE_ICASE : 0);
 	if (!re)
-		return i;
-	while (i >= 0 && i < lbuf_len(xb)) {
-		if (rset_find(re, lbuf_get(xb, i), 0, NULL, 0) >= 0)
+		return 1;
+	row = xrow + dir;
+	while (row >= 0 && row < lbuf_len(xb)) {
+		if (rset_find(re, lbuf_get(xb, row), 0, NULL, 0) >= 0)
 			break;
-		i += dir;
+		row += dir;
 	}
 	rset_free(re);
-	return i;
+	return row < 0 || row >= lbuf_len(xb) ? xrow : row;
 }
 
 static int ex_lineno(char *num)
@@ -467,6 +474,21 @@ static int ec_print(char *ec)
 	for (i = beg; i < end; i++)
 		ex_print(lbuf_get(xb, i));
 	xrow = end;
+	xoff = 0;
+	return 0;
+}
+
+static int ec_null(char *ec)
+{
+	char loc[EXLEN];
+	int beg, end;
+	if (!xvis)
+		return ec_print(ec);
+	ex_loc(ec, loc);
+	if (ex_region(loc, &beg, &end))
+		return 1;
+	xrow = MAX(beg, end - 1);
+	xoff = 0;
 	return 0;
 }
 
@@ -580,6 +602,7 @@ static int ec_substitute(char *ec)
 	struct rset *re;
 	int offs[32];
 	int beg, end;
+	char *pats[1];
 	char *pat, *rep;
 	char *s;
 	int delim;
@@ -591,9 +614,15 @@ static int ec_substitute(char *ec)
 	delim = (unsigned char) *s++;
 	pat = readuntil(&s, delim);
 	rep = readuntil(&s, delim);
-	re = rset_make(1, &pat, xic ? RE_ICASE : 0);
-	if (!re)
+	if (pat[0])
+		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
+	free(pat);
+	pats[0] = xfindkwd;
+	re = rset_make(1, pats, xic ? RE_ICASE : 0);
+	if (!re) {
+		free(rep);
 		return 1;
+	}
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		struct sbuf *r = sbuf_make();
@@ -610,7 +639,6 @@ static int ec_substitute(char *ec)
 		sbuf_free(r);
 	}
 	rset_free(re);
-	free(pat);
 	free(rep);
 	return 0;
 }
@@ -733,7 +761,7 @@ static struct excmd {
 	{"ya", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"make", "make", ec_make},
-	{"", "", ec_print},
+	{"", "", ec_null},
 };
 
 /* execute a single ex command */
@@ -748,6 +776,8 @@ void ex_command(char *ln)
 			break;
 		}
 	}
+	if (!xvis && !cmd[0])
+		ec_print(ln);
 	lbuf_modified(xb);
 }
 

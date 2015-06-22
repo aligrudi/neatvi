@@ -151,12 +151,17 @@ char *cmd_pipe(char *cmd, char *s, int iproc, int oproc);
 int cmd_exec(char *cmd);
 
 /* syntax highlighting */
-#define SYN_BD		0x100
-#define SYN_IT		0x200
-#define SYN_RV		0x400
-#define SYN_BGMK(b)	((b) << 16)
-#define SYN_FG(a)	((a) & 0xffff)
-#define SYN_BG(a)	((a) >> 16)
+#define SYN_BD		0x010000
+#define SYN_IT		0x020000
+#define SYN_RV		0x040000
+#define SYN_FGMK(f)	(0x100000 | (f))
+#define SYN_BGMK(b)	(0x200000 | ((b) << 8))
+
+#define SYN_FLG		0xff0000
+#define SYN_FGSET(a)	((a) & 0x1000ff)
+#define SYN_BGSET(a)	((a) & 0x20ff00)
+#define SYN_FG(a)	((a) & 0xff)
+#define SYN_BG(a)	(((a) >> 8) & 0xff)
 
 int *syn_highlight(char *ft, char *s);
 char *syn_filetype(char *path);

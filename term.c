@@ -173,17 +173,19 @@ char *term_att(int att, int old)
 	if (att == old)
 		return "";
 	s += sprintf(s, "\33[");
-	if (fg & SYN_BD)
+	if (att & SYN_BD)
 		s += sprintf(s, ";1");
-	if (fg & SYN_IT)
+	if (att & SYN_IT)
 		s += sprintf(s, ";3");
-	else if (fg & SYN_RV)
+	else if (att & SYN_RV)
 		s += sprintf(s, ";7");
-	if ((fg & 0xff) < 8)
-		s += sprintf(s, ";%d", 30 + (fg & 0xff));
-	else
-		s += sprintf(s, ";38;5;%d", (fg & 0xff));
-	if (bg) {
+	if (SYN_FGSET(att)) {
+		if ((fg & 0xff) < 8)
+			s += sprintf(s, ";%d", 30 + (fg & 0xff));
+		else
+			s += sprintf(s, ";38;5;%d", (fg & 0xff));
+	}
+	if (SYN_BGSET(att)) {
 		if ((bg & 0xff) < 8)
 			s += sprintf(s, ";%d", 40 + (bg & 0xff));
 		else

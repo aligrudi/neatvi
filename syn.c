@@ -24,10 +24,9 @@ static struct rset *syn_find(char *ft)
 
 int syn_merge(int old, int new)
 {
-	int fg = SYN_FG(new) ? SYN_FG(new) : SYN_FG(old);
-	int bg = SYN_BG(new) ? SYN_BG(new) : SYN_BG(old);
-	int flg = (old | new) & (SYN_IT | SYN_BD | SYN_RV);
-	return flg | fg | SYN_BGMK(bg);
+	int fg = SYN_FGSET(new) ? SYN_FG(new) : SYN_FG(old);
+	int bg = SYN_BGSET(new) ? SYN_BG(new) : SYN_BG(old);
+	return ((old | new) & SYN_FLG) | (bg << 8) | fg;
 }
 
 int *syn_highlight(char *ft, char *s)

@@ -312,6 +312,8 @@ static struct rnode *rnode_grp(char **pat)
 		return NULL;
 	*pat += 1;
 	rnode = rnode_parse(pat);
+	if (!rnode)
+		return NULL;
 	if ((*pat)[0] != ')') {
 		rnode_free(rnode);
 		return NULL;
@@ -333,6 +335,8 @@ static struct rnode *rnode_atom(char **pat)
 		rnode = rnode_make(RN_ATOM, NULL, NULL);
 		ratom_read(&rnode->ra, pat);
 	}
+	if (!rnode)
+		return NULL;
 	if ((*pat)[0] == '*' || (*pat)[0] == '?') {
 		rnode->mincnt = 0;
 		rnode->maxcnt = (*pat)[0] == '*' ? -1 : 1;
@@ -494,9 +498,12 @@ static void rnode_emit(struct rnode *n, struct regex *p)
 int regcomp(regex_t *preg, char *pat, int flg)
 {
 	struct rnode *rnode = rnode_parse(&pat);
-	struct regex *re = malloc(sizeof(*re));
+	struct regex *re;
 	int n = rnode_count(rnode) + 3;
 	int mark;
+	if (!rnode)
+		return 1;
+	re = malloc(sizeof(*re));
 	memset(re, 0, sizeof(*re));
 	re->p = malloc(n * sizeof(re->p[0]));
 	memset(re->p, 0, n * sizeof(re->p[0]));

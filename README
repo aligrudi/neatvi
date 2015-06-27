@@ -33,3 +33,7 @@ aw, autowrite
 
 ic, ignorecase
 	As in vi(1).
+
+hl, highlight
+	If set (default), text will receive syntax highlighting based on the
+	rules in conf.h.

@@ -13,6 +13,7 @@ int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
 int xaw;			/* autowrite option */
+int xhl = 1;			/* syntax highlight option */
 int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
@@ -89,7 +90,7 @@ struct lbuf *ex_lbuf(void)
 
 char *ex_filetype(void)
 {
-	return bufs[0].ft;
+	return xhl ? bufs[0].ft : "";
 }
 
 /* read ex command location */
@@ -680,6 +681,7 @@ static struct option {
 	{"td", "textdirection", &xdir},
 	{"shape", "shape", &xshape},
 	{"order", "xorder", &xorder},
+	{"hl", "highlight", &xhl},
 };
 
 static char *cutword(char *s, char *d)

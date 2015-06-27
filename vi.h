@@ -190,6 +190,7 @@ extern int xai;
 extern int xdir;
 extern int xshape;
 extern int xorder;
+extern int xhl;
 
 #define EXLEN		512	/* ex line length */
 

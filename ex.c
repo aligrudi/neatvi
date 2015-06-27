@@ -154,6 +154,14 @@ static char *ex_argeol(char *ec)
 	return s;
 }
 
+static char *ex_line(char *s, char *ln)
+{
+	while (*s && *s != '|' && *s != '\n')
+		*ln++ = *s++;
+	*ln = '\0';
+	return *s ? s + 1 : s;
+}
+
 static int ex_search(char *pat)
 {
 	struct sbuf *kw;
@@ -769,17 +777,22 @@ static struct excmd {
 /* execute a single ex command */
 void ex_command(char *ln)
 {
+	char ec[EXLEN];
 	char cmd[EXLEN];
 	int i;
-	ex_cmd(ln, cmd);
-	for (i = 0; i < LEN(excmds); i++) {
-		if (!strcmp(excmds[i].abbr, cmd) || !strcmp(excmds[i].name, cmd)) {
-			excmds[i].ec(ln);
-			break;
+	while (*ln) {
+		ln = ex_line(ln, ec);
+		ex_cmd(ec, cmd);
+		for (i = 0; i < LEN(excmds); i++) {
+			if (!strcmp(excmds[i].abbr, cmd) ||
+					!strcmp(excmds[i].name, cmd)) {
+				excmds[i].ec(ec);
+				break;
+			}
 		}
+		if (!xvis && !cmd[0])
+			ec_print(ec);
 	}
-	if (!xvis && !cmd[0])
-		ec_print(ln);
 	lbuf_modified(xb);
 }
 
@@ -799,6 +812,8 @@ void ex_init(char **files)
 	char cmd[EXLEN];
 	snprintf(cmd, sizeof(cmd), "e %s", files[0] ? files[0] : "");
 	ec_edit(cmd);
+	if (getenv("EXINIT"))
+		ex_command(getenv("EXINIT"));
 }
 
 void ex_done(void)

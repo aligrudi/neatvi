@@ -339,7 +339,7 @@ static int ec_edit(char *ec)
 				ex_path(), lbuf_len(xb));
 		ex_show(msg);
 	}
-	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
+	xrow = xvis ? 0 : MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	lbuf_saved(xb, path[0] != '\0');
 	return 0;
 }

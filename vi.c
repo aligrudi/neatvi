@@ -1000,8 +1000,7 @@ static void vi(void)
 	int mark;
 	char *ln;
 	char *kmap = NULL;
-	xtop = 0;
-	xrow = 0;
+	xtop = xrow;
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
 	vi_draw(xcol);

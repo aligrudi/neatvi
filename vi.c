@@ -1000,11 +1000,11 @@ static void vi(void)
 	int mark;
 	char *ln;
 	char *kmap = NULL;
-	xtop = xrow;
+	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
 	vi_draw(xcol);
-	term_pos(xrow, led_pos(lbuf_get(xb, xrow), xcol));
+	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
 		int redraw = 0;
 		int nrow = xrow;

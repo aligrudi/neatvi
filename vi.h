@@ -138,7 +138,7 @@ void ex_command(char *cmd);
 char *ex_read(char *msg);
 void ex_print(char *line);
 void ex_show(char *msg);
-void ex_init(char **files);
+int ex_init(char **files);
 void ex_done(void);
 char *ex_path(void);
 char *ex_filetype(void);

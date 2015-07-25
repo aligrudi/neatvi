@@ -810,13 +810,15 @@ void ex(void)
 	}
 }
 
-void ex_init(char **files)
+int ex_init(char **files)
 {
 	char cmd[EXLEN];
 	snprintf(cmd, sizeof(cmd), "e %s", files[0] ? files[0] : "");
-	ec_edit(cmd);
+	if (ec_edit(cmd))
+		return 1;
 	if (getenv("EXINIT"))
 		ex_command(getenv("EXINIT"));
+	return 0;
 }
 
 void ex_done(void)

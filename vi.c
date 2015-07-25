@@ -1294,14 +1294,15 @@ int main(int argc, char *argv[])
 	syn_init();
 	if (xled || xvis)
 		term_init();
-	ex_init(argv + i);
-	if (xvis)
-		vi();
-	else
-		ex();
-	if (xled || xvis)
-		term_done();
-	ex_done();
+	if (!ex_init(argv + i)) {
+		if (xvis)
+			vi();
+		else
+			ex();
+		if (xled || xvis)
+			term_done();
+		ex_done();
+	}
 	reg_done();
 	syn_done();
 	dir_done();

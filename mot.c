@@ -61,15 +61,16 @@ int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len)
 	for (i = r0; !found && i >= 0 && i < lbuf_len(lb); i += dir) {
 		char *s = lbuf_get(lb, i);
 		int off = dir > 0 && r0 == i ? uc_chr(s, o0 + 1) - s : 0;
-		int flg = off ? RE_NOTBOL : 0;
-		while (rset_find(re, s + off, 1, offs, flg) >= 0) {
-			if (dir < 0 && r0 == i && uc_off(s, off + offs[0]) >= o0)
+		while (rset_find(re, s + off, 1, offs,
+				off ? RE_NOTBOL : 0) >= 0) {
+			if (dir < 0 && r0 == i &&
+					uc_off(s, off + offs[0]) >= o0)
 				break;
 			found = 1;
 			*o = uc_off(s, off + offs[0]);
 			*r = i;
 			*len = uc_off(s + off + offs[0], offs[1] - offs[0]);
-			off += offs[1];
+			off += offs[1] > offs[0] ? offs[1] : offs[1] + 1;
 			if (dir > 0)
 				break;
 		}

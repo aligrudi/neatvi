@@ -291,9 +291,9 @@ static int ratom_match(struct ratom *ra, struct rstate *rs)
 		return brk_match(ra->s + 1, c, rs->flg);
 	}
 	if (ra->ra == RA_BEG && !(rs->flg & REG_NOTBOL))
-		return rs->s != rs->o;
+		return !(rs->s == rs->o || rs->s[-1] == '\n');
 	if (ra->ra == RA_END && !(rs->flg & REG_NOTEOL))
-		return rs->s[0] != '\0';
+		return rs->s[0] != '\0' && rs->s[0] != '\n';
 	if (ra->ra == RA_WBEG)
 		return !((rs->s == rs->o || !isword(uc_beg(rs->o, rs->s - 1))) &&
 			isword(rs->s));

@@ -182,6 +182,7 @@ int conf_highlight_revdir(int *att);
 extern int xrow;
 extern int xoff;
 extern int xtop;
+extern int xleft;
 extern int xvis;
 extern int xled;
 extern int xquit;

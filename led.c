@@ -25,15 +25,15 @@ static char *kmap_map(char *kmap, int c)
 	return keymap[c] ? keymap[c] : cs;
 }
 
+static int led_posctx(int dir, int pos)
+{
+	return dir >= 0 ? pos - xleft : xcols - (pos - xleft) - 1;
+}
+
 /* map cursor horizontal position to terminal column number */
 int led_pos(char *s, int pos)
 {
-	return dir_context(s) >= 0 ? pos : xcols - pos - 1;
-}
-
-static int led_posctx(int dir, int pos)
-{
-	return dir >= 0 ? pos : xcols - pos - 1;
+	return led_posctx(dir_context(s), pos);
 }
 
 static int led_offdir(char **chrs, int *pos, int i)
@@ -63,9 +63,9 @@ static void led_markrev(int n, char **chrs, int *pos, int *att)
 	}
 }
 
-static char *led_render(char *s0)
+static char *led_render(char *s0, int cbeg, int cend)
 {
-	int n, maxcol = 0;
+	int n;
 	int *pos;	/* pos[i]: the screen position of the i-th character */
 	int *off;	/* off[i]: the character at screen position i */
 	int *att;	/* att[i]: the attributes of i-th character */
@@ -76,25 +76,23 @@ static char *led_render(char *s0)
 	int ctx = dir_context(s0);
 	chrs = uc_chop(s0, &n);
 	pos = ren_position(s0);
-	off = malloc(xcols * sizeof(off[0]));
-	memset(off, 0xff, xcols * sizeof(off[0]));
+	off = malloc((cend - cbeg) * sizeof(off[0]));
+	memset(off, 0xff, (cend - cbeg) * sizeof(off[0]));
 	for (i = 0; i < n; i++) {
-		int curpos = pos[i];
-		int curwid = ren_cwid(chrs[i], curpos);
-		if (curpos >= 0 && curpos + curwid < xcols) {
-			for (j = 0; j < curwid; j++) {
-				off[led_posctx(ctx, curpos + j)] = i;
-				if (led_posctx(ctx, curpos + j) > maxcol)
-					maxcol = led_posctx(ctx, curpos + j);
-			}
-		}
+		int curwid = ren_cwid(chrs[i], pos[i]);
+		int curbeg = led_posctx(ctx, pos[i]);
+		int curend = led_posctx(ctx, pos[i] + curwid - 1);
+		if (curbeg >= 0 && curbeg < (cend - cbeg) &&
+				curend >= 0 && curend < (cend - cbeg))
+			for (j = 0; j < curwid; j++)
+				off[led_posctx(ctx, pos[i] + j)] = i;
 	}
 	att = syn_highlight(ex_filetype(), s0);
 	led_markrev(n, chrs, pos, att);
 	out = sbuf_make();
-	i = 0;
-	while (i <= maxcol) {
-		int o = off[i];
+	i = cbeg;
+	while (i < cend) {
+		int o = off[i - cbeg];
 		int att_new = o >= 0 ? att[o] : 0;
 		sbuf_str(out, term_att(att_new, att_old));
 		att_old = att_new;
@@ -104,9 +102,9 @@ static char *led_render(char *s0)
 			else if (uc_isprint(chrs[o]))
 				sbuf_mem(out, chrs[o], uc_len(chrs[o]));
 			else
-				for (j = i; j <= maxcol && off[j] == o; j++)
+				for (j = i; j < cend && off[j - cbeg] == o; j++)
 					sbuf_chr(out, ' ');
-			while (i <= maxcol && off[i] == o)
+			while (i < cend && off[i - cbeg] == o)
 				i++;
 		} else {
 			sbuf_chr(out, ' ');
@@ -123,7 +121,7 @@ static char *led_render(char *s0)
 
 void led_print(char *s, int row)
 {
-	char *r = led_render(s);
+	char *r = led_render(s, xleft, xleft + xcols);
 	term_pos(row, 0);
 	term_kill();
 	term_str(r);
@@ -171,8 +169,12 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 	}
 	term_record();
 	sbuf_str(ln, post);
-	led_print(sbuf_buf(ln), -1);
 	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(0, off - 1)));
+	if (pos >= xleft + xcols)
+		xleft = pos - xcols / 2;
+	if (pos < xleft)
+		xleft = pos < xcols ? 0 : pos - xcols / 2;
+	led_print(sbuf_buf(ln), -1);
 	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
 	term_commit();

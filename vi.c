@@ -33,8 +33,11 @@ static void vi_wait(void)
 
 static void vi_drawmsg(void)
 {
+	int oleft = xleft;
+	xleft = 0;
 	led_print(vi_msg, xrows);
 	vi_msg[0] = '\0';
+	xleft = oleft;
 }
 
 /* redraw the screen */
@@ -1010,6 +1013,7 @@ static void vi(void)
 		int nrow = xrow;
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
+		int oleft = xleft;
 		int mv, n;
 		term_cmd(&n);
 		vi_arg2 = 0;
@@ -1265,8 +1269,12 @@ static void vi(void)
 		xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		if (redraw)
 			xcol = vi_off2col(xb, xrow, xoff);
+		if (xcol >= xleft + xcols)
+			xleft = xcol - xcols / 2;
+		if (xcol < xleft)
+			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
-		if (redraw || xtop != otop)
+		if (redraw || xtop != otop || xleft != oleft)
 			vi_draw(xcol);
 		if (vi_msg[0])
 			vi_drawmsg();

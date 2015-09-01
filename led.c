@@ -25,15 +25,15 @@ static char *kmap_map(char *kmap, int c)
 	return keymap[c] ? keymap[c] : cs;
 }
 
-static int led_posctx(int dir, int pos)
+static int led_posctx(int dir, int pos, int beg, int end)
 {
-	return dir >= 0 ? pos - xleft : xcols - (pos - xleft) - 1;
+	return dir >= 0 ? pos - beg : end - pos - 1;
 }
 
 /* map cursor horizontal position to terminal column number */
 int led_pos(char *s, int pos)
 {
-	return led_posctx(dir_context(s), pos);
+	return led_posctx(dir_context(s), pos, xleft, xleft + xcols);
 }
 
 static int led_offdir(char **chrs, int *pos, int i)
@@ -80,12 +80,12 @@ static char *led_render(char *s0, int cbeg, int cend)
 	memset(off, 0xff, (cend - cbeg) * sizeof(off[0]));
 	for (i = 0; i < n; i++) {
 		int curwid = ren_cwid(chrs[i], pos[i]);
-		int curbeg = led_posctx(ctx, pos[i]);
-		int curend = led_posctx(ctx, pos[i] + curwid - 1);
+		int curbeg = led_posctx(ctx, pos[i], cbeg, cend);
+		int curend = led_posctx(ctx, pos[i] + curwid - 1, cbeg, cend);
 		if (curbeg >= 0 && curbeg < (cend - cbeg) &&
 				curend >= 0 && curend < (cend - cbeg))
 			for (j = 0; j < curwid; j++)
-				off[led_posctx(ctx, pos[i] + j)] = i;
+				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
 	att = syn_highlight(ex_filetype(), s0);
 	led_markrev(n, chrs, pos, att);

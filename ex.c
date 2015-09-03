@@ -336,8 +336,7 @@ static int ec_edit(char *ec)
 		bufs_switch(bufs_open(path));
 	fd = open(ex_path(), O_RDONLY);
 	if (fd >= 0) {
-		lbuf_rm(xb, 0, lbuf_len(xb));
-		lbuf_rd(xb, fd, 0);
+		lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
 		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 				ex_path(), lbuf_len(xb));
@@ -362,19 +361,21 @@ static int ec_read(char *ec)
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	if (arg[0] == '!') {
+		int pos = MIN(xrow + 1, lbuf_len(xb));
 		if (ex_expand(arg, ex_argeol(ec)))
 			return 1;
 		obuf = cmd_pipe(arg + 1, NULL, 0, 1);
 		if (obuf)
-			lbuf_put(xb, MIN(xrow + 1, lbuf_len(xb)), obuf);
+			lbuf_edit(xb, obuf, pos, pos);
 		free(obuf);
 	} else {
 		int fd = open(path, O_RDONLY);
+		int pos = lbuf_len(xb) ? end : 0;
 		if (fd < 0) {
 			ex_show("read failed\n");
 			return 1;
 		}
-		lbuf_rd(xb, fd, lbuf_len(xb) ? end : 0);
+		lbuf_rd(xb, fd, pos, pos);
 		close(fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
@@ -445,11 +446,6 @@ static int ec_insert(char *ec)
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end) && (beg != 0 || end != 0))
 		return 1;
-	if (cmd[0] == 'c') {
-		if (lbuf_len(xb))
-			lbuf_rm(xb, beg, end);
-		end = beg + 1;
-	}
 	sb = sbuf_make();
 	while ((s = ex_read(""))) {
 		if (!strcmp(".", s)) {
@@ -461,10 +457,12 @@ static int ec_insert(char *ec)
 		free(s);
 	}
 	if (cmd[0] == 'a')
-		if (end > lbuf_len(xb))
-			end = lbuf_len(xb);
+		if (beg + 1 <= lbuf_len(xb))
+			beg++;
+	if (cmd[0] != 'c')
+		end = beg;
 	n = lbuf_len(xb);
-	lbuf_put(xb, end, sbuf_buf(sb));
+	lbuf_edit(xb, sbuf_buf(sb), beg, end);
 	xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
 	sbuf_free(sb);
 	return 0;
@@ -522,7 +520,7 @@ static int ec_delete(char *ec)
 	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
 		return 1;
 	ex_yank(arg[0], beg, end);
-	lbuf_rm(xb, beg, end);
+	lbuf_edit(xb, NULL, beg, end);
 	xrow = beg;
 	return 0;
 }
@@ -553,7 +551,7 @@ static int ec_put(char *ec)
 	buf = reg_get(arg[0], &lnmode);
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
-	lbuf_put(xb, end, buf);
+	lbuf_edit(xb, buf, end, end);
 	xrow = MIN(lbuf_len(xb) - 1, end + lbuf_len(xb) - n - 1);
 	return 0;
 }
@@ -647,8 +645,7 @@ static int ec_substitute(char *ec)
 				break;
 		}
 		sbuf_str(r, ln);
-		lbuf_rm(xb, i, i + 1);
-		lbuf_put(xb, i, sbuf_buf(r));
+		lbuf_edit(xb, sbuf_buf(r), i, i + 1);
 		sbuf_free(r);
 	}
 	rset_free(re);

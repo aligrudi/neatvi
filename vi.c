@@ -572,13 +572,14 @@ static void vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 	free(region);
 	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, o1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), o2, -1);
-	lbuf_rm(xb, r1, r2 + 1);
 	if (!lnmode) {
 		struct sbuf *sb = sbuf_make();
 		sbuf_str(sb, pref);
 		sbuf_str(sb, post);
-		lbuf_put(xb, r1, sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
 		sbuf_free(sb);
+	} else {
+		lbuf_edit(xb, NULL, r1, r2 + 1);
 	}
 	xrow = r1;
 	xoff = lnmode ? lbuf_indents(xb, xrow) : o1;
@@ -653,8 +654,7 @@ static void vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	vi_drawrm(r1, r2, 0);
 	rep = vi_input(pref, post, &row, &off);
 	if (rep) {
-		lbuf_rm(xb, r1, r2 + 1);
-		lbuf_put(xb, r1, rep);
+		lbuf_edit(xb, rep, r1, r2 + 1);
 		xrow = r1 + row - 1;
 		xoff = off;
 		free(rep);
@@ -683,16 +683,15 @@ static void vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 	}
 	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, o1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), o2, -1);
-	lbuf_rm(xb, r1, r2 + 1);
 	if (!lnmode) {
 		struct sbuf *sb = sbuf_make();
 		sbuf_str(sb, pref);
 		sbuf_str(sb, region);
 		sbuf_str(sb, post);
-		lbuf_put(xb, r1, sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
 		sbuf_free(sb);
 	} else {
-		lbuf_put(xb, r1, region);
+		lbuf_edit(xb, region, r1, r2 + 1);
 	}
 	xrow = r2;
 	xoff = lnmode ? lbuf_indents(xb, r2) : o2;
@@ -711,10 +710,8 @@ static void vi_pipe(int r1, int r2)
 		return;
 	text = lbuf_cp(xb, r1, r2 + 1);
 	rep = cmd_pipe(cmd, text, 1, 1);
-	if (rep) {
-		lbuf_rm(xb, r1, r2 + 1);
-		lbuf_put(xb, r1, rep);
-	}
+	if (rep)
+		lbuf_edit(xb, rep, r1, r2 + 1);
 	free(cmd);
 	free(text);
 	free(rep);
@@ -734,8 +731,7 @@ static void vi_shift(int r1, int r2, int dir)
 		else
 			ln = ln[0] == ' ' || ln[0] == '\t' ? ln + 1 : ln;
 		sbuf_str(sb, ln);
-		lbuf_rm(xb, i, i + 1);
-		lbuf_put(xb, i, sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(sb), i, i + 1);
 		sbuf_free(sb);
 	}
 	xrow = r1;
@@ -813,11 +809,9 @@ static int vc_insert(int cmd)
 	vi_drawrm(xrow, xrow, cmd == 'o' || cmd == 'O');
 	rep = vi_input(pref, post, &row, &off);
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
-		lbuf_put(xb, 0, "\n");
+		lbuf_edit(xb, "\n", 0, 0);
 	if (rep) {
-		if (cmd != 'o' && cmd != 'O')
-			lbuf_rm(xb, xrow, xrow + 1);
-		lbuf_put(xb, xrow, rep);
+		lbuf_edit(xb, rep, xrow, xrow + (cmd != 'o' && cmd != 'O'));
 		xrow += row - 1;
 		xoff = off;
 		free(rep);
@@ -842,10 +836,10 @@ static int vc_put(int cmd)
 		for (i = 0; i < cnt; i++)
 			sbuf_str(sb, buf);
 		if (!lbuf_len(xb))
-			lbuf_put(xb, 0, "\n");
+			lbuf_edit(xb, "\n", 0, 0);
 		if (cmd == 'p')
 			xrow++;
-		lbuf_put(xb, xrow, sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow);
 		xoff = lbuf_indents(xb, xrow);
 		sbuf_free(sb);
 	} else {
@@ -860,8 +854,7 @@ static int vc_put(int cmd)
 		s = uc_sub(ln, off, -1);
 		sbuf_str(sb, s);
 		free(s);
-		lbuf_rm(xb, xrow, xrow + 1);
-		lbuf_put(xb, xrow, sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
 		xoff = off + uc_slen(buf) * cnt - 1;
 		sbuf_free(sb);
 	}
@@ -903,8 +896,7 @@ static int vc_join(void)
 		sbuf_mem(sb, ln, lnend - ln);
 	}
 	sbuf_chr(sb, '\n');
-	lbuf_rm(xb, beg, end);
-	lbuf_put(xb, beg, sbuf_buf(sb));
+	lbuf_edit(xb, sbuf_buf(sb), beg, end);
 	xoff = off;
 	sbuf_free(sb);
 	return 0;
@@ -963,8 +955,7 @@ static int vc_replace(void)
 	for (i = 0; i < cnt; i++)
 		sbuf_str(sb, cs);
 	sbuf_str(sb, post);
-	lbuf_rm(xb, xrow, xrow + 1);
-	lbuf_put(xb, xrow, sbuf_buf(sb));
+	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
 	off += cnt - 1;
 	xoff = off;
 	sbuf_free(sb);

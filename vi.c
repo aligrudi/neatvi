@@ -1143,6 +1143,9 @@ static void vi(void)
 				if (!vc_join())
 					redraw = 1;
 				break;
+			case TK_CTL('l'):
+				redraw = 1;
+				break;
 			case 'm':
 				if ((mark = vi_read()) > 0 && islower(mark))
 					lbuf_mark(xb, mark, xrow, xoff);

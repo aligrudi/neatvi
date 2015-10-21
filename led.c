@@ -308,13 +308,16 @@ char *led_prompt(char *pref, char *post, char **kmap)
 char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 {
 	struct sbuf *sb = sbuf_make();
-	char *first_ai = NULL;
-	int key, i;
+	char *ai_1st = NULL;		/* first line auto-indentation */
+	int key;
 	while (1) {
 		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
+		int ln_sp = 0;	/* number of initial spaces in ln */
+		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))
+			ln_sp++;
 		if (pref)
-			first_ai = uc_dup(ai);
-		if (!pref)
+			ai_1st = uc_dup(pref[0] || ln[ln_sp] ? ai : "");
+		if (!pref && ln[ln_sp])
 			sbuf_str(sb, ai);
 		sbuf_str(sb, ln);
 		if (key == '\n')
@@ -325,10 +328,11 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 			term_chr('\n');
 		if (!pref || !pref[0]) {	/* updating autoindent */
 			int ai_len = ai_max ? strlen(ai) : 0;
-			for (i = 0; isspace((unsigned char) ln[i]); i++)
-				if (ai_len < ai_max)
-					ai[ai_len++] = ln[i];
-			ai[ai_len] = '\0';
+			int ai_new = ln_sp;
+			if (ai_len + ai_new > ai_max)
+				ai_new = ai_max - ai_len;
+			memcpy(ai + ai_len, ln, ai_new);
+			ai[ai_len + ai_new] = '\0';
 		}
 		pref = NULL;
 		free(ln);
@@ -338,8 +342,8 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 		while (ai_max && post[0] && (post[0] == ' ' || post[0] == '\t'))
 			post++;
 	}
-	strcpy(ai, first_ai);
-	free(first_ai);
+	strcpy(ai, ai_1st);
+	free(ai_1st);
 	if (TK_INT(key))
 		return sbuf_done(sb);
 	sbuf_free(sb);

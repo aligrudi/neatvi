@@ -295,30 +295,43 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 /* read an ex command */
 char *led_prompt(char *pref, char *post, char **kmap)
 {
-	char *s;
 	int key;
-	s = led_line(pref, post, "", 0, &key, kmap);
-	if (key == '\n')
-		return s;
+	char *s = led_line(pref, post, "", 0, &key, kmap);
+	if (key == '\n') {
+		struct sbuf *sb = sbuf_make();
+		if (pref)
+			sbuf_str(sb, pref);
+		sbuf_str(sb, s);
+		if (post)
+			sbuf_str(sb, post);
+		free(s);
+		return sbuf_done(sb);
+	}
 	free(s);
 	return NULL;
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
+char *led_input(char *pref, char *post, char **kmap)
 {
 	struct sbuf *sb = sbuf_make();
-	char *ai_1st = NULL;		/* first line auto-indentation */
+	char ai[128];
+	int ai_max = xai ? sizeof(ai) - 1 : 0;
+	int n = 0;
 	int key;
+	while (n < ai_max && (*pref == ' ' || *pref == '\t'))
+		ai[n++] = *pref++;
+	ai[n] = '\0';
 	while (1) {
 		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
 		int ln_sp = 0;	/* number of initial spaces in ln */
 		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))
 			ln_sp++;
-		if (pref)
-			ai_1st = uc_dup(pref[0] || ln[ln_sp] ? ai : "");
-		if (!pref && ln[ln_sp])
+		if (ln[ln_sp] || (pref && pref[0]) ||
+				(key != '\n' && post[0] && post[0] != '\n'))
 			sbuf_str(sb, ai);
+		if (pref)
+			sbuf_str(sb, pref);
 		sbuf_str(sb, ln);
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
@@ -334,16 +347,17 @@ char *led_input(char *pref, char *post, char *ai, int ai_max, char **kmap)
 			memcpy(ai + ai_len, ln, ai_new);
 			ai[ai_len + ai_new] = '\0';
 		}
-		pref = NULL;
 		free(ln);
 		if (key != '\n')
 			break;
 		term_room(1);
-		while (ai_max && post[0] && (post[0] == ' ' || post[0] == '\t'))
-			post++;
+		pref = NULL;
+		n = 0;
+		while (xai && (post[n] == ' ' || post[n] == '\t'))
+			n++;
+		memmove(post, post + n, strlen(post) - n + 1);
 	}
-	strcpy(ai, ai_1st);
-	free(ai_1st);
+	sbuf_str(sb, post);
 	if (TK_INT(key))
 		return sbuf_done(sb);
 	sbuf_free(sb);

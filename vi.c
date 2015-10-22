@@ -84,9 +84,15 @@ static char *vi_char(void)
 
 static char *vi_prompt(char *msg, char **kmap)
 {
+	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	return led_prompt(msg, "", kmap);
+	s = led_prompt(msg, "", kmap);
+	if (!s)
+		return NULL;
+	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
+	free(s);
+	return r;
 }
 
 /* read an ex input line */
@@ -596,40 +602,30 @@ static int linecount(char *s)
 	return n;
 }
 
-static int indentscopy(char *d, char *s, int len)
+static int charcount(char *text, char *post)
 {
+	int tlen = strlen(text);
+	int plen = strlen(post);
+	char *nl = text;
 	int i;
-	for (i = 0; i < len - 1 && (s[i] == ' ' || s[i] == '\t'); i++)
-		d[i] = s[i];
-	d[i] = '\0';
-	return i;
+	if (tlen < plen)
+		return 0;
+	for (i = 0; i < tlen - plen; i++)
+		if (text[i] == '\n')
+			nl = text + i + 1;
+	return uc_slen(nl) - uc_slen(post);
 }
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char ai[64] = "";
-	char *rep, *s;
-	struct sbuf *sb;
-	int last;
-	if (xai)
-		pref += indentscopy(ai, pref, sizeof(ai));
-	rep = led_input(pref, post, ai, xai ? sizeof(ai) - 1 : 0, &vi_kmap);
+	char *rep = led_input(pref, post, &vi_kmap);
 	if (!rep)
 		return NULL;
-	sb = sbuf_make();
-	sbuf_str(sb, ai);
-	sbuf_str(sb, pref);
-	sbuf_str(sb, rep);
-	s = sbuf_buf(sb);
-	last = uc_lastline(s) - s;
-	*off = MAX(0, uc_slen(sbuf_buf(sb) + last) - 1);
-	if (last)
-		while (xai && (post[0] == ' ' || post[0] == '\t'))
-			post++;
-	sbuf_str(sb, post);
-	*row = linecount(sbuf_buf(sb)) - 1;
-	free(rep);
-	return sbuf_done(sb);
+	*row = linecount(rep) - 1;
+	*off = charcount(rep, post) - 1;
+	if (*off < 0)
+		*off = 0;
+	return rep;
 }
 
 static char *vi_indents(char *ln)
@@ -804,6 +800,8 @@ static int vc_insert(int cmd)
 		off = xoff;
 	if (cmd == 'a' || cmd == 'A')
 		off = xoff + 1;
+	if (ln && ln[0] == '\n')
+		off = 0;
 	pref = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, 0, off) : vi_indents(ln);
 	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
 	vi_drawrm(xrow, xrow, cmd == 'o' || cmd == 'O');

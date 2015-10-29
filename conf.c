@@ -1,11 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include "vi.h"
 #include "conf.h"
-
-char *conf_kmapalt(void)
-{
-	return KMAPALT;
-}
+#include "kmap.h"
 
 int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp)
 {
@@ -76,4 +73,22 @@ int conf_highlight_revdir(int *att)
 {
 	*att = SYN_REVDIR;
 	return 0;
+}
+
+char **conf_kmap(char *name)
+{
+	int i;
+	for (i = 0; i < LEN(kmaps); i++)
+		if (name && kmaps[i][0] && !strcmp(name, kmaps[i][0]))
+			return kmaps[i];
+	return kmap_en;
+}
+
+char *conf_digraph(int c1, int c2)
+{
+	int i;
+	for (i = 0; i < LEN(digraphs); i++)
+		if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
+			return digraphs[i][1];
+	return NULL;
 }

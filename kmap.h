@@ -100,6 +100,8 @@ static char *kmap_fa[256] = {
 	['|'] = "|",
 };
 
+static char **kmaps[] = {kmap_en, kmap_fa};
+
 static char *digraphs[][2] = {
 	{"cq", "’"},
 	{"pl", "+"},

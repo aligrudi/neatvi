@@ -17,7 +17,6 @@ static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
 static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
-static char *vi_kmap;		/* current insertion keymap */
 static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d*/
@@ -79,7 +78,7 @@ static void vi_back(int c)
 
 static char *vi_char(void)
 {
-	return led_read(&vi_kmap);
+	return led_read(ex_kmap());
 }
 
 static char *vi_prompt(char *msg, char **kmap)
@@ -101,7 +100,7 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	char c;
 	if (xled) {
-		char *s = led_prompt(msg, "", &vi_kmap);
+		char *s = led_prompt(msg, "", ex_kmap());
 		if (s)
 			term_chr('\n');
 		return s;
@@ -217,7 +216,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	char *soff = "";
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
-		char *kw = vi_prompt(sign, &vi_kmap);
+		char *kw = vi_prompt(sign, ex_kmap());
 		if (!kw)
 			return 1;
 		xfinddir = cmd == '/' ? +1 : -1;
@@ -618,7 +617,7 @@ static int charcount(char *text, char *post)
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &vi_kmap);
+	char *rep = led_input(pref, post, ex_kmap());
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;

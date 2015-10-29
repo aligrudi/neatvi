@@ -3,16 +3,31 @@ NEATVI
 
 Neatvi is a vi/ex editor.  It can edit bidirectional UTF-8 text.
 
-Edit conf.h to adjust syntax highlighting rules, direction adjustment
-patterns, and the alternate keymap.  To define a new keymap, create a
-new array in kmap.h, like kmap_fa, and add it to kmaps array in led.c.
-When in input mode, ^f switches to the alternate keymap and ^e
-switches back to the default keymap.
+Edit conf.h to adjust syntax highlighting rules and text direction
+patterns.  To define a new keymap, create a new array in kmap.h, like
+kmap_fa, and add it to kmaps array in the same header (the first entry
+of the new array specifies its name).  The current keymap may be
+changed using :cm ex command.  When in input mode, ^e changes to the
+English kaymap and ^f changes to the alternate keymap (the last keymap
+specified with :km).
 
-The following options are supported:
+Commands not available in ex(1):
+
+:cm[ap][!] [kmap]
+	Without kmap, print the current keymap name.
+	When kmap is specified, set the alternate keymap to
+	kmap and, unless ! is given, switch to this keymap.
+
+:ft [filetype]
+	Without filetype, print the current file type.
+	When filetype is specified, set the file type of the
+	current ex buffer.
+
+Options supported by neatvi:
 
 td, textdirection
-	Current direction context.  The following values are meaningful:
+	Current direction context.  The following values are
+	meaningful:
 	
 	* +2: always left-to-right.
 	* +1: follow conf.h's dircontexts[]; left-to-right for others.
@@ -23,7 +38,12 @@ shape
 	If set (default), performs Arabic/Farsi letter shaping.
 
 order
-	If set, reorder characters based on the rules defined in conf.h.
+	If set, reorder characters based on the rules defined
+	in conf.h.
+
+hl, highlight
+	If set (default), text will receive syntax highlighting
+	based on the rules in conf.h.
 
 ai, autoindent
 	As in vi(1).
@@ -33,7 +53,3 @@ aw, autowrite
 
 ic, ignorecase
 	As in vi(1).
-
-hl, highlight
-	If set (default), text will receive syntax highlighting based on the
-	rules in conf.h.

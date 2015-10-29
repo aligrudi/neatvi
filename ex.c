@@ -21,6 +21,8 @@ int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
 char xfindkwd[EXLEN];		/* the last searched keyword */
 int xfinddir = +1;		/* the last search direction */
+static char *xkmap = "en";	/* the current keymap */
+static char xkmap2[8] = "fa";	/* the alternate keymap */
 
 static struct buf {
 	char ft[32];
@@ -94,6 +96,16 @@ struct lbuf *ex_lbuf(void)
 char *ex_filetype(void)
 {
 	return xhl ? bufs[0].ft : "";
+}
+
+char **ex_kmap(void)
+{
+	return &xkmap;
+}
+
+char *ex_kmapalt(void)
+{
+	return xkmap2;
 }
 
 /* read ex command location */
@@ -690,6 +702,21 @@ static int ec_ft(char *ec)
 	return 0;
 }
 
+static int ec_cmap(char *ec)
+{
+	char cmd[EXLEN];
+	char arg[EXLEN];
+	ex_cmd(ec, cmd);
+	ex_arg(ec, arg);
+	if (arg[0])
+		snprintf(xkmap2, sizeof(xkmap2), arg);
+	else
+		ex_print(xkmap);
+	if (arg[0] && !strchr(cmd, '!'))
+		xkmap = xkmap2;
+	return 0;
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -784,6 +811,8 @@ static struct excmd {
 	{"!", "!", ec_exec},
 	{"make", "make", ec_make},
 	{"ft", "filetype", ec_ft},
+	{"cm", "cmap", ec_cmap},
+	{"cm!", "cmap!", ec_cmap},
 	{"", "", ec_null},
 };
 

@@ -61,9 +61,6 @@ static struct highlight {
 	{"sh", {4}, "\'[^\']*\'"},
 };
 
-/* the alternate keymap (^F and ^E in insert mode to switch) */
-#define KMAPALT		"fa"
-
 /* how to hightlight text in the reverse direction */
 #define SYN_REVDIR		(SYN_BGMK(255))
 

@@ -4,23 +4,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "vi.h"
-#include "kmap.h"
-
-static char **kmaps[] = {kmap_en, kmap_fa};
-
-static char **kmap_find(char *name)
-{
-	int i;
-	for (i = 0; i < LEN(kmaps); i++)
-		if (name && kmaps[i][0] && !strcmp(name, kmaps[i][0]))
-			return kmaps[i];
-	return kmap_en;
-}
 
 static char *kmap_map(char *kmap, int c)
 {
 	static char cs[4];
-	char **keymap = kmap_find(kmap);
+	char **keymap = conf_kmap(kmap);
 	cs[0] = c;
 	return keymap[c] ? keymap[c] : cs;
 }
@@ -198,10 +186,7 @@ static char *led_readchar(int c, char *kmap)
 		c2 = term_read();
 		if (TK_INT(c2))
 			return NULL;
-		for (i = 0; i < LEN(digraphs); i++)
-			if (digraphs[i][0][0] == c1 && digraphs[i][0][1] == c2)
-				return digraphs[i][1];
-		return NULL;
+		return conf_digraph(c1, c2);
 	}
 	if ((c & 0xc0) == 0xc0) {	/* utf-8 character */
 		buf[0] = c;
@@ -220,10 +205,10 @@ char *led_read(char **kmap)
 	while (!TK_INT(c)) {
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = conf_kmapalt();
+			*kmap = ex_kmapalt();
 			break;
 		case TK_CTL('e'):
-			*kmap = kmap_en[0];
+			*kmap = "en";
 			break;
 		default:
 			return led_readchar(c, *kmap);
@@ -249,10 +234,10 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = conf_kmapalt();
+			*kmap = ex_kmapalt();
 			continue;
 		case TK_CTL('e'):
-			*kmap = kmap_en[0];
+			*kmap = "en";
 			continue;
 		case TK_CTL('h'):
 		case 127:

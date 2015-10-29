@@ -141,6 +141,8 @@ int ex_init(char **files);
 void ex_done(void);
 char *ex_path(void);
 char *ex_filetype(void);
+char **ex_kmap(void);
+char *ex_kmapalt(void);
 struct lbuf *ex_lbuf(void);
 
 #define xb 	ex_lbuf()
@@ -169,13 +171,14 @@ void syn_init(void);
 void syn_done(void);
 
 /* configuration variables */
-char *conf_kmapalt(void);
 int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
 int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_placeholder(int idx, char **s, char **d, int *wid);
 int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_highlight_revdir(int *att);
+char **conf_kmap(char *name);
+char *conf_digraph(int c1, int c2);
 
 /* global variables */
 extern int xrow;

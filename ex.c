@@ -679,6 +679,17 @@ static int ec_make(char *ec)
 	return 0;
 }
 
+static int ec_ft(char *ec)
+{
+	char arg[EXLEN];
+	ex_arg(ec, arg);
+	if (arg[0])
+		snprintf(bufs[0].ft, sizeof(bufs[0].ft), arg);
+	else
+		ex_print(ex_filetype());
+	return 0;
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -772,6 +783,7 @@ static struct excmd {
 	{"ya", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"make", "make", ec_make},
+	{"ft", "filetype", ec_ft},
 	{"", "", ec_null},
 };
 

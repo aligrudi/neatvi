@@ -154,8 +154,11 @@ static char *ex_arg(char *s, char *arg)
 	s = ex_cmd(s, arg);
 	while (isspace((unsigned char) *s))
 		s++;
-	while (*s && !isspace((unsigned char) *s))
+	while (*s && !isspace((unsigned char) *s)) {
+		if (*s == '\\' && s[1])
+			s++;
 		*arg++ = *s++;
+	}
 	*arg = '\0';
 	return s;
 }
@@ -852,7 +855,16 @@ void ex(void)
 int ex_init(char **files)
 {
 	char cmd[EXLEN];
-	snprintf(cmd, sizeof(cmd), "e %s", files[0] ? files[0] : "");
+	char *s = cmd;
+	char *r = files[0] ? files[0] : "";
+	*s++ = 'e';
+	*s++ = ' ';
+	while (*r && s + 2 < cmd + sizeof(cmd)) {
+		if (*r == ' ')
+			*s++ = '\\';
+		*s++ = *r++;
+	}
+	*s = '\0';
 	if (ec_edit(cmd))
 		return 1;
 	if (getenv("EXINIT"))

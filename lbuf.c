@@ -5,13 +5,14 @@
 #include <unistd.h>
 #include "vi.h"
 
-#define NMARKS		128
+#define NMARKS		32
 
 /* line operations */
 struct lopt {
 	char *ins;		/* inserted text */
 	char *del;		/* deleted text */
 	int pos, n_ins, n_del;	/* modification location */
+	int pos_off;		/* cursor line offset */
 	int seq;		/* operation number */
 	int *mark, *mark_off;	/* saved marks */
 };
@@ -72,6 +73,31 @@ static void lbuf_loadmark(struct lbuf *lb, struct lopt *lo, int m)
 	}
 }
 
+static int markidx(int mark)
+{
+	if (islower(mark))
+		return mark - 'a';
+	if (mark == '*')
+		return 'z' - 'a' + 1;
+	if (mark == '[')
+		return 'z' - 'a' + 2;
+	if (mark == ']')
+		return 'z' - 'a' + 3;
+	return -1;
+}
+
+static void lbuf_savepos(struct lbuf *lb, struct lopt *lo)
+{
+	if (lb->mark[markidx('*')] >= 0)
+		lo->pos_off = lb->mark_off[markidx('*')];
+}
+
+static void lbuf_loadpos(struct lbuf *lb, struct lopt *lo)
+{
+	lb->mark[markidx('*')] = lo->pos;
+	lb->mark_off[markidx('*')] = lo->pos_off;
+}
+
 void lbuf_free(struct lbuf *lb)
 {
 	int i;
@@ -128,7 +154,7 @@ static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 			lb->mark[i] = pos + n_ins - 1;
 	}
 	lbuf_mark(lb, '[', pos, 0);
-	lbuf_mark(lb, ']', pos + n_ins - n_del, 0);
+	lbuf_mark(lb, ']', pos + (n_ins ? n_ins - 1 : 0), 0);
 }
 
 static int uc_newlines(char *s)
@@ -165,10 +191,10 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	lo->n_ins = buf ? uc_newlines(buf) : 0;
 	lo->ins = buf ? uc_dup(buf) : NULL;
 	lo->seq = lb->useq;
-	for (i = 0; i < LEN(lb->mark); i++)
+	lbuf_savepos(lb, lo);
+	for (i = 0; i < 'z' - 'a' + 1; i++)
 		if (lb->mark[i] >= pos && lb->mark[i] < pos + n_del)
-			if (isalpha(i))
-				lbuf_savemark(lb, lo, i);
+			lbuf_savemark(lb, lo, i);
 }
 
 void lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
@@ -226,19 +252,20 @@ int lbuf_len(struct lbuf *lb)
 
 void lbuf_mark(struct lbuf *lbuf, int mark, int pos, int off)
 {
-	if (mark >= NMARKS)
-		return;
-	lbuf->mark[mark] = pos;
-	lbuf->mark_off[mark] = off;
+	if (markidx(mark) >= 0) {
+		lbuf->mark[markidx(mark)] = pos;
+		lbuf->mark_off[markidx(mark)] = off;
+	}
 }
 
 int lbuf_jump(struct lbuf *lbuf, int mark, int *pos, int *off)
 {
-	if (mark >= NMARKS || lbuf->mark[mark] < 0)
+	int mk = markidx(mark);
+	if (mk < 0 || lbuf->mark[mk] < 0)
 		return 1;
-	*pos = lbuf->mark[mark];
+	*pos = lbuf->mark[mk];
 	if (off)
-		*off = lbuf->mark_off[mark];
+		*off = lbuf->mark_off[mk];
 	return 0;
 }
 
@@ -251,7 +278,7 @@ int lbuf_undo(struct lbuf *lb)
 	while (lb->hist_u && lb->hist[lb->hist_u - 1].seq == useq) {
 		struct lopt *lo = &lb->hist[--(lb->hist_u)];
 		lbuf_replace(lb, lo->del, lo->pos, lo->n_ins);
-		lbuf_loadmark(lb, lo, '*');
+		lbuf_loadpos(lb, lo);
 		for (i = 0; i < LEN(lb->mark); i++)
 			lbuf_loadmark(lb, lo, i);
 	}
@@ -267,7 +294,7 @@ int lbuf_redo(struct lbuf *lb)
 	while (lb->hist_u < lb->hist_n && lb->hist[lb->hist_u].seq == useq) {
 		struct lopt *lo = &lb->hist[lb->hist_u++];
 		lbuf_replace(lb, lo->ins, lo->pos, lo->n_del);
-		lbuf_loadmark(lb, lo, '*');
+		lbuf_loadpos(lb, lo);
 	}
 	return 0;
 }
@@ -295,9 +322,6 @@ void lbuf_saved(struct lbuf *lb, int clear)
 /* was the file modified since the last lbuf_modreset() */
 int lbuf_modified(struct lbuf *lb)
 {
-	struct lopt *lo = lb->hist_n ? &lb->hist[lb->hist_n - 1] : NULL;
-	if (lb->hist_u == lb->hist_n && lo && !lo->mark)
-		lbuf_savemark(lb, lo, '*');
 	lb->useq++;
 	return lbuf_seq(lb) != lb->useq_zero;
 }

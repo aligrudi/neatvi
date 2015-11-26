@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include "vi.h"
 
-#define NMARKS		32
+#define NMARKS_BASE		('z' - 'a' + 2)
+#define NMARKS			32
 
 /* line operations */
 struct lopt {
@@ -77,12 +78,14 @@ static int markidx(int mark)
 {
 	if (islower(mark))
 		return mark - 'a';
-	if (mark == '*')
+	if (mark == '\'' || mark == '`')
 		return 'z' - 'a' + 1;
-	if (mark == '[')
+	if (mark == '*')
 		return 'z' - 'a' + 2;
-	if (mark == ']')
+	if (mark == '[')
 		return 'z' - 'a' + 3;
+	if (mark == ']')
+		return 'z' - 'a' + 4;
 	return -1;
 }
 
@@ -192,7 +195,7 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	lo->ins = buf ? uc_dup(buf) : NULL;
 	lo->seq = lb->useq;
 	lbuf_savepos(lb, lo);
-	for (i = 0; i < 'z' - 'a' + 1; i++)
+	for (i = 0; i < NMARKS_BASE; i++)
 		if (lb->mark[i] >= pos && lb->mark[i] < pos + n_del)
 			lbuf_savemark(lb, lo, i);
 }

@@ -45,7 +45,7 @@ static void led_markrev(int n, char **chrs, int *pos, int *att)
 			i++;
 		if (dir < 0)
 			for (j = beg; j <= i; j++)
-				att[j] = syn_merge(att[j], hl);
+				att[j] = syn_merge(hl, att[j]);
 		if (i == beg)
 			i++;
 	}
@@ -230,7 +230,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 	if (!post)
 		post = "";
 	while (1) {
-		led_printparts(ai, pref, uc_lastline(sbuf_buf(sb)), post, *kmap);
+		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap);
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):

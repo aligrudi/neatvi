@@ -344,7 +344,7 @@ static struct rnode *rnode_atom(char **pat)
 	}
 	if ((*pat)[0] == '+') {
 		rnode->mincnt = 1;
-		rnode->maxcnt = -1;
+		rnode->maxcnt = NREPS;
 		*pat += 1;
 	}
 	if ((*pat)[0] == '{') {
@@ -356,7 +356,7 @@ static struct rnode *rnode_atom(char **pat)
 		if (**pat == ',') {
 			(*pat)++;
 			if ((*pat)[0] == '}')
-				rnode->maxcnt = -1;
+				rnode->maxcnt = NREPS;
 			while (isdigit((unsigned char) **pat))
 				rnode->maxcnt = rnode->maxcnt * 10 + *(*pat)++ - '0';
 		} else {

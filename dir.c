@@ -15,9 +15,10 @@ static int dir_match(char **chrs, int beg, int end, int ctx, int *rec,
 	struct sbuf *str = sbuf_make();
 	int grp;
 	int flg = (beg ? RE_NOTBOL : 0) | (chrs[end][0] ? RE_NOTEOL : 0);
-	int found;
+	int found = -1;
 	sbuf_mem(str, chrs[beg], chrs[end] - chrs[beg]);
-	found = rset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, flg);
+	if (rs)
+		found = rset_find(rs, sbuf_buf(str), LEN(subs) / 2, subs, flg);
 	if (found >= 0 && r_beg && r_end && c_beg && c_end) {
 		char *s = sbuf_buf(str);
 		conf_dirmark(found, NULL, NULL, dir, &grp);
@@ -66,13 +67,14 @@ static void dir_fix(char **chrs, int *ord, int dir, int beg, int end)
 
 int dir_context(char *s)
 {
-	int found;
+	int found = -1;
 	int dir;
 	if (xdir > +1)
 		return +1;
 	if (xdir < -1)
 		return -1;
-	found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
+	if (dir_rsctx)
+		found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (!conf_dircontext(found, NULL, &dir))
 		return dir;
 	return xdir < 0 ? -1 : +1;
@@ -112,7 +114,10 @@ void dir_init(void)
 
 void dir_done(void)
 {
-	rset_free(dir_rslr);
-	rset_free(dir_rsrl);
-	rset_free(dir_rsctx);
+	if (dir_rslr)
+		rset_free(dir_rslr);
+	if (dir_rsrl)
+		rset_free(dir_rsrl);
+	if (dir_rsctx)
+		rset_free(dir_rsctx);
 }

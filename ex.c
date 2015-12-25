@@ -720,6 +720,46 @@ static int ec_cmap(char *ec)
 	return 0;
 }
 
+static int ec_glob(char *ec)
+{
+	char loc[EXLEN], cmd[EXLEN];
+	struct rset *re;
+	int offs[32];
+	int beg, end, not;
+	char *pats[1];
+	char *pat, *s;
+	int delim;
+	int i;
+	ex_cmd(ec, cmd);
+	ex_loc(ec, loc);
+	if (ex_region(loc, &beg, &end))
+		return 1;
+	not = strchr(cmd, '!') || cmd[0] == 'v';
+	s = ex_argeol(ec);
+	delim = (unsigned char) *s++;
+	pat = readuntil(&s, delim);
+	if (pat[0])
+		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
+	free(pat);
+	pats[0] = xfindkwd;
+	if (!(re = rset_make(1, pats, xic ? RE_ICASE : 0)))
+		return 1;
+	i = beg;
+	while (i < end) {
+		char *ln = lbuf_get(xb, i);
+		if ((rset_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
+			int len = lbuf_len(xb);
+			xrow = i;
+			ex_command(s);
+			i += lbuf_len(xb) - len;
+			end += lbuf_len(xb) - len;
+		}
+		i++;
+	}
+	rset_free(re);
+	return 0;
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -796,12 +836,15 @@ static struct excmd {
 	{"c", "change", ec_insert},
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
+	{"g", "global", ec_glob},
+	{"g!", "global!", ec_glob},
 	{"=", "=", ec_lnum},
 	{"k", "mark", ec_mark},
 	{"pu", "put", ec_put},
 	{"q", "quit", ec_quit},
 	{"q!", "quit!", ec_quit},
 	{"r", "read", ec_read},
+	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
 	{"wq", "wq", ec_write},
 	{"u", "undo", ec_undo},

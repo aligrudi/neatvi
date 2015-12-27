@@ -720,6 +720,8 @@ static int ec_cmap(char *ec)
 	return 0;
 }
 
+static int ex_exec(char *ln);
+
 static int ec_glob(char *ec)
 {
 	char loc[EXLEN], cmd[EXLEN];
@@ -750,7 +752,7 @@ static int ec_glob(char *ec)
 		if ((rset_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
 			int len = lbuf_len(xb);
 			xrow = i;
-			ex_command(s);
+			ex_exec(s);
 			i += lbuf_len(xb) - len;
 			end += lbuf_len(xb) - len;
 		}
@@ -863,24 +865,32 @@ static struct excmd {
 };
 
 /* execute a single ex command */
-void ex_command(char *ln)
+static int ex_exec(char *ln)
 {
 	char ec[EXLEN];
 	char cmd[EXLEN];
 	int i;
+	int ret = 0;
 	while (*ln) {
 		ln = ex_line(ln, ec);
 		ex_cmd(ec, cmd);
 		for (i = 0; i < LEN(excmds); i++) {
 			if (!strcmp(excmds[i].abbr, cmd) ||
 					!strcmp(excmds[i].name, cmd)) {
-				excmds[i].ec(ec);
+				ret = excmds[i].ec(ec);
 				break;
 			}
 		}
 		if (!xvis && !cmd[0])
-			ec_print(ec);
+			ret = ec_print(ec);
 	}
+	return ret;
+}
+
+/* execute a single ex command */
+void ex_command(char *ln)
+{
+	ex_exec(ln);
 	lbuf_modified(xb);
 }
 

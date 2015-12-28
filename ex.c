@@ -29,6 +29,7 @@ static struct buf {
 	char *path;
 	struct lbuf *lb;
 	int row, off;
+	long mtime;		/* modification time */
 } bufs[8];
 
 static int bufs_find(char *path)
@@ -49,6 +50,14 @@ static void bufs_free(int idx)
 	}
 }
 
+static long mtime(char *path)
+{
+	struct stat st;
+	if (!stat(path, &st))
+		return st.st_mtime;
+	return -1;
+}
+
 static int bufs_open(char *path)
 {
 	int i;
@@ -60,6 +69,7 @@ static int bufs_open(char *path)
 	bufs[i].lb = lbuf_make();
 	bufs[i].row = 0;
 	bufs[i].off = 0;
+	bufs[i].mtime = -1;
 	strcpy(bufs[i].ft, syn_filetype(path));
 	return i;
 }
@@ -359,6 +369,7 @@ static int ec_edit(char *ec)
 	}
 	xrow = xvis ? 0 : MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	lbuf_saved(xb, path[0] != '\0');
+	bufs[0].mtime = mtime(ex_path());
 	return 0;
 }
 
@@ -427,7 +438,14 @@ static int ec_write(char *ec)
 		cmd_pipe(arg + 1, ibuf, 1, 0);
 		free(ibuf);
 	} else {
-		int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		int fd;
+		if (!strchr(cmd, '!') && bufs[0].path &&
+				!strcmp(bufs[0].path, path) &&
+				mtime(bufs[0].path) > bufs[0].mtime) {
+			ex_show("write failed\n");
+			return 1;
+		}
+		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 		if (fd < 0) {
 			ex_show("write failed\n");
 			return 1;
@@ -444,6 +462,8 @@ static int ec_write(char *ec)
 	}
 	if (!strcmp(ex_path(), path))
 		lbuf_saved(xb, 0);
+	if (!strcmp(ex_path(), path))
+		bufs[0].mtime = mtime(path);
 	if (cmd[0] == 'x' || (cmd[0] == 'w' && cmd[1] == 'q'))
 		ec_quit(cmd);
 	return 0;
@@ -848,7 +868,9 @@ static struct excmd {
 	{"r", "read", ec_read},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
+	{"w!", "write!", ec_write},
 	{"wq", "wq", ec_write},
+	{"wq!", "wq!", ec_write},
 	{"u", "undo", ec_undo},
 	{"r", "redo", ec_redo},
 	{"se", "set", ec_set},

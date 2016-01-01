@@ -627,22 +627,6 @@ static int ec_mark(char *ec)
 	return 0;
 }
 
-static char *readuntil(char **src, int delim)
-{
-	struct sbuf *sbuf = sbuf_make();
-	char *s = *src;
-	/* reading the pattern */
-	while (*s && *s != delim) {
-		if (s[0] == '\\' && s[1])
-			sbuf_chr(sbuf, (unsigned char) *s++);
-		sbuf_chr(sbuf, (unsigned char) *s++);
-	}
-	if (*s)			/* skipping the delimiter */
-		s++;
-	*src = s;
-	return sbuf_done(sbuf);
-}
-
 static int ec_substitute(char *ec)
 {
 	char loc[EXLEN];
@@ -652,15 +636,14 @@ static int ec_substitute(char *ec)
 	char *pats[1];
 	char *pat, *rep;
 	char *s;
-	int delim;
 	int i;
 	ex_loc(ec, loc);
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	s = ex_argeol(ec);
-	delim = (unsigned char) *s++;
-	pat = readuntil(&s, delim);
-	rep = readuntil(&s, delim);
+	pat = re_read(&s);
+	s--;
+	rep = re_read(&s);
 	if (pat[0])
 		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
 	free(pat);
@@ -751,7 +734,6 @@ static int ec_glob(char *ec)
 	int beg, end, not;
 	char *pats[1];
 	char *pat, *s;
-	int delim;
 	int i;
 	ex_cmd(ec, cmd);
 	ex_loc(ec, loc);
@@ -759,8 +741,7 @@ static int ec_glob(char *ec)
 		return 1;
 	not = strchr(cmd, '!') || cmd[0] == 'v';
 	s = ex_argeol(ec);
-	delim = (unsigned char) *s++;
-	pat = readuntil(&s, delim);
+	pat = re_read(&s);
 	if (pat[0])
 		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
 	free(pat);

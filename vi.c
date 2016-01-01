@@ -20,6 +20,7 @@ static int vi_ybuf;		/* current yank buffer */
 static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d*/
+static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
 
 static void vi_wait(void)
 {
@@ -213,20 +214,29 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	int failed = 0;
 	int len = 0;
 	int i, dir;
-	char *soff = "";
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
+		struct sbuf *sb;
 		char *kw = vi_prompt(sign, ex_kmap());
+		char *re;
 		if (!kw)
 			return 1;
-		xfinddir = cmd == '/' ? +1 : -1;
-		if (kw[0])
-			snprintf(xfindkwd, sizeof(xfindkwd), "%s", kw);
-		if (strchr(xfindkwd, cmd)) {
-			soff = strchr(xfindkwd, cmd) + 1;
-			*strchr(xfindkwd, cmd) = '\0';
-		}
+		sb = sbuf_make();
+		sbuf_chr(sb, cmd);
+		sbuf_str(sb, kw);
 		free(kw);
+		kw = sbuf_buf(sb);
+		if ((re = re_read(&kw))) {
+			xfinddir = cmd == '/' ? +1 : -1;
+			if (re[0])
+				snprintf(xfindkwd, sizeof(xfindkwd), "%s", re);
+			while (isspace(*kw))
+				kw++;
+			vi_soset = !!kw[0];
+			vi_so = atoi(kw);
+			free(re);
+		}
+		sbuf_free(sb);
 	}
 	dir = cmd == 'N' ? -xfinddir : xfinddir;
 	if (!xfindkwd[0] || !lbuf_len(xb))
@@ -243,14 +253,12 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	if (!failed) {
 		*row = r;
 		*off = o;
-		while (soff[0] && isspace((unsigned char) soff[0]))
-			soff++;
-		if (soff[0]) {
+		if (vi_soset) {
 			*off = -1;
-			if (*row + atoi(soff) < 0 || *row + atoi(soff) >= lbuf_len(xb))
+			if (*row + vi_so < 0 || *row + vi_so >= lbuf_len(xb))
 				failed = 1;
 			else
-				*row += atoi(soff);
+				*row += vi_so;
 		}
 	}
 	if (failed)

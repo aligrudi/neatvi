@@ -51,6 +51,7 @@ void sbuf_cut(struct sbuf *s, int len);
 struct rset *rset_make(int n, char **pat, int flg);
 int rset_find(struct rset *re, char *s, int n, int *grps, int flg);
 void rset_free(struct rset *re);
+char *re_read(char **src);
 
 /* rendering lines */
 int *ren_position(char *s);

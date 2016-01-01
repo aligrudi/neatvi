@@ -117,3 +117,21 @@ void rset_free(struct rset *rs)
 	free(rs->grp);
 	free(rs);
 }
+
+/* read a regular expression enclosed in a delimiter */
+char *re_read(char **src)
+{
+	struct sbuf *sbuf = sbuf_make();
+	char *s = *src;
+	int delim = (unsigned char) *s++;
+	if (!delim)
+		return NULL;
+	while (*s && *s != delim) {
+		if (s[0] == '\\' && s[1])
+			if (*(++s) != delim)
+				sbuf_chr(sbuf, '\\');
+		sbuf_chr(sbuf, (unsigned char) *s++);
+	}
+	*src = *s ? s + 1 : s;
+	return sbuf_done(sbuf);
+}

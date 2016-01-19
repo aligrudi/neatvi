@@ -237,9 +237,9 @@ static int ex_lineno(char *num)
 	if (num[0] == '$')
 		n = lbuf_len(xb) - 1;
 	if (num[0] == '-')
-		n = xrow - (num[1] ? ex_lineno(num + 1) : 1);
+		n = xrow - (num[1] ? atoi(num + 1) : 1);
 	if (num[0] == '+')
-		n = xrow + (num[1] ? ex_lineno(num + 1) : 1);
+		n = xrow + (num[1] ? atoi(num + 1) : 1);
 	if (num[0] == '\'')
 		lbuf_jump(xb, num[1], &n, NULL);
 	if (num[0] == '/' && num[1])

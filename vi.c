@@ -1,7 +1,7 @@
 /*
  * neatvi editor
  *
- * Copyright (C) 2015 Ali Gholami Rudi <ali at rudi dot ir>
+ * Copyright (C) 2015-2016 Ali Gholami Rudi <ali at rudi dot ir>
  *
  * This program is released under the Modified BSD license.
  */
@@ -40,18 +40,47 @@ static void vi_drawmsg(void)
 	xleft = oleft;
 }
 
+static void vi_drawrow(int row)
+{
+	char *s = lbuf_get(xb, row);
+	led_print(s ? s : (row ? "~" : ""), row - xtop);
+}
+
 /* redraw the screen */
-static void vi_draw(int xcol)
+static void vi_drawagain(int xcol, int lineonly)
 {
 	int i;
 	term_record();
-	for (i = xtop; i < xtop + xrows; i++) {
-		char *s = lbuf_get(xb, i);
-		led_print(s ? s : (i ? "~" : ""), i - xtop);
-	}
+	for (i = xtop; i < xtop + xrows; i++)
+		if (!lineonly || i == xrow)
+			vi_drawrow(i);
 	vi_drawmsg();
 	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 	term_commit();
+}
+
+/* update the screen */
+static void vi_drawupdate(int xcol, int otop)
+{
+	int i;
+	if (otop != xtop) {
+		term_record();
+		term_pos(0, 0);
+		term_room(otop - xtop);
+		if (xtop > otop) {
+			int n = MIN(xtop - otop, xrows);
+			for (i = 0; i < n; i++)
+				vi_drawrow(xtop + xrows - n + i);
+		} else {
+			int n = MIN(otop - xtop, xrows);
+			for (i = 0; i < n; i++)
+				vi_drawrow(xtop + i);
+		}
+		term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
+		term_commit();
+	}
+	vi_drawmsg();
+	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 }
 
 /* update the screen by removing lines r1 to r2 before an input command */
@@ -1002,10 +1031,10 @@ static void vi(void)
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
-	vi_draw(xcol);
+	vi_drawagain(xcol, 0);
 	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
-		int redraw = 0;
+		int mod = 0;	/* screen should be redrawn */
 		int nrow = xrow;
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
@@ -1046,23 +1075,19 @@ static void vi(void)
 				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
-				redraw = 1;
 				break;
 			case TK_CTL('f'):
 				if (vi_scrollforeward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
-				redraw = 1;
 				break;
 			case TK_CTL('e'):
 				if (vi_scrollforeward(MAX(1, vi_arg1)))
 					break;
-				redraw = 1;
 				break;
 			case TK_CTL('y'):
 				if (vi_scrollbackward(MAX(1, vi_arg1)))
 					break;
-				redraw = 1;
 				break;
 			case TK_CTL('u'):
 				if (xrow == 0)
@@ -1073,7 +1098,6 @@ static void vi(void)
 				xrow = MAX(0, xrow - n);
 				if (xtop > 0)
 					xtop = MAX(0, xtop - n);
-				redraw = 1;
 				xoff = lbuf_indents(xb, xrow);
 				break;
 			case TK_CTL('d'):
@@ -1085,18 +1109,17 @@ static void vi(void)
 				xrow = MIN(MAX(0, lbuf_len(xb) - 1), xrow + n);
 				if (xtop < lbuf_len(xb) - xrows)
 					xtop = MIN(lbuf_len(xb) - xrows, xtop + n);
-				redraw = 1;
 				xoff = lbuf_indents(xb, xrow);
 				break;
 			case TK_CTL('z'):
 				term_pos(xrows, 0);
 				term_suspend();
-				redraw = 1;
+				mod = 1;
 				break;
 			case 'u':
 				if (!lbuf_undo(xb)) {
 					lbuf_jump(xb, '*', &xrow, &xoff);
-					redraw = 1;
+					mod = 1;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "undo failed\n");
 				}
@@ -1104,7 +1127,7 @@ static void vi(void)
 			case TK_CTL('r'):
 				if (!lbuf_redo(xb)) {
 					lbuf_jump(xb, '*', &xrow, &xoff);
-					redraw = 1;
+					mod = 1;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "redo failed\n");
 				}
@@ -1114,13 +1137,13 @@ static void vi(void)
 				break;
 			case TK_CTL('^'):
 				ex_command("e #");
-				redraw = 1;
+				mod = 1;
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
 				if (ln && ln[0]) {
 					ex_command(ln);
-					redraw = 1;
+					mod = 1;
 				}
 				free(ln);
 				if (xquit)
@@ -1133,7 +1156,7 @@ static void vi(void)
 			case '>':
 			case '<':
 				if (!vc_motion(c))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'i':
 			case 'I':
@@ -1142,14 +1165,14 @@ static void vi(void)
 			case 'o':
 			case 'O':
 				if (!vc_insert(c))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'J':
 				if (!vc_join())
-					redraw = 1;
+					mod = 1;
 				break;
 			case TK_CTL('l'):
-				redraw = 1;
+				mod = 1;
 				break;
 			case 'm':
 				if ((mark = vi_read()) > 0 && islower(mark))
@@ -1158,7 +1181,7 @@ static void vi(void)
 			case 'p':
 			case 'P':
 				if (!vc_put(c))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'z':
 				k = vi_read();
@@ -1183,52 +1206,51 @@ static void vi(void)
 					xdir = k == 'R' ? -2 : +2;
 					break;
 				}
-				redraw = 1;
+				mod = 1;
 				break;
 			case 'g':
 				k = vi_read();
 				if (k == '~' || k == 'u' || k == 'U')
 					if (!vc_motion(k))
-						redraw = 1;
+						mod = 1;
 				break;
 			case 'x':
 				vi_back(' ');
 				if (!vc_motion('d'))
-					redraw = 1;
+					mod = 2;
 				break;
 			case 'X':
 				vi_back(TK_CTL('h'));
 				if (!vc_motion('d'))
-					redraw = 1;
+					mod = 2;
 				break;
 			case 'C':
 				vi_back('$');
 				if (!vc_motion('c'))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'D':
 				vi_back('$');
 				if (!vc_motion('d'))
-					redraw = 1;
+					mod = 2;
 				break;
 			case 'r':
 				if (!vc_replace())
-					redraw = 1;
+					mod = 2;
 				break;
 			case 's':
 				vi_back(' ');
 				if (!vc_motion('c'))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'S':
 				vi_back('c');
 				if (!vc_motion('c'))
-					redraw = 1;
+					mod = 1;
 				break;
 			case 'Y':
 				vi_back('y');
-				if (!vc_motion('y'))
-					redraw = 1;
+				vc_motion('y');
 				break;
 			case 'Z':
 				k = vi_read();
@@ -1238,7 +1260,7 @@ static void vi(void)
 			case '~':
 				vi_back(' ');
 				if (!vc_motion('~'))
-					redraw = 1;
+					mod = 2;
 				break;
 			case '.':
 				vc_repeat();
@@ -1266,15 +1288,17 @@ static void vi(void)
 			xtop = xtop + xrows + xrows / 2 <= xrow ?
 					xrow - xrows / 2 : xrow - xrows + 1;
 		xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
-		if (redraw)
+		if (mod)
 			xcol = vi_off2col(xb, xrow, xoff);
 		if (xcol >= xleft + xcols)
 			xleft = xcol - xcols / 2;
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
-		if (redraw || xtop != otop || xleft != oleft)
-			vi_draw(xcol);
+		if (mod || xleft != oleft)
+			vi_drawagain(xcol, mod == 2);
+		else if (xtop != otop)
+			vi_drawupdate(xcol, otop);
 		if (vi_msg[0])
 			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),

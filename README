@@ -9,47 +9,42 @@ kmap_fa, and add it to kmaps array in the same header (the first entry
 of the new array specifies its name).  The current keymap may be
 changed using :cm ex command.  When in input mode, ^e changes to the
 English kaymap and ^f changes to the alternate keymap (the last keymap
-specified with :km).
+specified with :cm).
 
 Commands not available in ex(1):
 
 :cm[ap][!] [kmap]
-	Without kmap, print the current keymap name.
-	When kmap is specified, set the alternate keymap to
-	kmap and, unless ! is given, switch to this keymap.
-
+  Without kmap, print the current keymap name.
+  When kmap is specified, set the alternate keymap to
+  kmap and, unless ! is given, switch to this keymap.
 :ft [filetype]
-	Without filetype, print the current file type.
-	When filetype is specified, set the file type of the
-	current ex buffer.
+  Without filetype, print the current file type.
+  When filetype is specified, set the file type of the
+  current ex buffer.
 
 Options supported by neatvi:
 
 td, textdirection
-	Current direction context.  The following values are
-	meaningful:
-	
-	* +2: always left-to-right.
-	* +1: follow conf.h's dircontexts[]; left-to-right for others.
-	* -1: follow conf.h's dircontexts[]; right-to-left for others.
-	* -2: always right-to-left.
-
+  Current direction context.  The following values are meaningful:
+  * +2: always left-to-right.
+  * +1: follow conf.h's dircontexts[]; left-to-right for others.
+  * -1: follow conf.h's dircontexts[]; right-to-left for others.
+  * -2: always right-to-left.
 shape
-	If set (default), performs Arabic/Farsi letter shaping.
-
+  If set (default), performs Arabic/Farsi letter shaping.
 order
-	If set, reorder characters based on the rules defined
-	in conf.h.
-
+  If set, reorder characters based on the rules defined
+  in conf.h.
 hl, highlight
-	If set (default), text will receive syntax highlighting
-	based on the rules in conf.h.
-
+  If set (default), text will be highlighted based on syntax
+  highlighting rules in conf.h.
 ai, autoindent
-	As in vi(1).
-
+  As in vi(1).
 aw, autowrite
-	As in vi(1).
-
+  As in vi(1).
 ic, ignorecase
-	As in vi(1).
+  As in vi(1).
+
+Shaping, character reordering, and syntax highlighting can
+be disabled by defining the EXINIT environment variable as:
+  "set noshape | set noorder | set nohl | set td=+2"

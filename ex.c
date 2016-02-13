@@ -20,6 +20,7 @@ int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
 char xfindkwd[EXLEN];		/* the last searched keyword */
+char xfindrep[EXLEN];		/* the last replacement */
 int xfinddir = +1;		/* the last search direction */
 static char *xkmap = "en";	/* the current keymap */
 static char xkmap2[8] = "fa";	/* the alternate keymap */
@@ -634,7 +635,7 @@ static int ec_substitute(char *ec)
 	int offs[32];
 	int beg, end;
 	char *pats[1];
-	char *pat, *rep;
+	char *pat = NULL, *rep = NULL;
 	char *s;
 	int i;
 	ex_loc(ec, loc);
@@ -642,10 +643,15 @@ static int ec_substitute(char *ec)
 		return 1;
 	s = ex_argeol(ec);
 	pat = re_read(&s);
-	s--;
-	rep = re_read(&s);
-	if (pat[0])
+	if (pat && pat[0])
 		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
+	if (pat && *s) {
+		s--;
+		rep = re_read(&s);
+	}
+	if (!rep)
+		rep = uc_dup(pat ? "" : xfindrep);
+	snprintf(xfindrep, sizeof(xfindrep), "%s", rep);
 	free(pat);
 	pats[0] = xfindkwd;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
@@ -742,7 +748,7 @@ static int ec_glob(char *ec)
 	not = strchr(cmd, '!') || cmd[0] == 'v';
 	s = ex_argeol(ec);
 	pat = re_read(&s);
-	if (pat[0])
+	if (pat && pat[0])
 		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
 	free(pat);
 	pats[0] = xfindkwd;

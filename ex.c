@@ -19,9 +19,9 @@ int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
-char xfindkwd[EXLEN];		/* the last searched keyword */
-char xfindrep[EXLEN];		/* the last replacement */
-int xfinddir = +1;		/* the last search direction */
+static char xfindkwd[EXLEN];	/* the last searched keyword */
+static char xfindrep[EXLEN];	/* the last replacement */
+static int xfinddir;		/* the last search direction */
 static char *xkmap = "en";	/* the current keymap */
 static char xkmap2[8] = "fa";	/* the alternate keymap */
 
@@ -191,15 +191,32 @@ static char *ex_line(char *s, char *ln)
 	return *s ? s + 1 : s;
 }
 
+/* the previous search keyword */
+int ex_kwd(char **kwd, int *dir)
+{
+	if (kwd)
+		*kwd = xfindkwd;
+	if (dir)
+		*dir = xfinddir;
+	return xfinddir == 0;
+}
+
+/* set the previous search keyword */
+void ex_kwdset(char *kwd, int dir)
+{
+	snprintf(xfindkwd, sizeof(xfindkwd), "%s", kwd);
+	reg_put('/', kwd, 0);
+	xfinddir = dir;
+}
+
 static int ex_search(char *pat)
 {
 	struct sbuf *kw;
-	int dir = *pat == '/' ? 1 : -1;
 	char *b = pat;
 	char *e = b;
 	char *pats[1];
 	struct rset *re;
-	int row;
+	int dir, row;
 	kw = sbuf_make();
 	while (*++e) {
 		if (*e == *pat)
@@ -209,12 +226,10 @@ static int ex_search(char *pat)
 			e++;
 	}
 	if (sbuf_len(kw))
-		snprintf(xfindkwd, sizeof(xfindkwd), "%s", sbuf_buf(kw));
+		ex_kwdset(sbuf_buf(kw), *pat == '/' ? 1 : -1);
 	sbuf_free(kw);
-	if (!xfindkwd[0])
+	if (!ex_kwd(&pats[0], &dir))
 		return xrow;
-	xfinddir = dir;
-	pats[0] = xfindkwd;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
 	if (!re)
 		return 1;
@@ -644,7 +659,7 @@ static int ec_substitute(char *ec)
 	s = ex_argeol(ec);
 	pat = re_read(&s);
 	if (pat && pat[0])
-		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
+		ex_kwdset(pat, +1);
 	if (pat && *s) {
 		s--;
 		rep = re_read(&s);
@@ -653,7 +668,8 @@ static int ec_substitute(char *ec)
 		rep = uc_dup(pat ? "" : xfindrep);
 	snprintf(xfindrep, sizeof(xfindrep), "%s", rep);
 	free(pat);
-	pats[0] = xfindkwd;
+	if (ex_kwd(&pats[0], NULL))
+		return 1;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
 	if (!re) {
 		free(rep);
@@ -749,9 +765,10 @@ static int ec_glob(char *ec)
 	s = ex_argeol(ec);
 	pat = re_read(&s);
 	if (pat && pat[0])
-		snprintf(xfindkwd, sizeof(xfindkwd), "%s", pat);
+		ex_kwdset(pat, +1);
 	free(pat);
-	pats[0] = xfindkwd;
+	if (ex_kwd(&pats[0], NULL))
+		return 1;
 	if (!(re = rset_make(1, pats, xic ? RE_ICASE : 0)))
 		return 1;
 	i = beg;
@@ -902,6 +919,7 @@ void ex_command(char *ln)
 {
 	ex_exec(ln);
 	lbuf_modified(xb);
+	reg_put(':', ln, 0);
 }
 
 /* ex main loop */

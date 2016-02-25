@@ -238,6 +238,7 @@ static int vi_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *row, int 
 
 static int vi_search(int cmd, int cnt, int *row, int *off)
 {
+	char *kwd;
 	int r = *row;
 	int o = *off;
 	int failed = 0;
@@ -256,9 +257,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		free(kw);
 		kw = sbuf_buf(sb);
 		if ((re = re_read(&kw))) {
-			xfinddir = cmd == '/' ? +1 : -1;
-			if (re[0])
-				snprintf(xfindkwd, sizeof(xfindkwd), "%s", re);
+			ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
 			while (isspace(*kw))
 				kw++;
 			vi_soset = !!kw[0];
@@ -267,12 +266,12 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		}
 		sbuf_free(sb);
 	}
-	dir = cmd == 'N' ? -xfinddir : xfinddir;
-	if (!xfindkwd[0] || !lbuf_len(xb))
+	if (!lbuf_len(xb) || ex_kwd(&kwd, &dir))
 		return 1;
+	dir = cmd == 'N' ? -dir : dir;
 	o = *off;
 	for (i = 0; i < cnt; i++) {
-		if (lbuf_search(xb, xfindkwd, dir, &r, &o, &len)) {
+		if (lbuf_search(xb, kwd, dir, &r, &o, &len)) {
 			failed = 1;
 			break;
 		}
@@ -291,7 +290,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		}
 	}
 	if (failed)
-		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", xfindkwd);
+		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", kwd);
 	return failed;
 }
 
@@ -533,9 +532,8 @@ static int vi_motion(int *row, int *off)
 	case TK_CTL('a'):
 		if (!(cs = vi_curword(xb, *row, *off)))
 			return -1;
-		strcpy(xfindkwd, cs);
+		ex_kwdset(cs, +1);
 		free(cs);
-		xfinddir = +1;
 		if (vi_search('n', cnt, row, off))
 			return -1;
 		break;

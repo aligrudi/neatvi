@@ -145,7 +145,10 @@ char *ex_filetype(void);
 char **ex_kmap(void);
 char *ex_kmapalt(void);
 struct lbuf *ex_lbuf(void);
+int ex_kwd(char **kwd, int *dir);
+void ex_kwdset(char *kwd, int dir);
 
+#define EXLEN	512		/* ex line length */
 #define xb 	ex_lbuf()
 
 /* process management */
@@ -195,8 +198,3 @@ extern int xdir;
 extern int xshape;
 extern int xorder;
 extern int xhl;
-
-#define EXLEN		512	/* ex line length */
-
-extern char xfindkwd[EXLEN];
-extern int xfinddir;

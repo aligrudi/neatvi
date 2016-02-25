@@ -5,12 +5,13 @@ static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
 } filetypes[] = {
-	{"c", "\\.[hc]$"},
-	{"roff", "\\.(ms|tr|roff|tmac|txt)$"},
-	{"tex", "\\.tex$"},
-	{"msg", "letter|mbox|mail"},
-	{"mk", "Makefile|makefile|\\.mk$"},
-	{"sh", "\\.sh$"},
+	{"c", "\\.[hc]$"},				/* C */
+	{"roff", "\\.(ms|tr|roff|tmac|txt|[1-9])$"},	/* troff */
+	{"tex", "\\.tex$"},				/* tex */
+	{"msg", "letter$|mbox$|mail$"},			/* email */
+	{"mk", "Makefile$|makefile$|\\.mk$"},		/* makefile */
+	{"sh", "\\.sh$"},				/* shell script */
+	{"nm", "\\.nm$"},				/* neatmail */
 };
 
 /* syntax highlighting patterns */
@@ -24,7 +25,7 @@ static struct highlight {
 	{"c", {5}, "\\<(static|extern|register)\\>"},
 	{"c", {4}, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
 	{"c", {2 | SYN_IT}, "//.*$"},
-	{"c", {2 | SYN_IT}, "/\\*([^*]|\\*[^/])*\\*/"},
+	{"c", {2 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
 	{"c", {6}, "^#[ \t]*[a-zA-Z0-9_]+"},
 	{"c", {0, SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
 	{"c", {4}, "\"([^\"]|\\\\\")*\""},
@@ -59,6 +60,16 @@ static struct highlight {
 	{"sh", {2 | SYN_IT}, "#.*$"},
 	{"sh", {4}, "\"([^\"]|\\\\\")*\""},
 	{"sh", {4}, "\'[^\']*\'"},
+
+	{"nm", {0, 12 | SYN_BD, 12 | SYN_BD, 2, 8 | SYN_BD},
+		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
+	{"nm", {7}, "^[LJ].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[HT].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[MI].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(12)}, "^[N].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(10)}, "^[F].*$"},
+	{"nm", {7 | SYN_IT}, "^\t.*$"},
+	{"nm", {SYN_BD}, "^:.*$"},
 };
 
 /* how to hightlight text in the reverse direction */

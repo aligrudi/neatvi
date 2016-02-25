@@ -19,9 +19,9 @@ int xled = 1;			/* use the line editor */
 int xdir = +1;			/* current direction context */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
-static char xfindkwd[EXLEN];	/* the last searched keyword */
-static char xfindrep[EXLEN];	/* the last replacement */
-static int xfinddir;		/* the last search direction */
+static char xkwd[EXLEN];	/* the last searched keyword */
+static char xrep[EXLEN];	/* the last replacement */
+static int xkwddir;		/* the last search direction */
 static char *xkmap = "en";	/* the current keymap */
 static char xkmap2[8] = "fa";	/* the alternate keymap */
 
@@ -195,18 +195,18 @@ static char *ex_line(char *s, char *ln)
 int ex_kwd(char **kwd, int *dir)
 {
 	if (kwd)
-		*kwd = xfindkwd;
+		*kwd = xkwd;
 	if (dir)
-		*dir = xfinddir;
-	return xfinddir == 0;
+		*dir = xkwddir;
+	return xkwddir == 0;
 }
 
 /* set the previous search keyword */
 void ex_kwdset(char *kwd, int dir)
 {
-	snprintf(xfindkwd, sizeof(xfindkwd), "%s", kwd);
+	snprintf(xkwd, sizeof(xkwd), "%s", kwd);
 	reg_put('/', kwd, 0);
-	xfinddir = dir;
+	xkwddir = dir;
 }
 
 static int ex_search(char *pat)
@@ -228,7 +228,7 @@ static int ex_search(char *pat)
 	if (sbuf_len(kw))
 		ex_kwdset(sbuf_buf(kw), *pat == '/' ? 1 : -1);
 	sbuf_free(kw);
-	if (!ex_kwd(&pats[0], &dir))
+	if (ex_kwd(&pats[0], &dir))
 		return xrow;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
 	if (!re)
@@ -665,8 +665,8 @@ static int ec_substitute(char *ec)
 		rep = re_read(&s);
 	}
 	if (!rep)
-		rep = uc_dup(pat ? "" : xfindrep);
-	snprintf(xfindrep, sizeof(xfindrep), "%s", rep);
+		rep = uc_dup(pat ? "" : xrep);
+	snprintf(xrep, sizeof(xrep), "%s", rep);
 	free(pat);
 	if (ex_kwd(&pats[0], NULL))
 		return 1;

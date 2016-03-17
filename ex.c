@@ -204,8 +204,10 @@ int ex_kwd(char **kwd, int *dir)
 /* set the previous search keyword */
 void ex_kwdset(char *kwd, int dir)
 {
-	snprintf(xkwd, sizeof(xkwd), "%s", kwd);
-	reg_put('/', kwd, 0);
+	if (kwd) {
+		snprintf(xkwd, sizeof(xkwd), "%s", kwd);
+		reg_put('/', kwd, 0);
+	}
 	xkwddir = dir;
 }
 

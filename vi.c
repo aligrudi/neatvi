@@ -1310,7 +1310,8 @@ static void vi(void)
 int main(int argc, char *argv[])
 {
 	int i;
-	xvis = 1;
+	char *prog = strchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
+	xvis = strcmp("ex", prog) && strcmp("neatex", prog);
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
 		if (argv[i][1] == 's')
 			xled = 0;

@@ -379,11 +379,14 @@ static int ec_edit(char *ec)
 		bufs_switch(bufs_open(path));
 	fd = open(ex_path(), O_RDONLY);
 	if (fd >= 0) {
-		lbuf_rd(xb, fd, 0, lbuf_len(xb));
+		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
 		snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [r]\n",
 				ex_path(), lbuf_len(xb));
-		ex_show(msg);
+		if (rd)
+			ex_show("read failed\n");
+		else
+			ex_show(msg);
 	}
 	lbuf_saved(xb, path[0] != '\0');
 	bufs[0].mtime = mtime(ex_path());
@@ -420,7 +423,11 @@ static int ec_read(char *ec)
 			ex_show("read failed\n");
 			return 1;
 		}
-		lbuf_rd(xb, fd, pos, pos);
+		if (lbuf_rd(xb, fd, pos, pos)) {
+			ex_show("read failed\n");
+			close(fd);
+			return 1;
+		}
 		close(fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
@@ -469,7 +476,11 @@ static int ec_write(char *ec)
 			ex_show("write failed\n");
 			return 1;
 		}
-		lbuf_wr(xb, fd, beg, end);
+		if (lbuf_wr(xb, fd, beg, end)) {
+			ex_show("write failed\n");
+			close(fd);
+			return 1;
+		}
 		close(fd);
 	}
 	snprintf(msg, sizeof(msg), "\"%s\"  %d lines  [w]\n",

@@ -200,23 +200,35 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 			lbuf_savemark(lb, lo, i);
 }
 
-void lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
+int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 {
 	char buf[1 << 10];
 	struct sbuf *sb;
-	int nr;
+	long nr;
 	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(sb, buf, nr);
-	lbuf_edit(lbuf, sbuf_buf(sb), beg, end);
+	if (!nr)
+		lbuf_edit(lbuf, sbuf_buf(sb), beg, end);
 	sbuf_free(sb);
+	return nr != 0;
 }
 
-void lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
+int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 {
 	int i;
-	for (i = beg; i < end; i++)
-		write(fd, lbuf->ln[i], strlen(lbuf->ln[i]));
+	for (i = beg; i < end; i++) {
+		char *ln = lbuf->ln[i];
+		long nw = 0;
+		long nl = strlen(ln);
+		while (nw < nl) {
+			long nc = write(fd, ln + nw, nl - nw);
+			if (nc < 0)
+				return 1;
+			nw += nc;
+		}
+	}
+	return 0;
 }
 
 /* replace lines beg through end with buf */

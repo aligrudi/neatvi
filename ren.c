@@ -133,6 +133,15 @@ static char *ren_placeholder(char *s)
 	for (i = 0; !conf_placeholder(i, &src, &dst, &wid); i++)
 		if (uc_code(src) == c)
 			return dst;
+	if (uc_iscomb(s)) {
+		static char buf[16];
+		char cbuf[8] = "";
+		memcpy(cbuf, s, uc_len(s));
+		sprintf(buf, "ـ%s", cbuf);
+		return buf;
+	}
+	if (uc_isbell(s))
+		return "�";
 	return NULL;
 }
 

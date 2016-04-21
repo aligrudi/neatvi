@@ -973,6 +973,16 @@ static void vc_status(void)
 		ren_cursor(lbuf_get(xb, xrow), col) + 1);
 }
 
+static void vc_charinfo(void)
+{
+	char *c = uc_chr(lbuf_get(xb, xrow), xoff);
+	if (c) {
+		char cbuf[8] = "";
+		memcpy(cbuf, c, uc_len(c));
+		snprintf(vi_msg, sizeof(vi_msg), "<%s> %04x\n", cbuf, uc_code(c));
+	}
+}
+
 static int vc_replace(void)
 {
 	int cnt = MAX(1, vi_arg1);
@@ -1221,6 +1231,8 @@ static void vi(void)
 				if (k == '~' || k == 'u' || k == 'U')
 					if (!vc_motion(k))
 						mod = 1;
+				if (k == 'a')
+					vc_charinfo();
 				break;
 			case 'x':
 				vi_back(' ');

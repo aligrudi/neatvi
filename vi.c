@@ -1190,6 +1190,8 @@ static void vi(void)
 					mod = 1;
 				break;
 			case TK_CTL('l'):
+				term_done();
+				term_init();
 				mod = 1;
 				break;
 			case 'm':

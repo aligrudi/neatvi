@@ -26,8 +26,8 @@ void term_init(void)
 	if (getenv("COLUMNS"))
 		cols = atoi(getenv("COLUMNS"));
 	if (!ioctl(0, TIOCGWINSZ, &win)) {
-		cols = cols ? cols : win.ws_col;
-		rows = rows ? rows : win.ws_row;
+		cols = win.ws_col;
+		rows = win.ws_row;
 	}
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;

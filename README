@@ -3,6 +3,9 @@ NEATVI
 
 Neatvi is a vi/ex editor.  It can edit bidirectional UTF-8 text.
 
+CONFIGURATION
+-------------
+
 Edit conf.h to adjust syntax highlighting rules and text direction
 patterns.  To define a new keymap, create a new array in kmap.h, like
 kmap_fa, and add it to kmaps array in the same header (the first entry
@@ -10,6 +13,9 @@ of the new array specifies its name).  The current keymap may be
 changed using :cm ex command.  When in input mode, ^e changes to the
 English kaymap and ^f changes to the alternate keymap (the last keymap
 specified with :cm).
+
+COMMANDS
+--------
 
 Commands not available in ex(1):
 
@@ -21,6 +27,17 @@ Commands not available in ex(1):
   Without filetype, print the current file type.
   When filetype is specified, set the file type of the
   current ex buffer.
+
+New key mappings:
+^a in normal mode, searches for the word under the cursor
+^p in insert mode, inserts the contents of the default yank buffer
+
+OPTIONS
+-------
+
+To improve neatvi's performance, shaping, character reordering, and
+syntax highlighting can be disabled by defining the EXINIT environment
+variable as "set noshape | set noorder | set nohl | set td=+2".
 
 Options supported by neatvi:
 
@@ -45,6 +62,14 @@ aw, autowrite
 ic, ignorecase
   As in vi(1).
 
-Shaping, character reordering, and syntax highlighting can
-be disabled by defining the EXINIT environment variable as:
-  "set noshape | set noorder | set nohl | set td=+2"
+MARKS AND BUFFERS
+-----------------
+
+Special marks:
+* the position of the previous change
+[ the first line of the previous change
+] the last line of the previous change
+
+Special yank buffers:
+/ the previous search keyword
+: the previous ex command

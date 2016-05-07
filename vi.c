@@ -1021,7 +1021,9 @@ static int rep_len;
 
 static void vc_repeat(void)
 {
-	term_push(rep_cmd, rep_len);
+	int i;
+	for (i = 0; i < MAX(1, vi_arg1); i++)
+		term_push(rep_cmd, rep_len);
 }
 
 static void vc_execute(void)
@@ -1030,6 +1032,7 @@ static void vc_execute(void)
 	int lnmode;
 	int c = vi_read();
 	char *buf;
+	int i;
 	if (TK_INT(c))
 		return;
 	if (c == '@')
@@ -1037,7 +1040,8 @@ static void vc_execute(void)
 	exec_buf = c;
 	buf = reg_get(exec_buf, &lnmode);
 	if (buf)
-		term_push(buf, strlen(buf));
+		for (i = 0; i < MAX(1, vi_arg1); i++)
+			term_push(buf, strlen(buf));
 }
 
 static void vi(void)

@@ -660,6 +660,25 @@ static int ec_mark(char *ec)
 	return 0;
 }
 
+static void replace(struct sbuf *dst, char *rep, char *ln, int *offs)
+{
+	while (rep[0]) {
+		if (rep[0] == '\\' && rep[1]) {
+			if (rep[1] >= '0' && rep[1] <= '9') {
+				int grp = (rep[1] - '0') * 2;
+				int len = offs[grp + 1] - offs[grp];
+				sbuf_mem(dst, ln + offs[grp], len);
+			} else {
+				sbuf_chr(dst, (unsigned char) rep[1]);
+			}
+			rep++;
+		} else {
+			sbuf_chr(dst, (unsigned char) rep[0]);
+		}
+		rep++;
+	}
+}
+
 static int ec_substitute(char *ec)
 {
 	char loc[EXLEN];
@@ -697,7 +716,7 @@ static int ec_substitute(char *ec)
 		struct sbuf *r = sbuf_make();
 		while (rset_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
 			sbuf_mem(r, ln, offs[0]);
-			sbuf_str(r, rep);
+			replace(r, rep, ln, offs);
 			ln += offs[1];
 			if (!strchr(s, 'g'))
 				break;

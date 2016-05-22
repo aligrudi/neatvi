@@ -96,19 +96,19 @@ static void rnode_free(struct rnode *rnode)
 static int uc_len(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (c > 0 && c <= 0x7f)
-		return 1;
-	if (c >= 0xfc)
-		return 6;
-	if (c >= 0xf8)
-		return 5;
-	if (c >= 0xf0)
-		return 4;
-	if (c >= 0xe0)
-		return 3;
-	if (c >= 0xc0)
+	if (~c & 0x80)
+		return c > 0;
+	if (~c & 0x20)
 		return 2;
-	return c != 0;
+	if (~c & 0x10)
+		return 3;
+	if (~c & 0x08)
+		return 4;
+	if (~c & 0x04)
+		return 5;
+	if (~c & 0x02)
+		return 6;
+	return 1;
 }
 
 static int uc_dec(char *s)

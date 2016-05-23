@@ -96,8 +96,10 @@ static void rnode_free(struct rnode *rnode)
 static int uc_len(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (~c & 0x80)
+	if (~c & 0x80)		/* ASCII */
 		return c > 0;
+	if (~c & 0x40)		/* invalid UTF-8 */
+		return 1;
 	if (~c & 0x20)
 		return 2;
 	if (~c & 0x10)

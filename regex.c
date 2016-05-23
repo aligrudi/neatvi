@@ -104,10 +104,6 @@ static int uc_len(char *s)
 		return 3;
 	if (~c & 0x08)
 		return 4;
-	if (~c & 0x04)
-		return 5;
-	if (~c & 0x02)
-		return 6;
 	return 1;
 }
 
@@ -587,7 +583,8 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 	rs.flg = re->flg | flg;
 	rs.o = s;
 	while (*s) {
-		rs.s = s++;
+		rs.s = s;
+		s += uc_len(s);
 		if (!re_recmatch(re, &rs, flg & REG_NOSUB ? 0 : nsub, psub))
 			return 0;
 	}

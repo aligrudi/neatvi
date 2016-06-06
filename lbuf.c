@@ -133,7 +133,7 @@ static void lbuf_insertline(struct lbuf *lb, int pos, char *s)
 /* low-level replacement */
 static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 {
-	char *r;
+	char *r, *n;
 	int n_ins = 0;
 	int i;
 	for (i = 0; i < n_del; i++)
@@ -141,12 +141,16 @@ static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 	memmove(lb->ln + pos, lb->ln + pos + n_del,
 		(lb->ln_n - pos - n_del) * sizeof(lb->ln[0]));
 	lb->ln_n -= n_del;
-	while (s && (r = strchr(s, '\n'))) {
-		char *n = malloc(r - s + 2);
-		memcpy(n, s, r - s + 1);
+	while (s && *s) {
+		r = strchr(s, '\n');
+		if (!r)				/* no eol */
+			r = strchr(s, '\0');
+		n = malloc(r - s + 2);
+		memcpy(n, s, r - s);
+		n[r - s + 0] = '\n';
 		n[r - s + 1] = '\0';
 		lbuf_insertline(lb, pos + n_ins++, n);
-		s = r + 1;
+		s = *r ? r + 1 : r;
 	}
 	for (i = 0; i < LEN(lb->mark); i++) {	/* updating marks */
 		if (!s && lb->mark[i] >= pos && lb->mark[i] < pos + n_del)

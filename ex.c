@@ -472,12 +472,16 @@ static int ec_write(char *ec)
 		if (!strchr(cmd, '!') && bufs[0].path &&
 				!strcmp(bufs[0].path, path) &&
 				mtime(bufs[0].path) > bufs[0].mtime) {
-			ex_show("write failed\n");
+			ex_show("write failed: file changed\n");
+			return 1;
+		}
+		if (!strchr(cmd, '!') && arg[0] && mtime(arg) >= 0) {
+			ex_show("write failed: file exists\n");
 			return 1;
 		}
 		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 		if (fd < 0) {
-			ex_show("write failed\n");
+			ex_show("write failed: cannot create file\n");
 			return 1;
 		}
 		if (lbuf_wr(xb, fd, beg, end)) {

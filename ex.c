@@ -213,30 +213,31 @@ void ex_kwdset(char *kwd, int dir)
 	xkwddir = dir;
 }
 
-static int ex_search(char *pat)
+static int ex_search(char **pat)
 {
 	struct sbuf *kw;
-	char *b = pat;
+	char *b = *pat;
 	char *e = b;
 	char *pats[1];
 	struct rset *re;
 	int dir, row;
 	kw = sbuf_make();
 	while (*++e) {
-		if (*e == *pat)
+		if (*e == **pat)
 			break;
 		sbuf_chr(kw, (unsigned char) *e);
 		if (*e == '\\' && e[1])
 			e++;
 	}
 	if (sbuf_len(kw))
-		ex_kwdset(sbuf_buf(kw), *pat == '/' ? 1 : -1);
+		ex_kwdset(sbuf_buf(kw), **pat == '/' ? 1 : -1);
 	sbuf_free(kw);
+	*pat = *e ? e + 1 : e;
 	if (ex_kwd(&pats[0], &dir))
-		return xrow;
+		return -1;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
 	if (!re)
-		return 1;
+		return -1;
 	row = xrow + dir;
 	while (row >= 0 && row < lbuf_len(xb)) {
 		if (rset_find(re, lbuf_get(xb, row), 0, NULL, 0) >= 0)
@@ -244,28 +245,41 @@ static int ex_search(char *pat)
 		row += dir;
 	}
 	rset_free(re);
-	return row < 0 || row >= lbuf_len(xb) ? xrow : row;
+	return row >= 0 && row < lbuf_len(xb) ? row : -1;
 }
 
-static int ex_lineno(char *num)
+static int ex_lineno(char **num)
 {
 	int n = xrow;
-	if (!num[0] || num[0] == '.')
-		n = xrow;
-	if (isdigit(num[0]))
-		n = atoi(num) - 1;
-	if (num[0] == '$')
+	switch ((unsigned char) **num) {
+	case '.':
+		*num += 1;
+		break;
+	case '$':
 		n = lbuf_len(xb) - 1;
-	if (num[0] == '-')
-		n = xrow - (num[1] ? atoi(num + 1) : 1);
-	if (num[0] == '+')
-		n = xrow + (num[1] ? atoi(num + 1) : 1);
-	if (num[0] == '\'')
-		lbuf_jump(xb, num[1], &n, NULL);
-	if (num[0] == '/' && num[1])
+		*num += 1;
+		break;
+	case '\'':
+		if (lbuf_jump(xb, (unsigned char) *++(*num), &n, NULL))
+			return -1;
+		*num += 1;
+		break;
+	case '/':
+	case '?':
 		n = ex_search(num);
-	if (num[0] == '?' && num[1])
-		n = ex_search(num);
+		break;
+	default:
+		if (isdigit((unsigned char) **num)) {
+			n = atoi(*num) - 1;
+			while (isdigit((unsigned char) **num))
+				*num += 1;
+		}
+	}
+	while (**num == '-' || **num == '+') {
+		n += atoi((*num)++);
+		while (isdigit((unsigned char) **num))
+			(*num)++;
+	}
 	return n;
 }
 
@@ -285,7 +299,7 @@ static int ex_region(char *loc, int *beg, int *end)
 	}
 	while (*loc) {
 		int end0 = *end;
-		*end = ex_lineno(loc) + 1;
+		*end = ex_lineno(&loc) + 1;
 		*beg = naddr++ ? end0 - 1 : *end - 1;
 		if (!naddr++)
 			*beg = *end - 1;

@@ -818,7 +818,7 @@ static int ec_glob(char *ec)
 			int len = lbuf_len(xb);
 			xrow = i;
 			ex_exec(s);
-			i += lbuf_len(xb) - len;
+			i = xrow;
 			end += lbuf_len(xb) - len;
 		}
 		i++;

@@ -185,14 +185,6 @@ static char *ex_argeol(char *ec)
 	return s;
 }
 
-static char *ex_line(char *s, char *ln)
-{
-	while (*s && *s != '|' && *s != '\n')
-		*ln++ = *s++;
-	*ln = '\0';
-	return *s ? s + 1 : s;
-}
-
 /* the previous search keyword */
 int ex_kwd(char **kwd, int *dir)
 {
@@ -825,18 +817,22 @@ static int ec_glob(char *ec)
 		return 1;
 	if (!(re = rset_make(1, pats, xic ? RE_ICASE : 0)))
 		return 1;
+	for (i = beg + 1; i < end; i++)
+		lbuf_glob(xb, i, 1);
 	i = beg;
-	while (i < end) {
+	while (i < lbuf_len(xb)) {
 		char *ln = lbuf_get(xb, i);
 		if ((rset_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
-			int len = lbuf_len(xb);
 			xrow = i;
-			ex_exec(s);
-			i = xrow;
-			end += lbuf_len(xb) - len;
+			if (ex_exec(s))
+				break;
+			i = MIN(i, xrow);
 		}
-		i++;
+		while (i < lbuf_len(xb) && !lbuf_glob(xb, i, 0))
+			i++;
 	}
+	for (i = 0; i < lbuf_len(xb); i++)
+		lbuf_glob(xb, i, 0);
 	rset_free(re);
 	return 0;
 }
@@ -945,6 +941,21 @@ static struct excmd {
 	{"", "", ec_null},
 };
 
+/* read an ex command and its arguments from src into dst */
+static void ex_line(int (*ec)(char *s), char *dst, char **src)
+{
+	if (!ec || ec != ec_glob) {
+		while (**src && **src != '|' && **src != '\n')
+			*dst++ = *(*src)++;
+		*dst = '\0';
+		if (**src)
+			(*src)++;
+	} else {	/* the rest of the line for :g */
+		strcpy(dst, *src);
+		*src = strchr(*src, '\0');
+	}
+}
+
 /* execute a single ex command */
 static int ex_exec(char *ln)
 {
@@ -953,17 +964,19 @@ static int ex_exec(char *ln)
 	int i;
 	int ret = 0;
 	while (*ln) {
-		ln = ex_line(ln, ec);
-		ex_cmd(ec, cmd);
+		ex_cmd(ln, cmd);
 		for (i = 0; i < LEN(excmds); i++) {
 			if (!strcmp(excmds[i].abbr, cmd) ||
 					!strcmp(excmds[i].name, cmd)) {
+				ex_line(excmds[i].ec, ec, &ln);
 				ret = excmds[i].ec(ec);
 				break;
 			}
 		}
 		if (!xvis && !cmd[0])
 			ret = ec_print(ec);
+		if (i == LEN(excmds))
+			ex_line(NULL, ec, &ln);
 	}
 	return ret;
 }

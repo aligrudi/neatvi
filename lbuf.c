@@ -23,6 +23,7 @@ struct lbuf {
 	int mark[NMARKS];	/* mark lines */
 	int mark_off[NMARKS];	/* mark line offsets */
 	char **ln;		/* buffer lines */
+	char *ln_glob;		/* line global mark */
 	int ln_n;		/* number of lines in ln[] */
 	int ln_sz;		/* size of ln[] */
 	int useq;		/* current operation sequence */
@@ -110,48 +111,61 @@ void lbuf_free(struct lbuf *lb)
 		lopt_done(&lb->hist[i]);
 	free(lb->hist);
 	free(lb->ln);
+	free(lb->ln_glob);
 	free(lb);
 }
 
-/* insert a line at pos */
-static void lbuf_insertline(struct lbuf *lb, int pos, char *s)
+static int linelength(char *s)
 {
-	if (lb->ln_n == lb->ln_sz) {
-		int nsz = lb->ln_sz + 512;
-		char **nln = malloc(nsz * sizeof(nln[0]));
-		memcpy(nln, lb->ln, lb->ln_n * sizeof(lb->ln[0]));
-		free(lb->ln);
-		lb->ln = nln;
-		lb->ln_sz = nsz;
-	}
-	memmove(lb->ln + pos + 1, lb->ln + pos,
-		(lb->ln_n - pos) * sizeof(lb->ln[0]));
-	lb->ln_n++;
-	lb->ln[pos] = s;
+	char *r = strchr(s, '\n');
+	return r ? r - s + 1 : strlen(s);
 }
 
-/* low-level replacement */
+static int linecount(char *s)
+{
+	int n;
+	for (n = 0; s && *s; n++)
+		s += linelength(s);
+	return n;
+}
+
+
+/* low-level line replacement */
 static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 {
-	char *r, *n;
-	int n_ins = 0;
+	int n_ins = linecount(s);
 	int i;
+	while (lb->ln_n + n_ins - n_del >= lb->ln_sz) {
+		int nsz = lb->ln_sz + 512;
+		char **nln = malloc(nsz * sizeof(nln[0]));
+		char *nln_glob = malloc(nsz * sizeof(nln_glob[0]));
+		memcpy(nln, lb->ln, lb->ln_n * sizeof(lb->ln[0]));
+		memcpy(nln_glob, lb->ln_glob, lb->ln_n * sizeof(lb->ln_glob[0]));
+		free(lb->ln);
+		free(lb->ln_glob);
+		lb->ln = nln;
+		lb->ln_glob = nln_glob;
+		lb->ln_sz = nsz;
+	}
 	for (i = 0; i < n_del; i++)
 		free(lb->ln[pos + i]);
-	memmove(lb->ln + pos, lb->ln + pos + n_del,
+	memmove(lb->ln + pos + n_ins, lb->ln + pos + n_del,
 		(lb->ln_n - pos - n_del) * sizeof(lb->ln[0]));
-	lb->ln_n -= n_del;
-	while (s && *s) {
-		r = strchr(s, '\n');
-		if (!r)				/* no eol */
-			r = strchr(s, '\0');
-		n = malloc(r - s + 2);
-		memcpy(n, s, r - s);
-		n[r - s + 0] = '\n';
-		n[r - s + 1] = '\0';
-		lbuf_insertline(lb, pos + n_ins++, n);
-		s = *r ? r + 1 : r;
+	memmove(lb->ln_glob + pos + n_ins, lb->ln_glob + pos + n_del,
+		(lb->ln_n - pos - n_del) * sizeof(lb->ln_glob[0]));
+	lb->ln_n += n_ins - n_del;
+	for (i = 0; i < n_ins; i++) {
+		int l = s ? linelength(s) : 0;
+		int l_nonl = l - (s[l - 1] == '\n');
+		char *n = malloc(l_nonl + 2);
+		memcpy(n, s, l_nonl);
+		n[l_nonl + 0] = '\n';
+		n[l_nonl + 1] = '\0';
+		lb->ln[pos + i] = n;
+		s += l;
 	}
+	for (i = n_del; i < n_ins; i++)
+		lb->ln_glob[pos + i] = 0;
 	for (i = 0; i < LEN(lb->mark); i++) {	/* updating marks */
 		if (!s && lb->mark[i] >= pos && lb->mark[i] < pos + n_del)
 			lb->mark[i] = -1;
@@ -162,14 +176,6 @@ static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 	}
 	lbuf_mark(lb, '[', pos, 0);
 	lbuf_mark(lb, ']', pos + (n_ins ? n_ins - 1 : 0), 0);
-}
-
-static int uc_newlines(char *s)
-{
-	int n;
-	for (n = 0; (s = strchr(s, '\n')); n++)
-		s++;
-	return n;
 }
 
 /* append undo/redo history */
@@ -195,7 +201,7 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	lo->pos = pos;
 	lo->n_del = n_del;
 	lo->del = n_del ? lbuf_cp(lb, pos, pos + n_del) : NULL;
-	lo->n_ins = buf ? uc_newlines(buf) : 0;
+	lo->n_ins = buf ? linecount(buf) : 0;
 	lo->ins = buf ? uc_dup(buf) : NULL;
 	lo->seq = lb->useq;
 	lbuf_savepos(lb, lo);
@@ -343,4 +349,11 @@ int lbuf_modified(struct lbuf *lb)
 {
 	lb->useq++;
 	return lbuf_seq(lb) != lb->useq_zero;
+}
+
+int lbuf_glob(struct lbuf *lb, int pos, int v)
+{
+	int o = lb->ln_glob[pos];
+	lb->ln_glob[pos] = v;
+	return o;
 }

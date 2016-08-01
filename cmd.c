@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
@@ -69,6 +70,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 		signal(SIGINT, SIG_IGN);
 		term_done();
 	}
+	fcntl(ifd, F_SETFL, fcntl(ifd, F_GETFL, 0) | O_NONBLOCK);
 	fds[0].fd = ofd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;

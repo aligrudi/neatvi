@@ -1322,7 +1322,7 @@ static void vi(void)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
 		if (mod || xleft != oleft)
-			vi_drawagain(xcol, mod == 2);
+			vi_drawagain(xcol, mod == 2 && xleft == oleft);
 		else if (xtop != otop)
 			vi_drawupdate(xcol, otop);
 		if (vi_msg[0])

@@ -338,26 +338,17 @@ static int vi_motionln(int *row, int cmd)
 		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
 		break;
 	case 'H':
-		if (lbuf_len(xb))
-			*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
-		else
-			*row = 0;
+		*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
 		break;
 	case 'L':
-		if (lbuf_len(xb))
-			*row = MIN(xtop + xrows - 1 - cnt + 1, lbuf_len(xb) - 1);
-		else
-			*row = 0;
+		*row = MIN(xtop + xrows - 1 - cnt + 1, lbuf_len(xb) - 1);
 		break;
 	case 'M':
-		if (lbuf_len(xb))
-			*row = MIN(xtop + xrows / 2, lbuf_len(xb) - 1);
-		else
-			*row = 0;
+		*row = MIN(xtop + xrows / 2, lbuf_len(xb) - 1);
 		break;
 	default:
 		if (c == cmd) {
-			*row = MAX(0, MIN(*row + cnt - 1, lbuf_len(xb) - 1));
+			*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 			break;
 		}
 		if (c == '%' && (vi_arg1 || vi_arg2)) {
@@ -369,6 +360,8 @@ static int vi_motionln(int *row, int cmd)
 		vi_back(c);
 		return 0;
 	}
+	if (*row < 0)
+		*row = 0;
 	return c;
 }
 

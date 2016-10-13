@@ -10,9 +10,9 @@ Edit conf.h to adjust syntax highlighting rules and text direction
 patterns.  To define a new keymap, create a new array in kmap.h, like
 kmap_fa, and add it to kmaps array in the same header (the first entry
 of the new array specifies its name).  The current keymap may be
-changed using :cm ex command.  When in input mode, ^e changes to the
-English kaymap and ^f changes to the alternate keymap (the last keymap
-specified with :cm).
+changed with :cm ex command.  When in input mode, ^e activates the
+English kaymap and ^f switches to the alternate keymap (the last
+keymap specified with :cm).
 
 COMMANDS
 --------
@@ -29,8 +29,10 @@ Commands not available in ex(1):
   current ex buffer.
 
 New key mappings:
-^a in normal mode, searches for the word under the cursor
-^p in insert mode, inserts the contents of the default yank buffer
+^a in normal mode, searches for the word under the cursor.
+^p in insert mode, inserts the contents of the default yank buffer.
+zL, zl, zr, and zR in normal mode change the value of td option.
+gu, gU, and g~ switch character case.
 
 OPTIONS
 -------
@@ -39,7 +41,7 @@ To improve neatvi's performance, shaping, character reordering, and
 syntax highlighting can be disabled by defining the EXINIT environment
 variable as "set noshape | set noorder | set nohl | set td=+2".
 
-Options supported by neatvi:
+Options supported in neatvi:
 
 td, textdirection
   Current direction context.  The following values are meaningful:

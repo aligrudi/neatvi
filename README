@@ -20,12 +20,12 @@ COMMANDS
 Commands not available in ex(1):
 
 :cm[ap][!] [kmap]
-  Without kmap, print the current keymap name.
-  When kmap is specified, set the alternate keymap to
-  kmap and, unless ! is given, switch to this keymap.
+  Without kmap, prints the current keymap name.
+  When kmap is specified, sets the alternate keymap to
+  kmap and, unless ! is given, switches to this keymap.
 :ft [filetype]
-  Without filetype, print the current file type.
-  When filetype is specified, set the file type of the
+  Without filetype, prints the current file type.
+  When filetype is specified, sets the file type of the
   current ex buffer.
 
 New key mappings:
@@ -33,6 +33,7 @@ New key mappings:
 ^p in insert mode, inserts the contents of the default yank buffer.
 zL, zl, zr, and zR in normal mode change the value of td option.
 gu, gU, and g~ switch character case.
+^l in normal mode, updates terminal dimensions.
 
 OPTIONS
 -------

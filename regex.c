@@ -43,7 +43,7 @@ struct ratom {
 struct rinst {
 	int ri;			/* instruction type (RI_*) */
 	struct ratom ra;	/* regular expression atom (RI_ATOM) */
-	int a1, a2;		/* destination of RE_FORK and RI_JUMP */
+	int a1, a2;		/* destination of RI_FORK and RI_JUMP */
 	int mark;		/* mark (RI_MARK) */
 };
 

@@ -278,14 +278,14 @@ static int ratom_match(struct ratom *ra, struct rstate *rs)
 		return 0;
 	}
 	if (ra->ra == RA_ANY) {
-		if (!rs->s[0])
+		if (!rs->s[0] || (rs->s[0] == '\n' && !(rs->flg & REG_NOTEOL)))
 			return 1;
 		rs->s += uc_len(rs->s);
 		return 0;
 	}
 	if (ra->ra == RA_BRK) {
 		int c = uc_dec(rs->s);
-		if (!c)
+		if (!c || (c == '\n' && !(rs->flg & REG_NOTEOL)))
 			return 1;
 		rs->s += uc_len(rs->s);
 		return brk_match(ra->s + 1, c, rs->flg);

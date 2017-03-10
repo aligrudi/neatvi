@@ -45,7 +45,7 @@ static void vi_drawmsg(void)
 {
 	int oleft = xleft;
 	xleft = 0;
-	led_print(vi_msg, xrows);
+	led_printmsg(vi_msg, xrows);
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }

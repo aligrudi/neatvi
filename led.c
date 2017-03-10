@@ -1,3 +1,4 @@
+/* line editing and drawing */
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +34,7 @@ static int led_offdir(char **chrs, int *pos, int i)
 	return 0;
 }
 
+/* highlight text in reverse direction */
 static void led_markrev(int n, char **chrs, int *pos, int *att)
 {
 	int i = 0, j;
@@ -51,7 +53,8 @@ static void led_markrev(int n, char **chrs, int *pos, int *att)
 	}
 }
 
-static char *led_render(char *s0, int cbeg, int cend)
+/* render and highlight a line */
+static char *led_render(char *s0, int cbeg, int cend, char *syn)
 {
 	int n;
 	int *pos;	/* pos[i]: the screen position of the i-th character */
@@ -75,7 +78,7 @@ static char *led_render(char *s0, int cbeg, int cend)
 			for (j = 0; j < curwid; j++)
 				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
-	att = syn_highlight(ex_filetype(), s0);
+	att = syn_highlight(syn, s0);
 	led_markrev(n, chrs, pos, att);
 	out = sbuf_make();
 	i = cbeg;
@@ -107,9 +110,20 @@ static char *led_render(char *s0, int cbeg, int cend)
 	return sbuf_done(out);
 }
 
+/* print a line on the screen */
 void led_print(char *s, int row)
 {
-	char *r = led_render(s, xleft, xleft + xcols);
+	char *r = led_render(s, xleft, xleft + xcols, ex_filetype());
+	term_pos(row, 0);
+	term_kill();
+	term_str(r);
+	free(r);
+}
+
+/* print a line on the screen; for ex messages */
+void led_printmsg(char *s, int row)
+{
+	char *r = led_render(s, xleft, xleft + xcols, "---");
 	term_pos(row, 0);
 	term_kill();
 	term_str(r);
@@ -199,6 +213,7 @@ static char *led_readchar(int c, char *kmap)
 	return kmap_map(kmap, c);
 }
 
+/* read a character from the terminal */
 char *led_read(char **kmap)
 {
 	int c = term_read();
@@ -218,6 +233,7 @@ char *led_read(char **kmap)
 	return NULL;
 }
 
+/* read a line from the terminal */
 static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char **kmap)
 {
 	struct sbuf *sb;

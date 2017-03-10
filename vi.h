@@ -133,6 +133,7 @@ char *led_prompt(char *pref, char *post, char **kmap);
 char *led_input(char *pref, char *post, char **kmap);
 char *led_read(char **kmap);
 void led_print(char *msg, int row);
+void led_printmsg(char *s, int row);
 int led_pos(char *s, int pos);
 
 /* ex commands */

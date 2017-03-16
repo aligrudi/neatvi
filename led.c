@@ -120,10 +120,20 @@ void led_print(char *s, int row)
 	free(r);
 }
 
+/* set xdir and return its old value */
+static int dir_set(int dir)
+{
+	int old = xdir;
+	xdir = dir;
+	return old;
+}
+
 /* print a line on the screen; for ex messages */
 void led_printmsg(char *s, int row)
 {
+	int dir = dir_set(+2);
 	char *r = led_render(s, xleft, xleft + xcols, "---");
+	dir_set(dir);
 	term_pos(row, 0);
 	term_kill();
 	term_str(r);
@@ -297,7 +307,9 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 char *led_prompt(char *pref, char *post, char **kmap)
 {
 	int key;
+	int dir = dir_set(+2);
 	char *s = led_line(pref, post, "", 0, &key, kmap);
+	dir_set(dir);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
 		if (pref)

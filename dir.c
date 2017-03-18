@@ -65,19 +65,20 @@ static void dir_fix(char **chrs, int *ord, int dir, int beg, int end)
 	}
 }
 
+/* return the direction context of the given line */
 int dir_context(char *s)
 {
 	int found = -1;
 	int dir;
-	if (xdir > +1)
+	if (xtd > +1)
 		return +1;
-	if (xdir < -1)
+	if (xtd < -1)
 		return -1;
 	if (dir_rsctx)
 		found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (!conf_dircontext(found, NULL, &dir))
 		return dir;
-	return xdir < 0 ? -1 : +1;
+	return xtd < 0 ? -1 : +1;
 }
 
 /* reorder the characters in s */

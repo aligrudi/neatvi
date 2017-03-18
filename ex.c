@@ -16,7 +16,7 @@ int xic = 1;			/* ignorecase option */
 int xaw;			/* autowrite option */
 int xhl = 1;			/* syntax highlight option */
 int xled = 1;			/* use the line editor */
-int xdir = +1;			/* current direction context */
+int xtd = +1;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
 static char xkwd[EXLEN];	/* the last searched keyword */
@@ -845,7 +845,7 @@ static struct option {
 	{"ai", "autoindent", &xai},
 	{"aw", "autowrite", &xaw},
 	{"ic", "ignorecase", &xic},
-	{"td", "textdirection", &xdir},
+	{"td", "textdirection", &xtd},
 	{"shape", "shape", &xshape},
 	{"order", "xorder", &xorder},
 	{"hl", "highlight", &xhl},

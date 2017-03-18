@@ -1,7 +1,7 @@
 /*
  * NEATVI Editor
  *
- * Copyright (C) 2015-2016 Ali Gholami Rudi <ali at rudi dot ir>
+ * Copyright (C) 2015-2017 Ali Gholami Rudi <ali at rudi dot ir>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1081,7 +1081,7 @@ static void vi(void)
 		} else if (mv == 0) {
 			char *cmd;
 			int c = vi_read();
-			int k;
+			int k = 0;
 			if (c <= 0)
 				continue;
 			lbuf_mark(xb, '*', xrow, xoff);
@@ -1216,11 +1216,11 @@ static void vi(void)
 					break;
 				case 'l':
 				case 'r':
-					xdir = k == 'r' ? -1 : +1;
+					xtd = k == 'r' ? -1 : +1;
 					break;
 				case 'L':
 				case 'R':
-					xdir = k == 'R' ? -2 : +2;
+					xtd = k == 'R' ? -2 : +2;
 					break;
 				}
 				mod = 1;

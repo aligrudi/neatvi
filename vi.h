@@ -198,7 +198,7 @@ extern int xled;
 extern int xquit;
 extern int xic;
 extern int xai;
-extern int xdir;
+extern int xtd;
 extern int xshape;
 extern int xorder;
 extern int xhl;

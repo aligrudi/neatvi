@@ -118,10 +118,10 @@ static void vi_back(int c)
 
 static char *vi_char(void)
 {
-	return led_read(ex_kmap());
+	return led_read(&xkmap);
 }
 
-static char *vi_prompt(char *msg, char **kmap)
+static char *vi_prompt(char *msg, int *kmap)
 {
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
@@ -140,7 +140,7 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	char c;
 	if (xled) {
-		char *s = led_prompt(msg, "", ex_kmap());
+		char *s = led_prompt(msg, "", &xkmap);
 		if (s)
 			term_chr('\n');
 		return s;
@@ -257,7 +257,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
 		struct sbuf *sb;
-		char *kw = vi_prompt(sign, ex_kmap());
+		char *kw = vi_prompt(sign, &xkmap);
 		char *re;
 		if (!kw)
 			return 1;
@@ -655,7 +655,7 @@ static int charcount(char *text, char *post)
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, ex_kmap());
+	char *rep = led_input(pref, post, &xkmap);
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;
@@ -737,7 +737,7 @@ static void vi_pipe(int r1, int r2)
 {
 	char *text;
 	char *rep;
-	char *kmap = NULL;
+	int kmap = 0;
 	char *cmd = vi_prompt("!", &kmap);
 	if (!cmd)
 		return;
@@ -1042,7 +1042,7 @@ static void vi(void)
 	int xcol;
 	int mark;
 	char *ln;
-	char *kmap = NULL;
+	int kmap = 0;
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);

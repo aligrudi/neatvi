@@ -19,11 +19,11 @@ int xled = 1;			/* use the line editor */
 int xtd = +1;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
+int xkmap = 0;			/* the current keymap */
+int xkmap_alt = 1;		/* the alternate keymap */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
-static char *xkmap = "en";	/* the current keymap */
-static char xkmap2[8] = "fa";	/* the alternate keymap */
 
 static struct buf {
 	char ft[32];
@@ -109,16 +109,6 @@ struct lbuf *ex_lbuf(void)
 char *ex_filetype(void)
 {
 	return xhl ? bufs[0].ft : "";
-}
-
-char **ex_kmap(void)
-{
-	return &xkmap;
-}
-
-char *ex_kmapalt(void)
-{
-	return xkmap2;
 }
 
 /* read ex command location */
@@ -784,11 +774,11 @@ static int ec_cmap(char *ec)
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
 	if (arg[0])
-		snprintf(xkmap2, sizeof(xkmap2), arg);
+		xkmap_alt = conf_kmapfind(arg);
 	else
-		ex_print(xkmap);
+		ex_print(conf_kmap(xkmap)[0]);
 	if (arg[0] && !strchr(cmd, '!'))
-		xkmap = xkmap2;
+		xkmap = xkmap_alt;
 	return 0;
 }
 

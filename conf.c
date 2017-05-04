@@ -75,13 +75,18 @@ int conf_highlight_revdir(int *att)
 	return 0;
 }
 
-char **conf_kmap(char *name)
+char **conf_kmap(int id)
+{
+	return kmaps[id];
+}
+
+int conf_kmapfind(char *name)
 {
 	int i;
 	for (i = 0; i < LEN(kmaps); i++)
 		if (name && kmaps[i][0] && !strcmp(name, kmaps[i][0]))
-			return kmaps[i];
-	return kmap_en;
+			return i;
+	return 0;
 }
 
 char *conf_digraph(int c1, int c2)

@@ -129,9 +129,9 @@ char *term_cmd(int *n);
 #define TK_ESC		(TK_CTL('['))
 
 /* line-oriented input and output */
-char *led_prompt(char *pref, char *post, char **kmap);
-char *led_input(char *pref, char *post, char **kmap);
-char *led_read(char **kmap);
+char *led_prompt(char *pref, char *post, int *kmap);
+char *led_input(char *pref, char *post, int *kmap);
+char *led_read(int *kmap);
 void led_print(char *msg, int row);
 void led_printmsg(char *s, int row);
 int led_pos(char *s, int pos);
@@ -146,8 +146,6 @@ int ex_init(char **files);
 void ex_done(void);
 char *ex_path(void);
 char *ex_filetype(void);
-char **ex_kmap(void);
-char *ex_kmapalt(void);
 struct lbuf *ex_lbuf(void);
 int ex_kwd(char **kwd, int *dir);
 void ex_kwdset(char *kwd, int dir);
@@ -185,7 +183,8 @@ int conf_placeholder(int idx, char **s, char **d, int *wid);
 int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_highlight_revdir(int *att);
-char **conf_kmap(char *name);
+char **conf_kmap(int id);
+int conf_kmapfind(char *name);
 char *conf_digraph(int c1, int c2);
 
 /* global variables */
@@ -202,3 +201,5 @@ extern int xtd;
 extern int xshape;
 extern int xorder;
 extern int xhl;
+extern int xkmap;
+extern int xkmap_alt;

@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include "vi.h"
 
-static char *kmap_map(char *kmap, int c)
+static char *kmap_map(int kmap, int c)
 {
 	static char cs[4];
 	char **keymap = conf_kmap(kmap);
@@ -160,7 +160,7 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *ai, char *pref, char *main, char *post, char *kmap)
+static void led_printparts(char *ai, char *pref, char *main, char *post, int kmap)
 {
 	struct sbuf *ln;
 	int off, pos;
@@ -193,7 +193,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, char *k
 }
 
 /* continue reading the character starting with c */
-static char *led_readchar(int c, char *kmap)
+static char *led_readchar(int c, int kmap)
 {
 	static char buf[8];
 	int c1, c2;
@@ -224,16 +224,16 @@ static char *led_readchar(int c, char *kmap)
 }
 
 /* read a character from the terminal */
-char *led_read(char **kmap)
+char *led_read(int *kmap)
 {
 	int c = term_read();
 	while (!TK_INT(c)) {
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = ex_kmapalt();
+			*kmap = xkmap_alt;
 			break;
 		case TK_CTL('e'):
-			*kmap = "en";
+			*kmap = 0;
 			break;
 		default:
 			return led_readchar(c, *kmap);
@@ -244,7 +244,7 @@ char *led_read(char **kmap)
 }
 
 /* read a line from the terminal */
-static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, char **kmap)
+static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, int *kmap)
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
@@ -260,10 +260,10 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):
-			*kmap = ex_kmapalt();
+			*kmap = xkmap_alt;
 			continue;
 		case TK_CTL('e'):
-			*kmap = "en";
+			*kmap = 0;
 			continue;
 		case TK_CTL('h'):
 		case 127:
@@ -304,7 +304,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, ch
 }
 
 /* read an ex command */
-char *led_prompt(char *pref, char *post, char **kmap)
+char *led_prompt(char *pref, char *post, int *kmap)
 {
 	int key;
 	int td = td_set(+2);
@@ -325,7 +325,7 @@ char *led_prompt(char *pref, char *post, char **kmap)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, char **kmap)
+char *led_input(char *pref, char *post, int *kmap)
 {
 	struct sbuf *sb = sbuf_make();
 	char ai[128];

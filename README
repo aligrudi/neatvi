@@ -29,11 +29,13 @@ Commands not available in ex(1):
   current ex buffer.
 
 New key mappings:
-^a in normal mode, searches for the word under the cursor.
-^p in insert mode, inserts the contents of the default yank buffer.
-zL, zl, zr, and zR in normal mode change the value of td option.
-gu, gU, and g~ switch character case.
-^l in normal mode, updates terminal dimensions.
+^a in normal mode: searches for the word under the cursor.
+^p in insert mode: inserts the contents of the default yank buffer.
+zL, zl, zr, and zR in normal mode: change the value of td option.
+^e and ^f in insert mode: switch to the English and alternate keymap.
+ze and zf in normal mode: switch to the English and alternate keymap.
+gu, gU, and g~ in normal mode: switch character case.
+^l in normal mode: updates terminal dimensions (after resizing it).
 
 OPTIONS
 -------

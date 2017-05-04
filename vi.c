@@ -1222,6 +1222,10 @@ static void vi(void)
 				case 'R':
 					xtd = k == 'R' ? -2 : +2;
 					break;
+				case 'e':
+				case 'f':
+					xkmap = k == 'e' ? 0 : xkmap_alt;
+					break;
 				}
 				mod = 1;
 				break;

@@ -59,7 +59,7 @@ static int pos_prev(int *pos, int n, int p, int cur)
 	return ret >= 0 ? pos[ret] : -1;
 }
 
-/* convert visual position to character offset */
+/* convert character offset to visual position */
 int ren_pos(char *s, int off)
 {
 	int n = uc_slen(s);

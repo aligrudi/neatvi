@@ -22,7 +22,8 @@ int lbuf_modified(struct lbuf *lb);
 void lbuf_saved(struct lbuf *lb, int clear);
 int lbuf_indents(struct lbuf *lb, int r);
 int lbuf_eol(struct lbuf *lb, int r);
-int lbuf_glob(struct lbuf *lb, int pos, int v);
+void lbuf_globset(struct lbuf *lb, int pos, int dep);
+int lbuf_globget(struct lbuf *lb, int pos, int dep);
 /* motions */
 int lbuf_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *r, int *o);
 int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len);

@@ -351,9 +351,16 @@ int lbuf_modified(struct lbuf *lb)
 	return lbuf_seq(lb) != lb->useq_zero;
 }
 
-int lbuf_glob(struct lbuf *lb, int pos, int v)
+/* mark the line for ex global command */
+void lbuf_globset(struct lbuf *lb, int pos, int dep)
 {
-	int o = lb->ln_glob[pos];
-	lb->ln_glob[pos] = v;
-	return o;
+	lb->ln_glob[pos] |= 1 << dep;
+}
+
+/* return and clear ex global command mark */
+int lbuf_globget(struct lbuf *lb, int pos, int dep)
+{
+	int o = lb->ln_glob[pos] & (1 << dep);
+	lb->ln_glob[pos] &= ~(1 << dep);
+	return o > 0;
 }

@@ -24,6 +24,7 @@ int xkmap_alt = 1;		/* the alternate keymap */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
+static int xgdep;		/* global command recursion depth */
 
 static struct buf {
 	char ft[32];
@@ -795,7 +796,7 @@ static int ec_glob(char *ec)
 	int i;
 	ex_cmd(ec, cmd);
 	ex_loc(ec, loc);
-	if (!loc[0])
+	if (!loc[0] && !xgdep)
 		strcpy(loc, "%");
 	if (ex_region(loc, &beg, &end))
 		return 1;
@@ -809,8 +810,9 @@ static int ec_glob(char *ec)
 		return 1;
 	if (!(re = rset_make(1, pats, xic ? RE_ICASE : 0)))
 		return 1;
+	xgdep++;
 	for (i = beg + 1; i < end; i++)
-		lbuf_glob(xb, i, 1);
+		lbuf_globset(xb, i, xgdep);
 	i = beg;
 	while (i < lbuf_len(xb)) {
 		char *ln = lbuf_get(xb, i);
@@ -820,11 +822,12 @@ static int ec_glob(char *ec)
 				break;
 			i = MIN(i, xrow);
 		}
-		while (i < lbuf_len(xb) && !lbuf_glob(xb, i, 0))
+		while (i < lbuf_len(xb) && !lbuf_globget(xb, i, xgdep))
 			i++;
 	}
 	for (i = 0; i < lbuf_len(xb); i++)
-		lbuf_glob(xb, i, 0);
+		lbuf_globget(xb, i, xgdep);
+	xgdep--;
 	rset_free(re);
 	return 0;
 }

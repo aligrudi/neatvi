@@ -795,6 +795,8 @@ static int ec_glob(char *ec)
 	int i;
 	ex_cmd(ec, cmd);
 	ex_loc(ec, loc);
+	if (!loc[0])
+		strcpy(loc, "%");
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	not = strchr(cmd, '!') || cmd[0] == 'v';

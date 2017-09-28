@@ -44,6 +44,7 @@ static struct highlight {
 	{"tex", {3}, "\\$[^$]+\\$"},
 	{"tex", {2 | SYN_IT}, "%.*$"},
 
+	/* mail */
 	{"msg", {6 | SYN_BD}, "^From .*20..$"},
 	{"msg", {6 | SYN_BD, 4 | SYN_BD}, "^Subject: (.*)$"},
 	{"msg", {6 | SYN_BD, 2 | SYN_BD}, "^From: (.*)$"},
@@ -52,15 +53,18 @@ static struct highlight {
 	{"msg", {6 | SYN_BD}, "^[A-Z][-A-Za-z]+: .+$"},
 	{"msg", {2 | SYN_IT}, "^> .*$"},
 
+	/* makefile */
 	{"mk", {0, 3}, "([A-Za-z_][A-Za-z0-9_]*)[ \t]*="},
 	{"mk", {3}, "\\$\\([a-zA-Z0-9_]+\\)"},
 	{"mk", {2 | SYN_IT}, "#.*$"},
 	{"mk", {0, SYN_BD}, "([A-Za-z_%.]+):"},
 
+	/* shell script */
 	{"sh", {2 | SYN_IT}, "#.*$"},
 	{"sh", {4}, "\"([^\"]|\\\\\")*\""},
 	{"sh", {4}, "\'[^\']*\'"},
 
+	/* neatmail */
 	{"nm", {0, 12 | SYN_BD, 12 | SYN_BD, 2, 8 | SYN_BD},
 		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
 	{"nm", {7}, "^[LJ].*$"},
@@ -70,6 +74,11 @@ static struct highlight {
 	{"nm", {0 | SYN_BD | SYN_BGMK(10)}, "^[F].*$"},
 	{"nm", {7 | SYN_IT}, "^\t.*$"},
 	{"nm", {SYN_BD}, "^:.*$"},
+
+	/* status bar */
+	{"---", {8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
+	{"---", {8 | SYN_BD, 4, 4}, "^(\".*\").*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {8 | SYN_BD}, "^.*$"},
 };
 
 /* how to hightlight text in the reverse direction */

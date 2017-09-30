@@ -1090,11 +1090,13 @@ static void vi(void)
 				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
+				mod = 1;
 				break;
 			case TK_CTL('f'):
 				if (vi_scrollforeward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
+				mod = 1;
 				break;
 			case TK_CTL('e'):
 				if (vi_scrollforeward(MAX(1, vi_arg1)))
@@ -1114,6 +1116,7 @@ static void vi(void)
 				if (xtop > 0)
 					xtop = MAX(0, xtop - n);
 				xoff = lbuf_indents(xb, xrow);
+				mod = 1;
 				break;
 			case TK_CTL('d'):
 				if (xrow == lbuf_len(xb) - 1)
@@ -1125,6 +1128,7 @@ static void vi(void)
 				if (xtop < lbuf_len(xb) - xrows)
 					xtop = MIN(lbuf_len(xb) - xrows, xtop + n);
 				xoff = lbuf_indents(xb, xrow);
+				mod = 1;
 				break;
 			case TK_CTL('z'):
 				term_pos(xrows, 0);

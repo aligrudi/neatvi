@@ -1049,7 +1049,7 @@ static void vi(void)
 	vi_drawagain(xcol, 0);
 	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
-		int mod = 0;	/* screen should be redrawn */
+		int mod = 0;	/* screen should be redrawn (1: current line, 2: the whole screen */
 		int nrow = xrow;
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;

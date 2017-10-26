@@ -140,7 +140,9 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	char c;
 	if (xled) {
+		int oleft = xleft;
 		char *s = led_prompt(msg, "", &xkmap);
+		xleft = oleft;
 		if (s)
 			term_chr('\n');
 		return s;
@@ -1049,7 +1051,7 @@ static void vi(void)
 	vi_drawagain(xcol, 0);
 	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
-		int mod = 0;	/* screen should be redrawn (1: current line, 2: the whole screen */
+		int mod = 0;	/* screen should be redrawn (1: the whole screen, 2: the current line) */
 		int nrow = xrow;
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
@@ -1237,7 +1239,7 @@ static void vi(void)
 				k = vi_read();
 				if (k == '~' || k == 'u' || k == 'U')
 					if (!vc_motion(k))
-						mod = 1;
+						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
 				break;

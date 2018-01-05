@@ -14,7 +14,7 @@ char *reg_get(int c, int *ln)
 
 static void reg_putraw(int c, char *s, int ln)
 {
-	char *pre = isupper(c) ? bufs[tolower(c)] : "";
+	char *pre = isupper(c) && bufs[tolower(c)] ? bufs[tolower(c)] : "";
 	char *buf = malloc(strlen(pre) + strlen(s) + 1);
 	strcpy(buf, pre);
 	strcat(buf, s);

@@ -719,10 +719,10 @@ static int ec_substitute(char *ec)
 			sbuf_mem(r, ln, offs[0]);
 			replace(r, rep, ln, offs);
 			ln += offs[1];
-			if (offs[1] <= 0)
-				sbuf_chr(r, (unsigned char) *ln++);
-			if (!strchr(s, 'g'))
+			if (!*ln || !strchr(s, 'g'))
 				break;
+			if (offs[1] <= 0)	/* zero-length match */
+				sbuf_chr(r, (unsigned char) *ln++);
 		}
 		sbuf_str(r, ln);
 		lbuf_edit(xb, sbuf_buf(r), i, i + 1);

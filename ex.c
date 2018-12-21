@@ -764,7 +764,7 @@ static int ec_ft(char *ec)
 	char arg[EXLEN];
 	ex_arg(ec, arg);
 	if (arg[0])
-		snprintf(bufs[0].ft, sizeof(bufs[0].ft), arg);
+		snprintf(bufs[0].ft, sizeof(bufs[0].ft), "%s", arg);
 	else
 		ex_print(ex_filetype());
 	return 0;

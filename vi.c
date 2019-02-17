@@ -72,7 +72,7 @@ static void vi_drawagain(int xcol, int lineonly)
 /* update the screen */
 static void vi_drawupdate(int xcol, int otop)
 {
-	int i;
+	int i = 0;
 	if (otop != xtop) {
 		term_record();
 		term_pos(0, 0);
@@ -1302,7 +1302,7 @@ static void vi(void)
 			}
 			cmd = term_cmd(&n);
 			if (strchr("!<>ACDIJOPRSXYacdioprsxy~", c) ||
-					c == 'g' && strchr("uU~", k)) {
+					(c == 'g' && strchr("uU~", k))) {
 				if (n < sizeof(rep_cmd)) {
 					memcpy(rep_cmd, cmd, n);
 					rep_len = n;

@@ -132,7 +132,7 @@ static int td_set(int td)
 void led_printmsg(char *s, int row)
 {
 	int td = td_set(+2);
-	char *r = led_render(s, xleft, xleft + xcols, "---");
+	char *r = led_render(s, xleft, xleft + xcols, xhl ? "---" : "");
 	td_set(td);
 	term_pos(row, 0);
 	term_kill();

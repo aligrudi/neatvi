@@ -45,7 +45,7 @@ static void vi_drawmsg(void)
 {
 	int oleft = xleft;
 	xleft = 0;
-	led_printmsg(vi_msg, xrows);
+	led_printmsg(vi_msg, xrows, "---");
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }
@@ -53,7 +53,7 @@ static void vi_drawmsg(void)
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
-	led_print(s ? s : (row ? "~" : ""), row - xtop);
+	led_print(s ? s : (row ? "~" : ""), row - xtop, ex_filetype());
 }
 
 /* redraw the screen */
@@ -126,7 +126,7 @@ static char *vi_prompt(char *msg, int *kmap)
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap);
+	s = led_prompt(msg, "", kmap, "---");
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -141,7 +141,7 @@ char *ex_read(char *msg)
 	char c;
 	if (xled) {
 		int oleft = xleft;
-		char *s = led_prompt(msg, "", &xkmap);
+		char *s = led_prompt(msg, "", &xkmap, "---");
 		xleft = oleft;
 		if (s)
 			term_chr('\n');
@@ -163,7 +163,7 @@ void ex_show(char *msg)
 	if (xvis) {
 		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
 	} else if (xled) {
-		led_print(msg, -1);
+		led_print(msg, -1, "---");
 		term_chr('\n');
 	} else {
 		printf("%s", msg);
@@ -178,7 +178,7 @@ void ex_print(char *line)
 		if (line)
 			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
 		if (line)
-			led_print(line, -1);
+			led_print(line, -1, "");
 		term_chr('\n');
 	} else {
 		if (line)
@@ -657,7 +657,7 @@ static int charcount(char *text, char *post)
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &xkmap);
+	char *rep = led_input(pref, post, &xkmap, ex_filetype());
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;

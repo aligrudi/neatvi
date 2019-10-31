@@ -130,11 +130,11 @@ char *term_cmd(int *n);
 #define TK_ESC		(TK_CTL('['))
 
 /* line-oriented input and output */
-char *led_prompt(char *pref, char *post, int *kmap);
-char *led_input(char *pref, char *post, int *kmap);
+char *led_prompt(char *pref, char *post, int *kmap, char *syn);
+char *led_input(char *pref, char *post, int *kmap, char *syn);
+void led_print(char *msg, int row, char *syn);
+void led_printmsg(char *s, int row, char *syn);
 char *led_read(int *kmap);
-void led_print(char *msg, int row);
-void led_printmsg(char *s, int row);
 int led_pos(char *s, int pos);
 
 /* ex commands */

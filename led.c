@@ -78,7 +78,7 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 			for (j = 0; j < curwid; j++)
 				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
-	att = syn_highlight(syn, s0);
+	att = syn_highlight(xhl ? syn : "", s0);
 	led_markrev(n, chrs, pos, att);
 	out = sbuf_make();
 	i = cbeg;
@@ -111,9 +111,9 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 }
 
 /* print a line on the screen */
-void led_print(char *s, int row)
+void led_print(char *s, int row, char *syn)
 {
-	char *r = led_render(s, xleft, xleft + xcols, ex_filetype());
+	char *r = led_render(s, xleft, xleft + xcols, syn);
 	term_pos(row, 0);
 	term_kill();
 	term_str(r);
@@ -129,10 +129,10 @@ static int td_set(int td)
 }
 
 /* print a line on the screen; for ex messages */
-void led_printmsg(char *s, int row)
+void led_printmsg(char *s, int row, char *syn)
 {
 	int td = td_set(+2);
-	char *r = led_render(s, xleft, xleft + xcols, xhl ? "---" : "");
+	char *r = led_render(s, xleft, xleft + xcols, syn);
 	td_set(td);
 	term_pos(row, 0);
 	term_kill();
@@ -160,7 +160,8 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *ai, char *pref, char *main, char *post, int kmap)
+static void led_printparts(char *ai, char *pref, char *main,
+		char *post, int kmap, char *syn)
 {
 	struct sbuf *ln;
 	int off, pos;
@@ -186,7 +187,7 @@ static void led_printparts(char *ai, char *pref, char *main, char *post, int kma
 		xleft = pos - xcols / 2;
 	if (pos < xleft)
 		xleft = pos < xcols ? 0 : pos - xcols / 2;
-	led_print(sbuf_buf(ln), -1);
+	led_print(sbuf_buf(ln), -1, syn);
 	term_pos(-1, led_pos(sbuf_buf(ln), pos + idir));
 	sbuf_free(ln);
 	term_commit();
@@ -244,7 +245,8 @@ char *led_read(int *kmap)
 }
 
 /* read a line from the terminal */
-static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, int *kmap)
+static char *led_line(char *pref, char *post, char *ai,
+		int ai_max, int *key, int *kmap, char *syn)
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
@@ -256,7 +258,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, in
 	if (!post)
 		post = "";
 	while (1) {
-		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap);
+		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap, syn);
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):
@@ -304,11 +306,11 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *key, in
 }
 
 /* read an ex command */
-char *led_prompt(char *pref, char *post, int *kmap)
+char *led_prompt(char *pref, char *post, int *kmap, char *syn)
 {
 	int key;
 	int td = td_set(+2);
-	char *s = led_line(pref, post, "", 0, &key, kmap);
+	char *s = led_line(pref, post, "", 0, &key, kmap, syn);
 	td_set(td);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
@@ -325,7 +327,7 @@ char *led_prompt(char *pref, char *post, int *kmap)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, int *kmap)
+char *led_input(char *pref, char *post, int *kmap, char *syn)
 {
 	struct sbuf *sb = sbuf_make();
 	char ai[128];
@@ -336,7 +338,7 @@ char *led_input(char *pref, char *post, int *kmap)
 		ai[n++] = *pref++;
 	ai[n] = '\0';
 	while (1) {
-		char *ln = led_line(pref, post, ai, ai_max, &key, kmap);
+		char *ln = led_line(pref, post, ai, ai_max, &key, kmap, syn);
 		int ln_sp = 0;	/* number of initial spaces in ln */
 		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))
 			ln_sp++;
@@ -349,7 +351,7 @@ char *led_input(char *pref, char *post, int *kmap)
 		if (key == '\n')
 			sbuf_chr(sb, '\n');
 		led_printparts(ai, pref ? pref : "", uc_lastline(ln),
-				key == '\n' ? "" : post, *kmap);
+				key == '\n' ? "" : post, *kmap, syn);
 		if (key == '\n')
 			term_chr('\n');
 		if (!pref || !pref[0]) {	/* updating autoindent */

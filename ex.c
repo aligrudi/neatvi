@@ -109,7 +109,7 @@ struct lbuf *ex_lbuf(void)
 
 char *ex_filetype(void)
 {
-	return xhl ? bufs[0].ft : "";
+	return bufs[0].ft;
 }
 
 /* read ex command location */
@@ -970,8 +970,6 @@ static int ex_exec(char *ln)
 				break;
 			}
 		}
-		if (!xvis && !cmd[0])
-			ret = ec_print(ec);
 		if (i == LEN(excmds))
 			ex_line(NULL, ec, &ln);
 	}

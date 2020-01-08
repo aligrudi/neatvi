@@ -735,13 +735,27 @@ static int ec_substitute(char *ec)
 
 static int ec_exec(char *ec)
 {
+	char loc[EXLEN];
 	char arg[EXLEN];
+	int beg, end;
+	char *text;
+	char *rep;
 	ex_modifiedbuffer(NULL);
+	ex_loc(ec, loc);
 	if (ex_expand(arg, ex_argeol(ec)))
 		return 1;
-	ex_print(NULL);
-	if (cmd_exec(arg))
+	if (!loc[0]) {
+		ex_print(NULL);
+		return cmd_exec(arg);
+	}
+	if (ex_region(loc, &beg, &end))
 		return 1;
+	text = lbuf_cp(xb, beg, end);
+	rep = cmd_pipe(arg, text, 1, 1);
+	if (rep)
+		lbuf_edit(xb, rep, beg, end);
+	free(text);
+	free(rep);
 	return 0;
 }
 

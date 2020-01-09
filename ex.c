@@ -955,13 +955,13 @@ static struct excmd {
 /* read an ex command and its arguments from src into dst */
 static void ex_line(int (*ec)(char *s), char *dst, char **src)
 {
-	if (!ec || ec != ec_glob) {
+	if (!ec || (ec != ec_glob && ec != ec_exec)) {
 		while (**src && **src != '|' && **src != '\n')
 			*dst++ = *(*src)++;
 		*dst = '\0';
 		if (**src)
 			(*src)++;
-	} else {	/* the rest of the line for :g */
+	} else {	/* the rest of the line for :g and :! */
 		strcpy(dst, *src);
 		*src = strchr(*src, '\0');
 	}

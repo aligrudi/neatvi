@@ -1056,6 +1056,7 @@ static void vi(void)
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
 		int oleft = xleft;
+		int orow = xrow;
 		int mv, n;
 		term_cmd(&n);
 		vi_arg2 = 0;
@@ -1326,7 +1327,7 @@ static void vi(void)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
 		if (mod || xleft != oleft)
-			vi_drawagain(xcol, mod == 2 && xleft == oleft);
+			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);
 		else if (xtop != otop)
 			vi_drawupdate(xcol, otop);
 		if (vi_msg[0])

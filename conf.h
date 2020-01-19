@@ -65,13 +65,13 @@ static struct highlight {
 	{"sh", {4}, "\'[^\']*\'"},
 
 	/* neatmail */
-	{"nm", {0, 12 | SYN_BD, 12 | SYN_BD, 2, 8 | SYN_BD},
+	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},
 		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
-	{"nm", {7}, "^[LJ].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[HT].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[MI].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(12)}, "^[N].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(10)}, "^[F].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[A-Z][HT].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[A-Z][MI].*$"},
+	{"nm", {7 | SYN_BGMK(15)}, "^[A-Z][LJ].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(7)}, "^[F].*$"},
 	{"nm", {7 | SYN_IT}, "^\t.*$"},
 	{"nm", {SYN_BD}, "^:.*$"},
 

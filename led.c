@@ -65,10 +65,12 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	struct sbuf *out;
 	int i, j;
 	int ctx = dir_context(s0);
+	int att_blank = 0;		/* the attribute of blank space */
 	chrs = uc_chop(s0, &n);
 	pos = ren_position(s0);
 	off = malloc((cend - cbeg) * sizeof(off[0]));
 	memset(off, 0xff, (cend - cbeg) * sizeof(off[0]));
+	/* initialise off[] using pos[] */
 	for (i = 0; i < n; i++) {
 		int curwid = ren_cwid(chrs[i], pos[i]);
 		int curbeg = led_posctx(ctx, pos[i], cbeg, cend);
@@ -79,12 +81,17 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
 	att = syn_highlight(xhl ? syn : "", s0);
+	/* the attribute of \n character is used for blanks */
+	for (i = 0; i < n; i++)
+		if (chrs[i][0] == '\n')
+			att_blank = att[i];
 	led_markrev(n, chrs, pos, att);
+	/* generate term output */
 	out = sbuf_make();
 	i = cbeg;
 	while (i < cend) {
 		int o = off[i - cbeg];
-		int att_new = o >= 0 ? att[o] : 0;
+		int att_new = o >= 0 ? att[o] : att_blank;
 		sbuf_str(out, term_att(att_new, att_old));
 		att_old = att_new;
 		if (o >= 0) {

@@ -53,7 +53,13 @@ static void vi_drawmsg(void)
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
+	if (xhll && row == xrow) {
+		int hll;
+		conf_highlight_line(&hll);
+		syn_context(hll);
+	}
 	led_print(s ? s : (row ? "~" : ""), row - xtop, ex_filetype());
+	syn_context(0);
 }
 
 /* redraw the screen */
@@ -1326,10 +1332,16 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
-		if (mod || xleft != oleft)
+		if (mod || xleft != oleft) {
 			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);
-		else if (xtop != otop)
-			vi_drawupdate(xcol, otop);
+		} else {
+			if (xtop != otop)
+				vi_drawupdate(xcol, otop);
+			if (xhll && xrow != orow && orow >= xtop && orow < xtop + xcols)
+				vi_drawrow(orow);
+			if (xhll && xrow != orow)
+				vi_drawrow(xrow);
+		}
 		if (vi_msg[0])
 			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),

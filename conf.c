@@ -75,6 +75,12 @@ int conf_highlight_revdir(int *att)
 	return 0;
 }
 
+int conf_highlight_line(int *att)
+{
+	*att = SYN_LINE;
+	return 0;
+}
+
 char **conf_kmap(int id)
 {
 	return kmaps[id];

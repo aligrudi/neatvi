@@ -60,6 +60,8 @@ order
 hl, highlight
   If set (default), text will be highlighted based on syntax
   highlighting rules in conf.h.
+hll, highlightline
+  If set, highlight current line.
 ai, autoindent
   As in vi(1).
 aw, autowrite

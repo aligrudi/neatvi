@@ -81,8 +81,11 @@ static struct highlight {
 	{"---", {8 | SYN_BD}, "^.*$"},
 };
 
+/* how to hightlight current line (hll option) */
+#define SYN_LINE		(SYN_BGMK(11))
+
 /* how to hightlight text in the reverse direction */
-#define SYN_REVDIR		(SYN_BGMK(255))
+#define SYN_REVDIR		(SYN_BGMK(7))
 
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"

@@ -15,6 +15,7 @@ int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
 int xaw;			/* autowrite option */
 int xhl = 1;			/* syntax highlight option */
+int xhll;			/* highlight current line */
 int xled = 1;			/* use the line editor */
 int xtd = +1;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
@@ -860,6 +861,7 @@ static struct option {
 	{"shape", "shape", &xshape},
 	{"order", "xorder", &xorder},
 	{"hl", "highlight", &xhl},
+	{"hll", "highlightline", &xhll},
 };
 
 static char *cutword(char *s, char *d)

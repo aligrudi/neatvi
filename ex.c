@@ -477,7 +477,7 @@ static int ec_write(char *ec)
 			ex_show("write failed: file exists\n");
 			return 1;
 		}
-		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, conf_mode());
 		if (fd < 0) {
 			ex_show("write failed: cannot create file\n");
 			return 1;

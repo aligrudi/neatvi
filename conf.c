@@ -69,16 +69,19 @@ int conf_filetype(int idx, char **ft, char **pat)
 	return 0;
 }
 
-int conf_highlight_revdir(int *att)
+int conf_hlrev(void)
 {
-	*att = SYN_REVDIR;
-	return 0;
+	return SYN_REVDIR;
 }
 
-int conf_highlight_line(int *att)
+int conf_hlline(void)
 {
-	*att = SYN_LINE;
-	return 0;
+	return SYN_LINE;
+}
+
+int conf_mode(void)
+{
+	return MKFILE_MODE;
 }
 
 char **conf_kmap(int id)

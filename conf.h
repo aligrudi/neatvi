@@ -1,5 +1,8 @@
 /* neatvi configuration file */
 
+/* access mode of new files */
+#define MKFILE_MODE		0600
+
 /* map file names to file types */
 static struct filetype {
 	char *ft;		/* file type */

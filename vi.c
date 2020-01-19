@@ -53,11 +53,8 @@ static void vi_drawmsg(void)
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
-	if (xhll && row == xrow) {
-		int hll;
-		conf_highlight_line(&hll);
-		syn_context(hll);
-	}
+	if (xhll && row == xrow)
+		syn_context(conf_hlline());
 	led_print(s ? s : (row ? "~" : ""), row - xtop, ex_filetype());
 	syn_context(0);
 }

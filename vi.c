@@ -1334,7 +1334,7 @@ static void vi(void)
 		} else {
 			if (xtop != otop)
 				vi_drawupdate(xcol, otop);
-			if (xhll && xrow != orow && orow >= xtop && orow < xtop + xcols)
+			if (xhll && xrow != orow && orow >= xtop && orow < xtop + xrows)
 				vi_drawrow(orow);
 			if (xhll && xrow != orow)
 				vi_drawrow(xrow);

@@ -113,14 +113,16 @@ static int uc_len(char *s)
 
 static int uc_dec(char *s)
 {
-	int result;
-	int l = uc_len(s);
-	if (l <= 1)
-		return (unsigned char) *s;
-	result = (0x3f >> --l) & (unsigned char) *s++;
-	while (l--)
-		result = (result << 6) | ((unsigned char) *s++ & 0x3f);
-	return result;
+	int c = (unsigned char) s[0];
+	if (!(c & 0x80))
+		return c;
+	if (!(c & 0x20))
+		return ((c & 0x1f) << 6) | (s[1] & 0x3f);
+	if (!(c & 0x10))
+		return ((c & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f);
+	if (!(c & 0x08))
+		return ((c & 0x07) << 18) | ((s[1] & 0x3f) << 12) | ((s[2] & 0x3f) << 6) | (s[3] & 0x3f);
+	return c;
 }
 
 static void ratom_copy(struct ratom *dst, struct ratom *src)

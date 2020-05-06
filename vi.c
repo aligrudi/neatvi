@@ -1371,10 +1371,10 @@ int main(int argc, char *argv[])
 			vi();
 		else
 			ex();
-		if (xled || xvis)
-			term_done();
 		ex_done();
 	}
+	if (xled || xvis)
+		term_done();
 	reg_done();
 	syn_done();
 	dir_done();

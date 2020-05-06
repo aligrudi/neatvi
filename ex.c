@@ -168,6 +168,41 @@ static char *ex_arg(char *s, char *arg)
 	return s;
 }
 
+/* read ex file argument */
+static char *ex_filearg(char *s, char *arg)
+{
+	s = ex_cmd(s, arg);
+	while (isspace((unsigned char) *s))
+		s++;
+	while (*s && !isspace((unsigned char) *s)) {
+		int c = (unsigned char) *s++;
+		if (c == '%') {
+			if (!bufs[0].path || !bufs[0].path[0]) {
+				ex_show("\"%\" is unset\n");
+				return NULL;
+			}
+			strcpy(arg, bufs[0].path);
+			arg = strchr(arg, '\0');
+			continue;
+		}
+		if (c == '#') {
+			if (!bufs[1].path || !bufs[1].path[0]) {
+				ex_show("\"#\" is unset\n");
+				return NULL;
+			}
+			strcpy(arg, bufs[1].path);
+			arg = strchr(arg, '\0');
+			continue;
+		}
+		if (c == '\\')
+			c = *s++;
+		*arg++ = c;
+	}
+	*arg = '\0';
+	return s;
+}
+
+
 static char *ex_argeol(char *ec)
 {
 	char arg[EXLEN];
@@ -326,53 +361,22 @@ static int ec_quit(char *ec)
 	return 0;
 }
 
-static int ex_expand(char *d, char *s)
-{
-	while (*s) {
-		int c = (unsigned char) *s++;
-		if (c == '%') {
-			if (!bufs[0].path || !bufs[0].path[0]) {
-				ex_show("\"%\" is unset\n");
-				return 1;
-			}
-			strcpy(d, bufs[0].path);
-			d = strchr(d, '\0');
-			continue;
-		}
-		if (c == '#') {
-			if (!bufs[1].path || !bufs[1].path[0]) {
-				ex_show("\"#\" is unset\n");
-				return 1;
-			}
-			strcpy(d, bufs[1].path);
-			d = strchr(d, '\0');
-			continue;
-		}
-		if (c == '\\' && (*s == '%' || *s == '#'))
-			c = *s++;
-		*d++ = c;
-	}
-	*d = '\0';
-	return 0;
-}
-
 static int ec_edit(char *ec)
 {
 	char msg[128];
-	char arg[EXLEN], cmd[EXLEN];
+	char cmd[EXLEN];
 	char path[EXLEN];
 	int fd;
 	ex_cmd(ec, cmd);
-	ex_arg(ec, arg);
+	if (!ex_filearg(ec, path))
+		return 1;
 	if (!strchr(cmd, '!'))
 		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
-	if (ex_expand(path, arg))
-		return 1;
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
 	bufs[0].top = xtop;
-	if (arg[0] && bufs_find(path) >= 0) {
+	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;
 	}
@@ -412,7 +416,7 @@ static int ec_read(char *ec)
 		return 1;
 	if (arg[0] == '!') {
 		int pos = MIN(xrow + 1, lbuf_len(xb));
-		if (ex_expand(arg, ex_argeol(ec)))
+		if (!ex_filearg(ec, arg))
 			return 1;
 		obuf = cmd_pipe(arg + 1, NULL, 0, 1);
 		if (obuf)
@@ -459,7 +463,7 @@ static int ec_write(char *ec)
 		end = lbuf_len(xb);
 	}
 	if (arg[0] == '!') {
-		if (ex_expand(arg, ex_argeol(ec)))
+		if (!ex_filearg(ec, arg))
 			return 1;
 		ibuf = lbuf_cp(xb, beg, end);
 		ex_print(NULL);
@@ -743,7 +747,7 @@ static int ec_exec(char *ec)
 	char *rep;
 	ex_modifiedbuffer(NULL);
 	ex_loc(ec, loc);
-	if (ex_expand(arg, ex_argeol(ec)))
+	if (!ex_filearg(ec, arg))
 		return 1;
 	if (!loc[0]) {
 		ex_print(NULL);
@@ -765,7 +769,7 @@ static int ec_make(char *ec)
 	char arg[EXLEN];
 	char make[EXLEN];
 	ex_modifiedbuffer(NULL);
-	if (ex_expand(arg, ex_argeol(ec)))
+	if (!ex_filearg(ec, arg))
 		return 1;
 	sprintf(make, "make %s", arg);
 	ex_print(NULL);
@@ -1019,7 +1023,7 @@ int ex_init(char **files)
 	*s++ = 'e';
 	*s++ = ' ';
 	while (*r && s + 2 < cmd + sizeof(cmd)) {
-		if (*r == ' ')
+		if (*r == ' ' || *r == '%' || *r == '#')
 			*s++ = '\\';
 		*s++ = *r++;
 	}

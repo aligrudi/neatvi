@@ -291,6 +291,16 @@ static char *led_line(char *pref, char *post, char *ai,
 			ai[ai_len] = '\0';
 			break;
 		case TK_CTL('d'):
+			/* when ai and pref are empty, remove the first space of sb */
+			if (ai_len == 0 && !pref[0]) {
+				char *buf = sbuf_buf(sb);
+				if (buf[0] == ' ' || buf[0] == '\t') {
+					char *dup = uc_dup(buf + 1);
+					sbuf_cut(sb, 0);
+					sbuf_str(sb, dup);
+					free(dup);
+				}
+			}
 			if (ai_len > 0)
 				ai[--ai_len] = '\0';
 			break;
@@ -337,7 +347,7 @@ char *led_input(char *pref, char *post, int *kmap, char *syn)
 {
 	struct sbuf *sb = sbuf_make();
 	char ai[128];
-	int ai_max = xai ? sizeof(ai) - 1 : 0;
+	int ai_max = sizeof(ai) - 1;
 	int n = 0;
 	int key;
 	while (n < ai_max && (*pref == ' ' || *pref == '\t'))
@@ -348,6 +358,7 @@ char *led_input(char *pref, char *post, int *kmap, char *syn)
 		int ln_sp = 0;	/* number of initial spaces in ln */
 		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))
 			ln_sp++;
+		/* append the auto-indent only if there are other characters */
 		if (ln[ln_sp] || (pref && pref[0]) ||
 				(key != '\n' && post[0] && post[0] != '\n'))
 			sbuf_str(sb, ai);
@@ -368,6 +379,8 @@ char *led_input(char *pref, char *post, int *kmap, char *syn)
 			memcpy(ai + ai_len, ln, ai_new);
 			ai[ai_len + ai_new] = '\0';
 		}
+		if (!xai)
+			ai[0] = '\0';
 		free(ln);
 		if (key != '\n')
 			break;

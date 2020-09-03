@@ -103,7 +103,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 			fds[0].fd = -1;
 		if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL))
 			fds[1].fd = -1;
-		if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL))
+		if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL))
 			fds[2].fd = -1;
 	}
 	close(ifd);

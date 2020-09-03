@@ -31,7 +31,7 @@ static struct buf {
 	char ft[32];
 	char *path;
 	struct lbuf *lb;
-	int row, off, top;
+	int row, off, top, td;
 	long mtime;		/* modification time */
 } bufs[8];
 
@@ -73,6 +73,7 @@ static int bufs_open(char *path)
 	bufs[i].row = 0;
 	bufs[i].off = 0;
 	bufs[i].top = 0;
+	bufs[i].td = +1;
 	bufs[i].mtime = -1;
 	strcpy(bufs[i].ft, syn_filetype(path));
 	return i;
@@ -96,6 +97,7 @@ static void bufs_switch(int idx)
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
 	xtop = bufs[0].top;
+	xtd = bufs[0].td;
 }
 
 char *ex_path(void)
@@ -376,6 +378,7 @@ static int ec_edit(char *ec)
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
 	bufs[0].top = xtop;
+	bufs[0].td = xtd;
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;

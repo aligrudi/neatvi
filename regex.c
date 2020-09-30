@@ -41,8 +41,8 @@ struct ratom {
 
 /* regular expression instruction */
 struct rinst {
-	int ri;			/* instruction type (RI_*) */
 	struct ratom ra;	/* regular expression atom (RI_ATOM) */
+	int ri;			/* instruction type (RI_*) */
 	int a1, a2;		/* destination of RI_FORK and RI_JUMP */
 	int mark;		/* mark (RI_MARK) */
 };
@@ -51,26 +51,26 @@ struct rinst {
 struct regex {
 	struct rinst *p;	/* the program */
 	int n;			/* number of instructions */
-	int grpcnt;		/* number of groups */
 	int flg;		/* regcomp() flags */
 };
 
 /* regular expression matching state */
 struct rstate {
-	int mark[NGRPS * 2];	/* marks for RI_MARK */
-	int pc;			/* program counter */
 	char *s;		/* the current position in the string */
 	char *o;		/* the beginning of the string */
+	int mark[NGRPS * 2];	/* marks for RI_MARK */
+	int pc;			/* program counter */
 	int flg;		/* flags passed to regcomp() and regexec() */
 	int dep;		/* re_rec() depth */
 };
 
 /* regular expression tree; used for parsing */
 struct rnode {
-	int rn;			/* node type (RN_*) */
 	struct ratom ra;	/* regular expression atom (RN_ATOM) */
-	int mincnt, maxcnt;	/* number of repetitions */
 	struct rnode *c1, *c2;	/* children */
+	int mincnt, maxcnt;	/* number of repetitions */
+	int grp;		/* group number */
+	int rn;			/* node type (RN_*) */
 };
 
 static struct rnode *rnode_make(int rn, struct rnode *c1, struct rnode *c2)
@@ -307,13 +307,15 @@ static struct rnode *rnode_parse(char **pat);
 
 static struct rnode *rnode_grp(char **pat)
 {
-	struct rnode *rnode;
+	struct rnode *rnode = NULL;
 	if ((*pat)[0] != '(')
 		return NULL;
 	*pat += 1;
-	rnode = rnode_parse(pat);
-	if (!rnode)
-		return NULL;
+	if ((*pat)[0] != ')') {
+		rnode = rnode_parse(pat);
+		if (!rnode)
+			return NULL;
+	}
 	if ((*pat)[0] != ')') {
 		rnode_free(rnode);
 		return NULL;
@@ -418,6 +420,18 @@ static int rnode_count(struct rnode *rnode)
 	return n;
 }
 
+static int rnode_grpnum(struct rnode *rnode, int num)
+{
+	int cur = 0;
+	if (!rnode)
+		return 0;
+	if (rnode->rn == RN_GRP)
+		rnode->grp = num + cur++;
+	cur += rnode_grpnum(rnode->c1, num + cur);
+	cur += rnode_grpnum(rnode->c2, num + cur);
+	return cur;
+}
+
 static int re_insert(struct regex *p, int ri)
 {
 	p->p[p->n++].ri = ri;
@@ -443,12 +457,11 @@ static void rnode_emitnorep(struct rnode *n, struct regex *p)
 		rnode_emit(n->c2, p);
 	}
 	if (n->rn == RN_GRP) {
-		int grp = p->grpcnt++ + 1;
 		mark = re_insert(p, RI_MARK);
-		p->p[mark].mark = 2 * grp;
+		p->p[mark].mark = 2 * n->grp;
 		rnode_emit(n->c1, p);
 		mark = re_insert(p, RI_MARK);
-		p->p[mark].mark = 2 * grp + 1;
+		p->p[mark].mark = 2 * n->grp + 1;
 	}
 	if (n->rn == RN_ATOM) {
 		int atom = re_insert(p, RI_ATOM);
@@ -503,6 +516,7 @@ int regcomp(regex_t *preg, char *pat, int flg)
 	int mark;
 	if (!rnode)
 		return 1;
+	rnode_grpnum(rnode, 1);
 	re = malloc(sizeof(*re));
 	memset(re, 0, sizeof(*re));
 	re->p = malloc(n * sizeof(re->p[0]));

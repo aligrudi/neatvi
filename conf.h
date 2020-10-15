@@ -63,9 +63,13 @@ static struct highlight {
 	{"mk", {0, SYN_BD}, "([A-Za-z_%.]+):"},
 
 	/* shell script */
+	{"sh", {5 | SYN_BD}, "\\<(break|case|continue|do|done|elif|else|esac|fi|for|if|in|then|until|while)\\>"},
 	{"sh", {2 | SYN_IT}, "#.*$"},
-	{"sh", {4}, "\"([^\"]|\\\\\")*\""},
-	{"sh", {4}, "\'[^\']*\'"},
+	{"sh", {4}, "\"([^\"\\]|\\\\.)*\""},
+	{"sh", {4}, "'[^']*'"},
+	{"sh", {4}, "`([^`\\]|\\\\.)*`"},
+	{"sh", {1}, "\\$(\\{[^}]+\\}|[a-zA-Z_0-9]+)"},
+	{"sh", {0, SYN_BD}, "^([a-zA-Z_][a-zA-Z_0-9]*\\(\\)).*\\{"},
 
 	/* neatmail */
 	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},

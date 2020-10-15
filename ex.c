@@ -553,11 +553,9 @@ static int ec_print(char *ec)
 	int i;
 	ex_cmd(ec, cmd);
 	ex_loc(ec, loc);
-	if (!cmd[0] && !loc[0]) {
-		if (xrow >= lbuf_len(xb) - 1)
+	if (!cmd[0] && !loc[0])
+		if (xrow >= lbuf_len(xb))
 			return 1;
-		xrow = xrow + 1;
-	}
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	for (i = beg; i < end; i++)

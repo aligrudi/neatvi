@@ -14,6 +14,7 @@ static struct filetype {
 	{"msg", "letter$|mbox$|mail$"},			/* email */
 	{"mk", "Makefile$|makefile$|\\.mk$"},		/* makefile */
 	{"sh", "\\.sh$"},				/* shell script */
+	{"py", "\\.py$"},				/* python */
 	{"nm", "\\.nm$"},				/* neatmail */
 };
 
@@ -70,6 +71,13 @@ static struct highlight {
 	{"sh", {4}, "`([^`\\]|\\\\.)*`"},
 	{"sh", {1}, "\\$(\\{[^}]+\\}|[a-zA-Z_0-9]+)"},
 	{"sh", {0, SYN_BD}, "^([a-zA-Z_][a-zA-Z_0-9]*\\(\\)).*\\{"},
+
+	/* python */
+	{"py", {2}, "^#.*$"},
+	{"py", {5}, "\\<(and|break|class|continue|def|del|elif|else|except|finally|for|from|global)\\>"},
+	{"py", {5}, "\\<(if|import|in|is|lambda|not|or|pass|print|raise|return|try|while)\\>"},
+	{"py", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
+	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
 	/* neatmail */
 	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},

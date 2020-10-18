@@ -28,7 +28,8 @@ static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 
 static struct buf {
-	char ft[32];
+	char ft[31];
+	unsigned char id;
 	char *path;
 	struct lbuf *lb;
 	int row, off, top, td;
@@ -67,6 +68,8 @@ static int bufs_open(char *path)
 	for (i = 0; i < LEN(bufs) - 1; i++)
 		if (!bufs[i].lb)
 			break;
+	if (!bufs[i].lb)
+		bufs[i].id = i + 1;
 	bufs_free(i);
 	bufs[i].path = uc_dup(path);
 	bufs[i].lb = lbuf_make();
@@ -352,6 +355,29 @@ static int ex_modifiedbuffer(char *msg)
 	return 1;
 }
 
+static int ec_buffer(char *ec)
+{
+	int i;
+	char ln[EXLEN];
+	char arg[EXLEN];
+	unsigned char id;
+	ex_arg(ec, arg);
+	id = arg[0] ? atoi(arg) : 0;
+	for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) { 
+		if (id) {
+			if (id == bufs[i].id)
+				break;
+		} else {
+			char c = i < 2 ? "%#"[i] : ' ';
+			snprintf(ln, LEN(ln), "%i %c %s",
+					(int)bufs[i].id, c, bufs[i].path);
+			ex_print(ln);
+		}
+	}
+	if (id)
+		bufs_switch(bufs[i].lb ? i : i - 1);
+	return 0;
+}
 static int ec_quit(char *ec)
 {
 	char cmd[EXLEN];
@@ -924,6 +950,7 @@ static struct excmd {
 	char *name;
 	int (*ec)(char *s);
 } excmds[] = {
+	{"b", "buffer", ec_buffer},
 	{"p", "print", ec_print},
 	{"a", "append", ec_insert},
 	{"i", "insert", ec_insert},

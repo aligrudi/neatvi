@@ -82,25 +82,16 @@ static int bufs_open(char *path)
 	return i;
 }
 
-static void bufs_swap(int i, int j)
-{
-	struct buf tmp;
-	if (i == j)
-		return;
-	memcpy(&tmp, &bufs[i], sizeof(tmp));
-	memcpy(&bufs[i], &bufs[j], sizeof(tmp));
-	memcpy(&bufs[j], &tmp, sizeof(tmp));
-}
-
 static void bufs_switch(int idx)
 {
-	if (idx > 1)
-		bufs_swap(0, 1);
+	struct buf tmp;
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
 	bufs[0].top = xtop;
 	bufs[0].td = xtd;
-	bufs_swap(0, idx);
+	memcpy(&tmp, &bufs[idx], sizeof(tmp));
+	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
+	memcpy(&bufs[0], &tmp, sizeof(tmp));
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
 	xtop = bufs[0].top;

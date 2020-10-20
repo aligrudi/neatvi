@@ -96,6 +96,10 @@ static void bufs_switch(int idx)
 {
 	if (idx > 1)
 		bufs_swap(0, 1);
+	bufs[0].row = xrow;
+	bufs[0].off = xoff;
+	bufs[0].top = xtop;
+	bufs[0].td = xtd;
 	bufs_swap(0, idx);
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
@@ -401,10 +405,6 @@ static int ec_edit(char *ec)
 	if (!strchr(cmd, '!'))
 		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
-	bufs[0].row = xrow;
-	bufs[0].off = xoff;
-	bufs[0].top = xtop;
-	bufs[0].td = xtd;
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;

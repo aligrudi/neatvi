@@ -28,13 +28,15 @@ static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 
 static struct buf {
-	char ft[31];
-	unsigned char id;
-	char *path;
+	char ft[32];		/* file type */
+	char *path;		/* file path */
 	struct lbuf *lb;
-	int row, off, top, td;
+	int row, off, top;
+	short id, td;		/* buffer id and text direction */
 	long mtime;		/* modification time */
 } bufs[8];
+
+static int bufs_cnt = 0;	/* number of allocated buffers */
 
 static int bufs_find(char *path)
 {
@@ -68,9 +70,8 @@ static int bufs_open(char *path)
 	for (i = 0; i < LEN(bufs) - 1; i++)
 		if (!bufs[i].lb)
 			break;
-	if (!bufs[i].lb)
-		bufs[i].id = i + 1;
 	bufs_free(i);
+	bufs[i].id = ++bufs_cnt;
 	bufs[i].path = uc_dup(path);
 	bufs[i].lb = lbuf_make();
 	bufs[i].row = 0;
@@ -358,7 +359,7 @@ static int ec_buffer(char *ec)
 	unsigned char id;
 	ex_arg(ec, arg);
 	id = arg[0] ? atoi(arg) : 0;
-	for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) { 
+	for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) {
 		if (id) {
 			if (id == bufs[i].id)
 				break;
@@ -369,10 +370,15 @@ static int ec_buffer(char *ec)
 			ex_print(ln);
 		}
 	}
-	if (id)
-		bufs_switch(bufs[i].lb ? i : i - 1);
+	if (id) {
+		if (i < LEN(bufs) && bufs[i].lb)
+			bufs_switch(i);
+		else
+			ex_show("no such buffer\n");
+	}
 	return 0;
 }
+
 static int ec_quit(char *ec)
 {
 	char cmd[EXLEN];

@@ -50,7 +50,6 @@ static void bufs_free(int idx)
 	if (bufs[idx].lb) {
 		free(bufs[idx].path);
 		lbuf_free(bufs[idx].lb);
-		memset(&bufs[idx], 0, sizeof(bufs[idx]));
 	}
 }
 

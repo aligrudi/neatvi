@@ -36,8 +36,6 @@ static struct buf {
 	long mtime;		/* modification time */
 } bufs[8];
 
-static int bufs_cnt = 0;	/* number of allocated buffers */
-
 static int bufs_find(char *path)
 {
 	int i;
@@ -52,7 +50,6 @@ static void bufs_free(int idx)
 	if (bufs[idx].lb) {
 		free(bufs[idx].path);
 		lbuf_free(bufs[idx].lb);
-		memset(&bufs[idx], 0, sizeof(bufs[idx]));
 	}
 }
 
@@ -70,8 +67,9 @@ static int bufs_open(char *path)
 	for (i = 0; i < LEN(bufs) - 1; i++)
 		if (!bufs[i].lb)
 			break;
+	if (!bufs[i].lb)
+		bufs[i].id = i + 1;
 	bufs_free(i);
-	bufs[i].id = ++bufs_cnt;
 	bufs[i].path = uc_dup(path);
 	bufs[i].lb = lbuf_make();
 	bufs[i].row = 0;

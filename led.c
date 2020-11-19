@@ -286,10 +286,9 @@ static char *led_line(char *pref, char *post, char *ai,
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
 		case TK_CTL('t'):
-			if (ai_len < ai_max) {
+			if (ai_len < ai_max)
 				ai[ai_len++] = '\t';
-				ai[ai_len] = '\0';
-			}
+			ai[ai_len] = '\0';
 			break;
 		case TK_CTL('d'):
 			/* when ai and pref are empty, remove the first space of sb */

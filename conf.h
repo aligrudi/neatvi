@@ -17,7 +17,6 @@ static struct filetype {
 	{"py", "\\.py$"},				/* python */
 	{"bib", "bib$"},				/* refer */
 	{"nm", "\\.nm$"},				/* neatmail */
-	{"diff", "\\.(patch|diff)$"}			/* diff */
 };
 
 /* syntax highlighting patterns */
@@ -101,12 +100,6 @@ static struct highlight {
 	{"nm", {0 | SYN_BD | SYN_BGMK(7)}, "^[F].*$"},
 	{"nm", {7 | SYN_IT}, "^\t.*$"},
 	{"nm", {SYN_BD}, "^:.*$"},
-
-	/* diff */
-	{"diff", {1}, "^-.*$"},
-	{"diff", {2}, "^\\+.*$"},
-	{"diff", {6}, "^@.*$"},
-	{"diff", {SYN_BD}, "^diff .*$"},
 
 	/* status bar */
 	{"---", {8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},

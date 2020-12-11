@@ -154,7 +154,7 @@ int ren_cwid(char *s, int pos)
 	for (i = 0; !conf_placeholder(i, &src, &dst, &wid); i++)
 		if (uc_code(src) == uc_code(s))
 			return wid;
-	return 1;
+	return uc_wid(s);
 }
 
 char *ren_translate(char *s, char *ln)

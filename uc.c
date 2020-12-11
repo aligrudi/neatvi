@@ -595,7 +595,7 @@ int uc_isbell(char *s)
 	if (c == ' ' || c == '\t' || c == '\n' || (c <= 0x7f && isprint(c)))
 		return 0;
 	c = uc_code(s);
-	return uc_isdw(c) || uc_iszw(c) || find(c, bchars, LEN(bchars));
+	return uc_iszw(c) || find(c, bchars, LEN(bchars));
 }
 
 /* nonprintable characters */

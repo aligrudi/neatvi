@@ -82,8 +82,9 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 			int ret = read(fds[0].fd, buf, sizeof(buf));
 			if (ret > 0)
 				sbuf_mem(sb, buf, ret);
-			if (ret < 0)
+			if (ret <= 0)
 				close(fds[0].fd);
+			continue;
 		}
 		if (fds[1].revents & POLLOUT) {
 			int ret = write(fds[1].fd, ibuf + nw, slen - nw);
@@ -91,6 +92,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 				nw += ret;
 			if (ret <= 0 || nw == slen)
 				close(fds[1].fd);
+			continue;
 		}
 		if (fds[2].revents & POLLIN) {
 			int ret = read(fds[2].fd, buf, sizeof(buf));

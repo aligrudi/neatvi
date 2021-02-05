@@ -28,12 +28,15 @@ static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 
 static struct buf {
-	char ft[32];
-	char *path;
+	char ft[32];		/* file type */
+	char *path;		/* file path */
 	struct lbuf *lb;
-	int row, off, top, td;
+	int row, off, top;
+	short id, td;		/* buffer id and text direction */
 	long mtime;		/* modification time */
 } bufs[8];
+
+static int bufs_cnt = 0;	/* number of allocated buffers */
 
 static int bufs_find(char *path)
 {
@@ -68,6 +71,7 @@ static int bufs_open(char *path)
 		if (!bufs[i].lb)
 			break;
 	bufs_free(i);
+	bufs[i].id = ++bufs_cnt;
 	bufs[i].path = uc_dup(path);
 	bufs[i].lb = lbuf_make();
 	bufs[i].row = 0;
@@ -79,21 +83,16 @@ static int bufs_open(char *path)
 	return i;
 }
 
-static void bufs_swap(int i, int j)
-{
-	struct buf tmp;
-	if (i == j)
-		return;
-	memcpy(&tmp, &bufs[i], sizeof(tmp));
-	memcpy(&bufs[i], &bufs[j], sizeof(tmp));
-	memcpy(&bufs[j], &tmp, sizeof(tmp));
-}
-
 static void bufs_switch(int idx)
 {
-	if (idx > 1)
-		bufs_swap(0, 1);
-	bufs_swap(0, idx);
+	struct buf tmp;
+	bufs[0].row = xrow;
+	bufs[0].off = xoff;
+	bufs[0].top = xtop;
+	bufs[0].td = xtd;
+	memcpy(&tmp, &bufs[idx], sizeof(tmp));
+	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
+	memcpy(&bufs[0], &tmp, sizeof(tmp));
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
 	xtop = bufs[0].top;
@@ -352,6 +351,34 @@ static int ex_modifiedbuffer(char *msg)
 	return 1;
 }
 
+static int ec_buffer(char *ec)
+{
+	char arg[EXLEN];
+	char ln[128];
+	int id;
+	int i;
+	ex_arg(ec, arg);
+	id = arg[0] ? atoi(arg) : 0;
+	for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) {
+		if (id) {
+			if (id == bufs[i].id)
+				break;
+		} else {
+			char c = i < 2 ? "%#"[i] : ' ';
+			snprintf(ln, LEN(ln), "%i %c %s",
+					(int) bufs[i].id, c, bufs[i].path);
+			ex_print(ln);
+		}
+	}
+	if (id) {
+		if (i < LEN(bufs) && bufs[i].lb)
+			bufs_switch(i);
+		else
+			ex_show("no such buffer\n");
+	}
+	return 0;
+}
+
 static int ec_quit(char *ec)
 {
 	char cmd[EXLEN];
@@ -375,10 +402,6 @@ static int ec_edit(char *ec)
 	if (!strchr(cmd, '!'))
 		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
-	bufs[0].row = xrow;
-	bufs[0].off = xoff;
-	bufs[0].top = xtop;
-	bufs[0].td = xtd;
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;
@@ -924,6 +947,7 @@ static struct excmd {
 	char *name;
 	int (*ec)(char *s);
 } excmds[] = {
+	{"b", "buffer", ec_buffer},
 	{"p", "print", ec_print},
 	{"a", "append", ec_insert},
 	{"i", "insert", ec_insert},

@@ -1026,17 +1026,18 @@ static void vc_repeat(void)
 
 static void vc_execute(void)
 {
-	static int exec_buf;
+	static int exec_buf = -1;
 	int lnmode;
 	int c = vi_read();
-	char *buf;
+	char *buf = NULL;
 	int i;
 	if (TK_INT(c))
 		return;
 	if (c == '@')
 		c = exec_buf;
 	exec_buf = c;
-	buf = reg_get(exec_buf, &lnmode);
+	if (exec_buf >= 0)
+		buf = reg_get(exec_buf, &lnmode);
 	if (buf)
 		for (i = 0; i < MAX(1, vi_arg1); i++)
 			term_push(buf, strlen(buf));

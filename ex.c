@@ -743,8 +743,10 @@ static int ec_substitute(char *ec)
 	}
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
-		struct sbuf *r = sbuf_make();
+		struct sbuf *r = NULL;
 		while (rset_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
+			if (!r)
+				r = sbuf_make();
 			sbuf_mem(r, ln, offs[0]);
 			replace(r, rep, ln, offs);
 			ln += offs[1];
@@ -753,9 +755,11 @@ static int ec_substitute(char *ec)
 			if (offs[1] <= 0)	/* zero-length match */
 				sbuf_chr(r, (unsigned char) *ln++);
 		}
-		sbuf_str(r, ln);
-		lbuf_edit(xb, sbuf_buf(r), i, i + 1);
-		sbuf_free(r);
+		if (r) {
+			sbuf_str(r, ln);
+			lbuf_edit(xb, sbuf_buf(r), i, i + 1);
+			sbuf_free(r);
+		}
 	}
 	rset_free(re);
 	free(rep);

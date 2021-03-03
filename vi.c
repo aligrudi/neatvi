@@ -246,7 +246,8 @@ static int vi_nextcol(struct lbuf *lb, int dir, int *row, int *off)
 
 static int vi_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *row, int *off)
 {
-	strcpy(vi_charlast, cs);
+	if (cs != vi_charlast)
+		strcpy(vi_charlast, cs);
 	vi_charcmd = cmd;
 	return lbuf_findchar(lb, cs, cmd, n, row, off);
 }

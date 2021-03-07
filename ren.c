@@ -129,11 +129,11 @@ static char *ren_placeholder(char *s, int *wid)
 {
 	char *src, *dst;
 	int i;
-	if (wid)
-		*wid = 1;
 	for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
 		if (src[0] == s[0] && uc_code(src) == uc_code(s))
 			return dst;
+	if (wid)
+		*wid = 1;
 	if (uc_iscomb(s)) {
 		static char buf[16];
 		char cbuf[8] = "";

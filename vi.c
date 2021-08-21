@@ -141,7 +141,7 @@ static char *vi_prompt(char *msg, int *kmap)
 char *ex_read(char *msg)
 {
 	struct sbuf *sb;
-	char c;
+	int c;
 	if (xled) {
 		int oleft = xleft;
 		char *s = led_prompt(msg, "", &xkmap, "---");

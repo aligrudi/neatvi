@@ -194,21 +194,20 @@ int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off)
 int lbuf_pair(struct lbuf *lb, int *row, int *off)
 {
 	int r = *row, o = *off;
-	char *ln = lbuf_get(lb, *row);
 	char *pairs = "()[]{}";
-	int p;			/* index for pairs[] */
+	int pchr;		/* parenthesis character */
+	int pidx;		/* index into pairs[] */
 	int dep = 1;		/* parenthesis depth */
-	if (!ln || !ln[o])
+	while ((pchr = (unsigned char) lbuf_chr(lb, r, o)[0]) && !strchr(pairs, pchr))
+		o++;
+	if (!pchr)
 		return 1;
-	while (!strchr(pairs, ln[o]))
-		if (!ln[++o])
-			return 1;
-	p = strchr(pairs, ln[o]) - pairs;
-	while (!lbuf_next(lb, (p & 1) ? -1 : +1, &r, &o)) {
+	pidx = strchr(pairs, pchr) - pairs;
+	while (!lbuf_next(lb, (pidx & 1) ? -1 : +1, &r, &o)) {
 		int c = (unsigned char) lbuf_chr(lb, r, o)[0];
-		if (c == pairs[p ^ 1])
+		if (c == pairs[pidx ^ 1])
 			dep--;
-		if (c == pairs[p])
+		if (c == pairs[pidx])
 			dep++;
 		if (!dep) {
 			*row = r;

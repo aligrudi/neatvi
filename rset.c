@@ -15,23 +15,32 @@ struct rset {
 
 static int re_groupcount(char *s)
 {
-	int n = 0;
+	int n = 0;	/* number of groups */
+	int brk = 0;	/* one if inside a bracket expression */
+	int brk2 = 0;	/* nested bracket type: ':', '*', or '=' */
 	while (*s) {
-		if (s[0] == '(')
-			n++;
-		if (s[0] == '[') {
-			int dep = 0;
-			s += s[1] == '^' ? 3 : 2;
-			while (s[0] && (s[0] != ']' || dep)) {
-				if (s[0] == '[')
-					dep++;
+		if (!brk) {
+			if (s[0] == '(')
+				n++;
+			if (s[0] == '\\' && s[1]) {
+				s++;
+			} else if (s[0] == '[' && s[1] && s[2]) {
+				s += s[1] == '^' ? 2 : 1;
+				brk = 1;
+			}
+		} else {
+			if (!brk2) {
 				if (s[0] == ']')
-					dep--;
+					brk = 0;
+				if (s[0] == '[' && (s[1] == ':' || s[1] == '*' || s[1] == '=')) {
+					brk2 = s[1];
+					s++;
+				}
+			} else if (s[0] == brk2 && s[1] == ']') {
+				brk2 = 0;
 				s++;
 			}
 		}
-		if (s[0] == '\\' && s[1])
-			s++;
 		s++;
 	}
 	return n;

@@ -149,7 +149,7 @@ static char *ex_cmd(char *src, char *cmd)
 	src = ex_loc(src, cmd);
 	while (*src == ' ' || *src == '\t')
 		src++;
-	while (isalpha((unsigned char) *src))
+	while (isalpha((unsigned char) *src) && cmd < cmd0 + 16)
 		if ((*cmd++ = *src++) == 'k' && cmd == cmd0 + 1)
 			break;
 	if (*src == '!' || *src == '=')
@@ -159,35 +159,35 @@ static char *ex_cmd(char *src, char *cmd)
 }
 
 /* read ex file argument */
-static char *ex_filearg(char *src, char *dst, int spaceallowed)
+static char *ex_filearg(char *src, int spaceallowed)
 {
+	struct sbuf *sb = sbuf_make();
 	while (*src && *src != '\n' && (spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%') {
 			if (!bufs[0].path || !bufs[0].path[0]) {
 				ex_show("\"%\" is unset\n");
+				sbuf_free(sb);
 				return NULL;
 			}
-			strcpy(dst, bufs[0].path);
-			dst = strchr(dst, '\0');
+			sbuf_str(sb, bufs[0].path);
 			src++;
 			continue;
 		}
 		if (*src == '#') {
 			if (!bufs[1].path || !bufs[1].path[0]) {
 				ex_show("\"#\" is unset\n");
+				sbuf_free(sb);
 				return NULL;
 			}
-			strcpy(dst, bufs[1].path);
-			dst = strchr(dst, '\0');
+			sbuf_str(sb, bufs[1].path);
 			src++;
 			continue;
 		}
 		if (*src == '\\' && src[1])
 			src++;
-		*dst++ = *src++;
+		sbuf_chr(sb, *src++);
 	}
-	*dst = '\0';
-	return src;
+	return sbuf_done(sb);
 }
 
 /* the previous search keyword */
@@ -372,17 +372,18 @@ static int ec_edit(char *ec)
 	char msg[128];
 	char cmd[EXLEN];
 	char arg[EXLEN];
-	char path[EXLEN];
+	char *path;
 	int fd;
 	ex_cmd(ec, cmd);
 	ex_arg(ec, arg);
-	if (!ex_filearg(arg, path, 0))
-		return 1;
 	if (!strchr(cmd, '!'))
 		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
+	if (!(path = ex_filearg(arg, 0)))
+		return 1;
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
+		free(path);
 		return 0;
 	}
 	if (path[0] || !bufs[0].path)
@@ -403,6 +404,7 @@ static int ec_edit(char *ec)
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	xoff = 0;
 	xtop = MAX(0, MIN(xtop, lbuf_len(xb) - 1));
+	free(path);
 	return 0;
 }
 
@@ -421,12 +423,13 @@ static int ec_read(char *ec)
 		return 1;
 	if (arg[0] == '!') {
 		int pos = MIN(xrow + 1, lbuf_len(xb));
-		char ecmd[EXLEN * 2];
-		if (!ex_filearg(arg, ecmd, 1))
+		char *ecmd = ex_filearg(arg, 1);
+		if (!ecmd)
 			return 1;
 		obuf = cmd_pipe(ecmd + 1, NULL, 0, 1);
 		if (obuf)
 			lbuf_edit(xb, obuf, pos, pos);
+		free(ecmd);
 		free(obuf);
 	} else {
 		int fd = open(path, O_RDONLY);
@@ -469,12 +472,13 @@ static int ec_write(char *ec)
 		end = lbuf_len(xb);
 	}
 	if (arg[0] == '!') {
-		char ecmd[EXLEN * 2];
-		if (!ex_filearg(arg, ecmd, 1))
+		char *ecmd = ex_filearg(arg, 1);
+		if (!ecmd)
 			return 1;
 		ibuf = lbuf_cp(xb, beg, end);
 		ex_print(NULL);
 		cmd_pipe(ecmd + 1, ibuf, 1, 0);
+		free(ecmd);
 		free(ibuf);
 	} else {
 		int fd;
@@ -751,25 +755,31 @@ static int ec_exec(char *ec)
 {
 	char loc[EXLEN];
 	char arg[EXLEN];
-	char ecmd[EXLEN * 2];
 	int beg, end;
 	char *text;
 	char *rep;
+	char *ecmd;
 	ex_modifiedbuffer(NULL);
 	ex_loc(ec, loc);
 	ex_arg(ec, arg);
-	if (!ex_filearg(arg, ecmd, 1))
+	if (!(ecmd = ex_filearg(arg, 1)))
 		return 1;
 	if (!loc[0]) {
+		int ret;
 		ex_print(NULL);
-		return cmd_exec(ecmd);
+		ret = cmd_exec(ecmd);
+		free(ecmd);
+		return ret;
 	}
-	if (ex_region(loc, &beg, &end))
+	if (ex_region(loc, &beg, &end)) {
+		free(ecmd);
 		return 1;
+	}
 	text = lbuf_cp(xb, beg, end);
 	rep = cmd_pipe(ecmd, text, 1, 1);
 	if (rep)
 		lbuf_edit(xb, rep, beg, end);
+	free(ecmd);
 	free(text);
 	free(rep);
 	return 0;
@@ -779,12 +789,13 @@ static int ec_make(char *ec)
 {
 	char arg[EXLEN];
 	char make[EXLEN];
-	char target[EXLEN * 2];
+	char *target;
 	ex_modifiedbuffer(NULL);
 	ex_arg(ec, arg);
-	if (!ex_filearg(arg, target, 0))
+	if (!(target = ex_filearg(arg, 0)))
 		return 1;
 	sprintf(make, "make %s", target);
+	free(target);
 	ex_print(NULL);
 	if (cmd_exec(make))
 		return 1;
@@ -1049,6 +1060,10 @@ static int ex_exec(char *ln)
 	int ret = 0;
 	while (*ln) {
 		ex_cmd(ln, cmd);
+		if (strlen(ln) >= EXLEN) {
+			ex_show("command too long");
+			return 1;
+		}
 		ln = ex_line(ln, ec);
 		if ((idx = ex_idx(cmd)) >= 0)
 			ret = excmds[idx].ec(ec);

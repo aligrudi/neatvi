@@ -114,48 +114,48 @@ char *ex_filetype(void)
 	return bufs[0].ft;
 }
 
-static char *ex_loc(char *s, char *loc);
-static char *ex_cmd(char *s, char *cmd);
-static char *ex_arg(char *s, char *arg);
+static char *ex_loc(char *src, char *loc);
+static char *ex_cmd(char *src, char *cmd);
+static char *ex_arg(char *src, char *arg);
 
 /* read ex command location */
-static char *ex_loc(char *s, char *loc)
+static char *ex_loc(char *src, char *loc)
 {
-	while (*s == ':' || *s == ' ' || *s == '\t')
-		s++;
-	while (*s && !isalpha((unsigned char) *s) && *s != '=' && *s != '!') {
-		if (*s == '\'')
-			*loc++ = *s++;
-		if (*s == '/' || *s == '?') {
-			int d = *s;
-			*loc++ = *s++;
-			while (*s && *s != d) {
-				if (*s == '\\' && s[1])
-					*loc++ = *s++;
-				*loc++ = *s++;
+	while (*src == ':' || *src == ' ' || *src == '\t')
+		src++;
+	while (*src && !isalpha((unsigned char) *src) && *src != '=' && *src != '!') {
+		if (*src == '\'')
+			*loc++ = *src++;
+		if (*src == '/' || *src == '?') {
+			int d = *src;
+			*loc++ = *src++;
+			while (*src && *src != d) {
+				if (*src == '\\' && src[1])
+					*loc++ = *src++;
+				*loc++ = *src++;
 			}
 		}
-		if (*s)
-			*loc++ = *s++;
+		if (*src)
+			*loc++ = *src++;
 	}
 	*loc = '\0';
-	return s;
+	return src;
 }
 
 /* read ex command name */
-static char *ex_cmd(char *s, char *cmd)
+static char *ex_cmd(char *src, char *cmd)
 {
 	char *cmd0 = cmd;
-	s = ex_loc(s, cmd);
-	while (*s == ' ' || *s == '\t')
-		s++;
-	while (isalpha((unsigned char) *s))
-		if ((*cmd++ = *s++) == 'k' && cmd == cmd0 + 1)
+	src = ex_loc(src, cmd);
+	while (*src == ' ' || *src == '\t')
+		src++;
+	while (isalpha((unsigned char) *src))
+		if ((*cmd++ = *src++) == 'k' && cmd == cmd0 + 1)
 			break;
-	if (*s == '!' || *s == '=')
-		*cmd++ = *s++;
+	if (*src == '!' || *src == '=')
+		*cmd++ = *src++;
 	*cmd = '\0';
-	return s;
+	return src;
 }
 
 /* read ex file argument */
@@ -983,48 +983,48 @@ static int ex_idx(char *cmd)
 }
 
 /* read ex command argument */
-static char *ex_arg(char *s, char *arg)
+static char *ex_arg(char *src, char *dst)
 {
 	char loc[EXLEN];
 	char cmd[EXLEN];
 	int c0;
-	ex_loc(s, loc);
-	s = ex_cmd(s, cmd);
+	ex_loc(src, loc);
+	src = ex_cmd(src, cmd);
 	c0 = ex_idx(cmd) >= 0 ? excmds[ex_idx(cmd)].abbr[0] : -1;
-	while (*s == ' ' || *s == '\t')
-		s++;
+	while (*src == ' ' || *src == '\t')
+		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
-			((c0 == 'r' || c0 == 'w') && s[0] == '!')) {
-		while (*s && *s != '\n') {
-			if (*s == '\\' && s[1])
-				*arg++ = *s++;
-			*arg++ = *s++;
+			((c0 == 'r' || c0 == 'w') && src[0] == '!')) {
+		while (*src && *src != '\n') {
+			if (*src == '\\' && src[1])
+				*dst++ = *src++;
+			*dst++ = *src++;
 		}
 	} else if (c0 == 's') {
-		int delim = *s;
+		int delim = *src;
 		int cnt = 2;
-		*arg++ = *s++;
-		while (*s && *s != '\n' && cnt > 0) {
-			if (*s == delim)
+		*dst++ = *src++;
+		while (*src && *src != '\n' && cnt > 0) {
+			if (*src == delim)
 				cnt--;
-			if (*s == '\\' && s[1])
-				*arg++ = *s++;
-			*arg++ = *s++;
+			if (*src == '\\' && src[1])
+				*dst++ = *src++;
+			*dst++ = *src++;
 		}
 	}
-	while (*s && *s != '\n' && *s != '|' && *s != '"') {
-		if (*s == '\\' && s[1])
-			*arg++ = *s++;
-		*arg++ = *s++;
+	while (*src && *src != '\n' && *src != '|' && *src != '"') {
+		if (*src == '\\' && src[1])
+			*dst++ = *src++;
+		*dst++ = *src++;
 	}
-	if (*s == '"') {
-		while (*s != '\n')
-			s++;
+	if (*src == '"') {
+		while (*src != '\n')
+			src++;
 	}
-	if (*s == '\n' || *s == '|')
-		s++;
-	*arg = '\0';
-	return s;
+	if (*src == '\n' || *src == '|')
+		src++;
+	*dst = '\0';
+	return src;
 }
 
 /* read an ex command and its arguments from src into dst */

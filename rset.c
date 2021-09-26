@@ -130,11 +130,12 @@ void rset_free(struct rset *rs)
 /* read a regular expression enclosed in a delimiter */
 char *re_read(char **src)
 {
-	struct sbuf *sbuf = sbuf_make();
+	struct sbuf *sbuf;
 	char *s = *src;
 	int delim = (unsigned char) *s++;
 	if (!delim)
 		return NULL;
+	sbuf = sbuf_make();
 	while (*s && *s != delim) {
 		if (s[0] == '\\' && s[1])
 			if (*(++s) != delim)

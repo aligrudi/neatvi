@@ -627,17 +627,15 @@ static int ec_substitute(char *loc, char *cmd, char *arg)
 		s--;
 		rep = re_read(&s);
 	}
-	if (!rep)
-		rep = uc_dup(pat ? "" : xrep);
-	snprintf(xrep, sizeof(xrep), "%s", rep);
+	if (pat || rep)
+		snprintf(xrep, sizeof(xrep), "%s", rep ? rep : "");
 	free(pat);
+	free(rep);
 	if (ex_kwd(&pats[0], NULL))
 		return 1;
 	re = rset_make(1, pats, xic ? RE_ICASE : 0);
-	if (!re) {
-		free(rep);
+	if (!re)
 		return 1;
-	}
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		struct sbuf *r = NULL;
@@ -645,7 +643,7 @@ static int ec_substitute(char *loc, char *cmd, char *arg)
 			if (!r)
 				r = sbuf_make();
 			sbuf_mem(r, ln, offs[0]);
-			replace(r, rep, ln, offs);
+			replace(r, xrep, ln, offs);
 			ln += offs[1];
 			if (!*ln || !strchr(s, 'g'))
 				break;
@@ -659,7 +657,6 @@ static int ec_substitute(char *loc, char *cmd, char *arg)
 		}
 	}
 	rset_free(re);
-	free(rep);
 	return 0;
 }
 
@@ -693,7 +690,7 @@ static int ec_exec(char *loc, char *cmd, char *arg)
 	return 0;
 }
 
-static int ec_make(char *log, char *cmd, char *arg)
+static int ec_make(char *loc, char *cmd, char *arg)
 {
 	char make[EXLEN];
 	char *target;

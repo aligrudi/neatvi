@@ -47,8 +47,6 @@ int *syn_highlight(char *ft, char *s)
 	memset(att, 0, n * sizeof(att[0]));
 	if (!rs)
 		return att;
-	for (i = 0; i < n; i++)
-		att[i] = syn_ctx;
 	while ((hl = rset_find(rs, s + sidx, LEN(subs) / 2, subs, flg)) >= 0) {
 		int grp = 0;
 		int cend = 1;
@@ -67,6 +65,8 @@ int *syn_highlight(char *ft, char *s)
 		sidx += cend;
 		flg = RE_NOTBOL;
 	}
+	for (i = 0; i < n; i++)
+		att[i] = syn_merge(att[i], syn_ctx);
 	return att;
 }
 

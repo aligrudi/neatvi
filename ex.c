@@ -264,6 +264,8 @@ static int ex_region(char *loc, int *beg, int *end)
 			xrow = *end - 1;
 		loc++;
 	}
+	if (*beg < 0 && *end == 0)
+		*beg = 0;
 	if (*beg < 0 || *beg >= lbuf_len(xb))
 		return 1;
 	if (*end < *beg || *end > lbuf_len(xb))

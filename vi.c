@@ -1250,6 +1250,8 @@ static void vi(void)
 						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
+				if (k == 'g')
+					xrow = 0;
 				break;
 			case 'x':
 				vi_back(' ');

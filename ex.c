@@ -361,15 +361,15 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 static int ec_read(char *loc, char *cmd, char *arg)
 {
 	char msg[128];
-	int beg, end;
+	int beg, end, pos;
 	char *path;
 	char *obuf;
 	int n = lbuf_len(xb);
 	path = arg[0] ? arg : ex_path();
 	if (ex_region(loc, &beg, &end))
 		return 1;
+	pos = lbuf_len(xb) ? end : 0;
 	if (arg[0] == '!') {
-		int pos = MIN(xrow + 1, lbuf_len(xb));
 		char *ecmd = ex_pathexpand(arg, 1);
 		if (!ecmd)
 			return 1;
@@ -380,7 +380,6 @@ static int ec_read(char *loc, char *cmd, char *arg)
 		free(obuf);
 	} else {
 		int fd = open(path, O_RDONLY);
-		int pos = lbuf_len(xb) ? end : 0;
 		if (fd < 0) {
 			ex_show("read failed\n");
 			return 1;

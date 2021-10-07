@@ -114,36 +114,40 @@ char *ex_filetype(void)
 	return bufs[0].ft;
 }
 
-/* replace % and # in paths and commands with current and alternate path names */
+/* replace % and # with current and alternate path names; returns a static buffer */
 static char *ex_pathexpand(char *src, int spaceallowed)
 {
-	struct sbuf *sb = sbuf_make();
-	while (*src && *src != '\n' && (spaceallowed || (*src != ' ' && *src != '\t'))) {
+	static char buf[1024];
+	char *dst = buf;
+	char *end = dst + sizeof(buf);
+	while (dst + 1 < end && *src && *src != '\n' &&
+			(spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%') {
 			if (!bufs[0].path || !bufs[0].path[0]) {
 				ex_show("\"%\" is unset\n");
-				sbuf_free(sb);
 				return NULL;
 			}
-			sbuf_str(sb, bufs[0].path);
+			dst += snprintf(dst, end - dst, "%s", bufs[0].path);
 			src++;
 			continue;
 		}
 		if (*src == '#') {
 			if (!bufs[1].path || !bufs[1].path[0]) {
 				ex_show("\"#\" is unset\n");
-				sbuf_free(sb);
 				return NULL;
 			}
-			sbuf_str(sb, bufs[1].path);
+			dst += snprintf(dst, end - dst, "%s", bufs[1].path);
 			src++;
 			continue;
 		}
 		if (*src == '\\' && src[1])
 			src++;
-		sbuf_chr(sb, *src++);
+		*dst++ = *src++;
 	}
-	return sbuf_done(sb);
+	if (dst + 1 >= end)
+		dst = end - 1;
+	*dst = '\0';
+	return buf;
 }
 
 /* the previous search keyword */
@@ -333,7 +337,6 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 		return 1;
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
-		free(path);
 		return 0;
 	}
 	if (path[0] || !bufs[0].path)
@@ -354,7 +357,6 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	xoff = 0;
 	xtop = MAX(0, MIN(xtop, lbuf_len(xb) - 1));
-	free(path);
 	return 0;
 }
 
@@ -376,7 +378,6 @@ static int ec_read(char *loc, char *cmd, char *arg)
 		obuf = cmd_pipe(ecmd + 1, NULL, 0, 1);
 		if (obuf)
 			lbuf_edit(xb, obuf, pos, pos);
-		free(ecmd);
 		free(obuf);
 	} else {
 		int fd = open(path, O_RDONLY);
@@ -420,7 +421,6 @@ static int ec_write(char *loc, char *cmd, char *arg)
 		ibuf = lbuf_cp(xb, beg, end);
 		ex_print(NULL);
 		cmd_pipe(ecmd + 1, ibuf, 1, 0);
-		free(ecmd);
 		free(ibuf);
 	} else {
 		int fd;
@@ -671,16 +671,11 @@ static int ec_exec(char *loc, char *cmd, char *arg)
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {
-		int ret;
 		ex_print(NULL);
-		ret = cmd_exec(ecmd);
-		free(ecmd);
-		return ret;
+		return cmd_exec(ecmd);
 	}
-	if (ex_region(loc, &beg, &end)) {
-		free(ecmd);
+	if (ex_region(loc, &beg, &end))
 		return 1;
-	}
 	text = lbuf_cp(xb, beg, end);
 	rep = cmd_pipe(ecmd, text, 1, 1);
 	if (rep)
@@ -699,7 +694,6 @@ static int ec_make(char *loc, char *cmd, char *arg)
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
 	sprintf(make, "make %s", target);
-	free(target);
 	ex_print(NULL);
 	if (cmd_exec(make))
 		return 1;

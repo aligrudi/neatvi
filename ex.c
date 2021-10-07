@@ -122,27 +122,19 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 	char *end = dst + sizeof(buf);
 	while (dst + 1 < end && *src && *src != '\n' &&
 			(spaceallowed || (*src != ' ' && *src != '\t'))) {
-		if (*src == '%') {
-			if (!bufs[0].path || !bufs[0].path[0]) {
-				ex_show("\"%\" is unset\n");
+		if (*src == '%' || *src == '#') {
+			int idx = *src == '#';
+			if (!bufs[idx].path || !bufs[idx].path[0]) {
+				ex_show("pathname \"%\" or \"#\" is not set\n");
 				return NULL;
 			}
-			dst += snprintf(dst, end - dst, "%s", bufs[0].path);
+			dst += snprintf(dst, end - dst, "%s", bufs[idx].path);
 			src++;
-			continue;
+		} else {
+			if (*src == '\\' && src[1])
+				src++;
+			*dst++ = *src++;
 		}
-		if (*src == '#') {
-			if (!bufs[1].path || !bufs[1].path[0]) {
-				ex_show("\"#\" is unset\n");
-				return NULL;
-			}
-			dst += snprintf(dst, end - dst, "%s", bufs[1].path);
-			src++;
-			continue;
-		}
-		if (*src == '\\' && src[1])
-			src++;
-		*dst++ = *src++;
 	}
 	if (dst + 1 >= end)
 		dst = end - 1;

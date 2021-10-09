@@ -4,7 +4,7 @@ echo    ":a"
 echo    "abc"
 echo    "axy"
 echo    "."
-echo    ':%s/a(..)/\\1a/g'
+printf  ':%%s/a(..)/\\1a/g\n'
 echo    ":w"
 echo    ":q"
 

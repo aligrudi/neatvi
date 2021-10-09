@@ -4,7 +4,7 @@ echo    ":a"
 echo    "abc"
 echo    "def"
 echo    "."
-echo    ':%s/(b.*)$/(\\1)/g'
+printf  ':%%s/(b.*)$/(\\1)/g\n'
 echo    ":w"
 echo    ":q"
 

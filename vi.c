@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include "vi.h"
 
 static char vi_msg[EXLEN];	/* current message */
@@ -1044,12 +1045,19 @@ static void vc_execute(void)
 			term_push(buf, strlen(buf));
 }
 
+static void sigwinch(int signo)
+{
+	vi_back(TK_CTL('l'));
+	vi_back(TK_CTL('c'));
+}
+
 static void vi(void)
 {
 	int xcol;
 	int mark;
 	char *ln;
 	int kmap = 0;
+	signal(SIGWINCH, sigwinch);
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);

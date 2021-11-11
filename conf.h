@@ -85,7 +85,7 @@ static struct highlight {
 	{"bib", {25}, "^#.*$", 1},
 
 	/* python */
-	{"py", {2}, "^#.*$"},
+	{"py", {2}, "#.*$"},
 	{"py", {5}, "\\<(class|def)\\>"},
 	{"py", {5}, "\\<(and|or|not|is|in)\\>"},
 	{"py", {5}, "\\<(import|from|global|lambda|del)\\>"},

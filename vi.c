@@ -258,7 +258,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	char *kwd;
 	int r = *row;
 	int o = *off;
-	int failed = 0;
+	char *failed = NULL;
 	int len = 0;
 	int i, dir;
 	if (cmd == '/' || cmd == '?') {
@@ -289,7 +289,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	o = *off;
 	for (i = 0; i < cnt; i++) {
 		if (lbuf_search(xb, kwd, dir, &r, &o, &len)) {
-			failed = 1;
+			failed = " not found";
 			break;
 		}
 		if (i + 1 < cnt && cmd == '/')
@@ -301,14 +301,14 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		if (vi_soset) {
 			*off = -1;
 			if (*row + vi_so < 0 || *row + vi_so >= lbuf_len(xb))
-				failed = 1;
+				failed = " bad offset";
 			else
 				*row += vi_so;
 		}
 	}
-	if (failed)
-		snprintf(vi_msg, sizeof(vi_msg), "\"%s\" not found\n", kwd);
-	return failed;
+	if (failed != NULL)
+		snprintf(vi_msg, sizeof(vi_msg), "/%s/%s\n", kwd, failed ? failed : "");
+	return failed != NULL;
 }
 
 /* read a line motion */
@@ -543,6 +543,7 @@ static int vi_motion(int *row, int *off)
 		if (!(cs = vi_curword(xb, *row, *off)))
 			return -1;
 		ex_kwdset(cs, +1);
+		vi_soset = 0;
 		free(cs);
 		if (vi_search('n', cnt, row, off))
 			return -1;

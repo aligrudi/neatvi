@@ -71,7 +71,7 @@ int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len)
 			*r = i;
 			*len = uc_off(s + off + offs[0], offs[1] - offs[0]);
 			off += offs[1] > offs[0] ? offs[1] : offs[1] + 1;
-			if (dir > 0 || !s[off])
+			if (dir > 0 || !s[off] || s[off] == '\n')
 				break;
 		}
 	}

@@ -45,15 +45,19 @@ void sbuf_printf(struct sbuf *sbuf, char *s, ...);
 int sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, int len);
 
-/* regular expression sets */
+/* regular expressions */
 #define RE_ICASE		1
 #define RE_NOTBOL		2
 #define RE_NOTEOL		4
-
+/* regular expression sets: searching for multiple regular expressions */
 struct rset *rset_make(int n, char **pat, int flg);
 int rset_find(struct rset *re, char *s, int n, int *grps, int flg);
 void rset_free(struct rset *re);
 char *re_read(char **src);
+/* searching for a single pattern regular expression */
+struct rstr *rstr_make(char *re, int flg);
+int rstr_find(struct rstr *rs, char *s, int n, int *grps, int flg);
+void rstr_free(struct rstr *rs);
 
 /* rendering lines */
 int *ren_position(char *s);

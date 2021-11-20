@@ -167,8 +167,8 @@ static int ex_search(char **pat)
 	struct sbuf *kw;
 	char *b = *pat;
 	char *e = b;
-	char *pats[1];
-	struct rset *re;
+	char *pat_re;
+	struct rstr *re;
 	int dir, row;
 	kw = sbuf_make();
 	while (*++e) {
@@ -182,18 +182,18 @@ static int ex_search(char **pat)
 		ex_kwdset(sbuf_buf(kw), **pat == '/' ? 1 : -1);
 	sbuf_free(kw);
 	*pat = *e ? e + 1 : e;
-	if (ex_kwd(&pats[0], &dir))
+	if (ex_kwd(&pat_re, &dir))
 		return -1;
-	re = rset_make(1, pats, xic ? RE_ICASE : 0);
+	re = rstr_make(pat_re, xic ? RE_ICASE : 0);
 	if (!re)
 		return -1;
 	row = xrow + dir;
 	while (row >= 0 && row < lbuf_len(xb)) {
-		if (rset_find(re, lbuf_get(xb, row), 0, NULL, 0) >= 0)
+		if (rstr_find(re, lbuf_get(xb, row), 0, NULL, 0) >= 0)
 			break;
 		row += dir;
 	}
-	rset_free(re);
+	rstr_free(re);
 	return row >= 0 && row < lbuf_len(xb) ? row : -1;
 }
 
@@ -604,10 +604,9 @@ static void replace(struct sbuf *dst, char *rep, char *ln, int *offs)
 
 static int ec_substitute(char *loc, char *cmd, char *arg)
 {
-	struct rset *re;
+	struct rstr *re;
 	int offs[32];
 	int beg, end;
-	char *pats[1];
 	char *pat = NULL, *rep = NULL;
 	char *s = arg;
 	int i;
@@ -624,15 +623,15 @@ static int ec_substitute(char *loc, char *cmd, char *arg)
 		snprintf(xrep, sizeof(xrep), "%s", rep ? rep : "");
 	free(pat);
 	free(rep);
-	if (ex_kwd(&pats[0], NULL))
+	if (ex_kwd(&pat, NULL))
 		return 1;
-	re = rset_make(1, pats, xic ? RE_ICASE : 0);
+	re = rstr_make(pat, xic ? RE_ICASE : 0);
 	if (!re)
 		return 1;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		struct sbuf *r = NULL;
-		while (rset_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
+		while (rstr_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
 			if (!r)
 				r = sbuf_make();
 			sbuf_mem(r, ln, offs[0]);
@@ -649,7 +648,7 @@ static int ec_substitute(char *loc, char *cmd, char *arg)
 			sbuf_free(r);
 		}
 	}
-	rset_free(re);
+	rstr_free(re);
 	return 0;
 }
 
@@ -716,10 +715,9 @@ static int ex_exec(char *ln);
 
 static int ec_glob(char *loc, char *cmd, char *arg)
 {
-	struct rset *re;
+	struct rstr *re;
 	int offs[32];
 	int beg, end, not;
-	char *pats[1];
 	char *pat;
 	char *s = arg;
 	int i;
@@ -732,9 +730,9 @@ static int ec_glob(char *loc, char *cmd, char *arg)
 	if (pat && pat[0])
 		ex_kwdset(pat, +1);
 	free(pat);
-	if (ex_kwd(&pats[0], NULL))
+	if (ex_kwd(&pat, NULL))
 		return 1;
-	if (!(re = rset_make(1, pats, xic ? RE_ICASE : 0)))
+	if (!(re = rstr_make(pat, xic ? RE_ICASE : 0)))
 		return 1;
 	xgdep++;
 	for (i = beg + 1; i < end; i++)
@@ -742,7 +740,7 @@ static int ec_glob(char *loc, char *cmd, char *arg)
 	i = beg;
 	while (i < lbuf_len(xb)) {
 		char *ln = lbuf_get(xb, i);
-		if ((rset_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
+		if ((rstr_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
 			xrow = i;
 			if (ex_exec(s))
 				break;
@@ -754,7 +752,7 @@ static int ec_glob(char *loc, char *cmd, char *arg)
 	for (i = 0; i < lbuf_len(xb); i++)
 		lbuf_globget(xb, i, xgdep);
 	xgdep--;
-	rset_free(re);
+	rstr_free(re);
 	return 0;
 }
 

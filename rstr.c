@@ -5,13 +5,14 @@
 #include "vi.h"
 
 struct rstr {
-	struct rset *rs;	/* the compiled regular expression */
-	char *str;		/* simple search string */
-	int icase;
-	int lbeg, lend;
-	int wbeg, wend;
+	struct rset *rs;	/* only for regex patterns */
+	char *str;		/* for simple, non-regex patterns  */
+	int icase;		/* ignore case */
+	int lbeg, lend;		/* match line beg/end */
+	int wbeg, wend;		/* match word beg/end */
 };
 
+/* return zero if a simple pattern is given */
 static int rstr_simple(struct rstr *rs, char *re)
 {
 	char *beg;

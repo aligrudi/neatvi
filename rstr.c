@@ -71,7 +71,7 @@ static int match_case(char *s, char *r, int icase)
 		if (icase && tolower((unsigned char) *s) != tolower((unsigned char) *r))
 			return 1;
 	}
-	return 0;
+	return *r;
 }
 
 /* return zero if an occurrence is found */
@@ -87,6 +87,8 @@ int rstr_find(struct rstr *rs, char *s, int n, int *grps, int flg)
 	len = strlen(rs->str);
 	beg = s;
 	end = s + strlen(s) - len - 1;
+	if (end < beg)
+		end = beg;
 	if (rs->lbeg)
 		end = beg;
 	if (rs->lend)

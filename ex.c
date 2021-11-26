@@ -912,6 +912,7 @@ static char *ex_cmd(char *src, char *cmd)
 static char *ex_arg(char *src, char *dst, char *excmd)
 {
 	int c0 = excmd[0];
+	int c1 = excmd[1];
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
@@ -921,7 +922,7 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 				*dst++ = *src++;
 			*dst++ = *src++;
 		}
-	} else if (c0 == 's') {
+	} else if ((c0 == 's' && c1 != 'e') || c0 == '&' || c0 == '~') {
 		int delim = *src;
 		int cnt = 2;
 		*dst++ = *src++;

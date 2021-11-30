@@ -88,7 +88,7 @@ int rstr_find(struct rstr *rs, char *s, int n, int *grps, int flg)
 	beg = s;
 	end = s + strlen(s) - len - 1;
 	if (end < beg)
-		end = beg;
+		return -1;
 	if (rs->lbeg)
 		end = beg;
 	if (rs->lend)

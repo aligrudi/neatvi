@@ -87,6 +87,7 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	led_markrev(n, chrs, pos, att);
 	/* generate term output */
 	out = sbuf_make();
+	sbuf_str(out, conf_lnpref());
 	i = cbeg;
 	while (i < cend) {
 		int o = off[i - cbeg];

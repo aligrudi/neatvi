@@ -1,7 +1,7 @@
 /* neatvi configuration file */
 
 /* access mode of new files */
-#define MKFILE_MODE		0600
+#define MKFILE_MODE	0600
 
 /* map file names to file types */
 static struct filetype {
@@ -118,10 +118,13 @@ static struct highlight {
 };
 
 /* how to hightlight current line (hll option) */
-#define SYN_LINE		(SYN_BGMK(11))
+#define SYN_LINE	(SYN_BGMK(11))
 
 /* how to hightlight text in the reverse direction */
-#define SYN_REVDIR		(SYN_BGMK(7))
+#define SYN_REVDIR	(SYN_BGMK(7))
+
+/* define it as "\33[8l" to disable BiDi in vte-based terminals */
+#define LNPREF		""
 
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"

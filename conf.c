@@ -106,3 +106,8 @@ char *conf_digraph(int c1, int c2)
 			return digraphs[i][1];
 	return NULL;
 }
+
+char *conf_lnpref(void)
+{
+	return LNPREF;
+}

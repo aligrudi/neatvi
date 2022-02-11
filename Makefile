@@ -13,7 +13,7 @@ conf.o: conf.h
 	$(CC) -c $(CFLAGS) $<
 vi: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
-check:
+check: vi
 	$(SHELL) test.sh
 clean:
 	rm -f *.o vi

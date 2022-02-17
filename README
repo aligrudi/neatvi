@@ -62,6 +62,8 @@ hl, highlight
   highlighting rules in conf.h.
 hll, highlightline
   If set, highlight current line.
+lim, linelimit
+  Lines longer than this value are not reordered or highlighted.
 ai, autoindent
   As in vi(1).
 aw, autowrite

@@ -22,6 +22,7 @@ int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
 int xkmap = 0;			/* the current keymap */
 int xkmap_alt = 1;		/* the alternate keymap */
+int xlim = 256;			/* do not process lines longer than this */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
@@ -769,6 +770,7 @@ static struct option {
 	{"order", "xorder", &xorder},
 	{"hl", "highlight", &xhl},
 	{"hll", "highlightline", &xhll},
+	{"lim", "linelimit", &xlim},
 };
 
 static char *cutword(char *s, char *d)

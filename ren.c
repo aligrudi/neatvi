@@ -5,8 +5,8 @@
 #include <string.h>
 #include "vi.h"
 
-/* specify the screen position of the characters in s */
-int *ren_position(char *s)
+/* specify the screen position of the characters in s; reordering version */
+int *ren_position_reorder(char *s)
 {
 	int i, n;
 	char **chrs = uc_chop(s, &n);
@@ -27,6 +27,24 @@ int *ren_position(char *s)
 	pos[n] = cpos;
 	free(chrs);
 	free(off);
+	return pos;
+}
+
+/* specify the screen position of the characters in s; fast version */
+int *ren_position(char *s)
+{
+	int cpos = 0;
+	int *pos;
+	int i;
+	int n = uc_slen(s);
+	if (n <= xlim && xorder)
+		return ren_position_reorder(s);
+	pos = malloc((n + 1) * sizeof(pos[0]));
+	for (i = 0; i < n; i++, s += uc_len(s)) {
+		pos[i] = cpos;
+		cpos += ren_cwid(s, cpos);
+	}
+	pos[i] = cpos;
 	return pos;
 }
 

@@ -79,7 +79,7 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 			for (j = 0; j < curwid; j++)
 				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
-	att = syn_highlight(xhl ? syn : "", s0);
+	att = syn_highlight((n <= xlim && xhl) ? syn : "", s0);
 	/* the attribute of \n character is used for blanks */
 	for (i = 0; i < n; i++)
 		if (chrs[i][0] == '\n')

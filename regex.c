@@ -547,8 +547,9 @@ void regfree(regex_t *preg)
 static int re_rec(struct regex *re, struct rstate *rs)
 {
 	struct rinst *ri = NULL;
-	if (++(rs->dep) >= NDEPT)
+	if (rs->dep >= NDEPT)
 		return 1;
+	rs->dep++;
 	while (1) {
 		ri = &re->p[rs->pc];
 		if (ri->ri == RI_ATOM) {
@@ -578,6 +579,7 @@ static int re_rec(struct regex *re, struct rstate *rs)
 		}
 		break;
 	}
+	rs->dep--;
 	return ri->ri != RI_MATCH;
 }
 

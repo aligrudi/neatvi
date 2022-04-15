@@ -14,6 +14,11 @@ changed with :cm ex command.  When in input mode, ^e activates the
 English kaymap and ^f switches to the alternate keymap (the last
 keymap specified with :cm).
 
+Sadly, VTE-based terminals such as GNOME's implement a
+backward-incompatible extension of virtual terminal escape codes to
+render bidirectional text by default.  When using these terminal, the
+value of LNPREF macro in conf.h needs to be edited.
+
 COMMANDS
 --------
 

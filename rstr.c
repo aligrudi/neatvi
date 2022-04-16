@@ -89,10 +89,10 @@ int rstr_find(struct rstr *rs, char *s, int n, int *grps, int flg)
 	end = s + strlen(s) - len - 1;
 	if (end < beg)
 		return -1;
-	if (rs->lbeg)
-		end = beg;
 	if (rs->lend)
 		beg = end;
+	if (rs->lbeg)
+		end = s;
 	for (r = beg; r <= end; r++) {
 		if (rs->wbeg && r > s && (isword(r - 1) || !isword(r)))
 			continue;

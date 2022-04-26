@@ -672,7 +672,6 @@ static int ec_exec(char *loc, char *cmd, char *arg)
 	rep = cmd_pipe(ecmd, text, 1, 1);
 	if (rep)
 		lbuf_edit(xb, rep, beg, end);
-	free(ecmd);
 	free(text);
 	free(rep);
 	return 0;

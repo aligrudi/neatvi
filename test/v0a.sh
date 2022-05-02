@@ -1,12 +1,12 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "o"
-echo -n "odef "
-echo -n "oghi."
-echo -n "ojkl"
-echo -n '1G5J'
-echo -n "i^"
+printf	"iabc"
+printf	"o"
+printf	"odef "
+printf	"oghi."
+printf	"ojkl"
+printf	"1G5J"
+printf	"i^"
 echo    ":w"
 echo    ":q"
 

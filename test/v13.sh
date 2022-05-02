@@ -1,14 +1,14 @@
 # vi commands
 echo    ":e $1"
 echo    ":set ic"
-echo -n "iABC"
-echo -n "oDEF"
-echo -n "oGHI"
+printf	"iABC"
+printf	"oDEF"
+printf	"oGHI"
 echo    '1G/def'
-echo -n 'i1'
+printf	"i1"
 echo    ":set noic"
 echo    '/ghi'
-echo -n 'i2'
+printf	"i2"
 echo    ":w"
 echo    ":q"
 

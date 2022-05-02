@@ -1,9 +1,9 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "odef"
-echo -n '1Gyy'
-echo -n 'pGp'
+printf	"iabc"
+printf	"odef"
+printf	'1Gyy'
+printf	'pGp'
 echo    ":w"
 echo    ":q"
 

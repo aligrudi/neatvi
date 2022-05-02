@@ -9,4 +9,4 @@ echo    "%g/def/-1,/ghi/d"
 echo    "wq"
 
 # the expected output
-echo -n "" >&2
+printf	"" >&2

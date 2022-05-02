@@ -3,7 +3,7 @@ echo    ":e $1"
 echo    "iabc"
 echo    "odef"
 echo    "oghi"
-echo -n "1G"
+printf	"1G"
 echo    ":/ghi/d"
 echo    ":wq"
 

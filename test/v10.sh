@@ -1,13 +1,13 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "odef"
-echo -n "oghi"
-echo -n '"add'
-echo -n 'dd'
-echo -n '"bdd'
-echo -n 'P"ap"bp'
-echo    ':4d'
+printf	"iabc"
+printf	"odef"
+printf	"oghi"
+printf	'"add'
+printf	'dd'
+printf	'"bdd'
+printf	'P"ap"bp'
+echo    ":4d"
 echo    ":w"
 echo    ":q"
 

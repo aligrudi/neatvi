@@ -1,11 +1,11 @@
 # vi commands
 echo    ":e $1"
-echo -n "ia"
-echo -n "oab"
-echo -n "oabc"
-echo -n '0kklllji1'
-echo -n 'kllji2'
-echo -n '$jx'
+printf	"ia"
+printf	"oab"
+printf	"oabc"
+printf	"0kklllji1"
+printf	"kllji2"
+printf	'$jx'
 echo    ":w"
 echo    ":q"
 

@@ -1,10 +1,10 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc def ghi"
+printf	"iabc def ghi"
 echo    "?abc"
-echo -n "i1"
+printf	"i1"
 echo    "/ghi"
-echo -n "i2"
+printf	"i2"
 echo    ":w"
 echo    ":q"
 

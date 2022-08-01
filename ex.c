@@ -525,7 +525,7 @@ static int ec_delete(char *loc, char *cmd, char *arg)
 	int beg, end;
 	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
 		return 1;
-	ex_yank(arg[0], beg, end);
+	ex_yank((unsigned char) arg[0], beg, end);
 	lbuf_edit(xb, NULL, beg, end);
 	xrow = beg;
 	return 0;
@@ -536,7 +536,7 @@ static int ec_yank(char *loc, char *cmd, char *arg)
 	int beg, end;
 	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
 		return 1;
-	ex_yank(arg[0], beg, end);
+	ex_yank((unsigned char) arg[0], beg, end);
 	return 0;
 }
 
@@ -546,7 +546,7 @@ static int ec_put(char *loc, char *cmd, char *arg)
 	int lnmode;
 	char *buf;
 	int n = lbuf_len(xb);
-	buf = reg_get(arg[0], &lnmode);
+	buf = reg_get((unsigned char) arg[0], &lnmode);
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	lbuf_edit(xb, buf, end, end);
@@ -580,7 +580,7 @@ static int ec_mark(char *loc, char *cmd, char *arg)
 	int beg, end;
 	if (ex_region(loc, &beg, &end))
 		return 1;
-	lbuf_mark(xb, arg[0], end - 1, 0);
+	lbuf_mark(xb, (unsigned char) arg[0], end - 1, 0);
 	return 0;
 }
 

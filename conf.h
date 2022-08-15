@@ -127,7 +127,7 @@ static struct highlight {
 #define LNPREF		""
 
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
-#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"
+#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْٔ"
 /* neutral characters (used only in dircontexts[] and dirmarks[]) */
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 

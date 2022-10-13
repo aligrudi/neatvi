@@ -767,10 +767,12 @@ static void vi_shift(int r1, int r2, int dir)
 		if (!(ln = lbuf_get(xb, i)))
 			continue;
 		sb = sbuf_make();
-		if (dir > 0)
-			sbuf_chr(sb, '\t');
-		else
+		if (dir > 0) {
+			if (ln[0] != '\n')
+				sbuf_chr(sb, '\t');
+		} else {
 			ln = ln[0] == ' ' || ln[0] == '\t' ? ln + 1 : ln;
+		}
 		sbuf_str(sb, ln);
 		lbuf_edit(xb, sbuf_buf(sb), i, i + 1);
 		sbuf_free(sb);

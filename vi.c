@@ -823,10 +823,14 @@ static int vc_motion(int cmd)
 		vi_change(r1, o1, r2, o2, lnmode);
 	if (cmd == '~' || cmd == 'u' || cmd == 'U')
 		vi_case(r1, o1, r2, o2, lnmode, cmd);
-	if (cmd == '!')
-		vi_pipe(r1, r2);
 	if (cmd == '>' || cmd == '<')
 		vi_shift(r1, r2, cmd == '>' ? +1 : -1);
+	if (cmd == '!') {
+		if (mv == '{' || mv == '}')
+			if (lbuf_get(xb, r2) && lbuf_get(xb, r2)[0] == '\n' && r1 < r2)
+				r2--;
+		vi_pipe(r1, r2);
+	}
 	return 0;
 }
 

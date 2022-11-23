@@ -11,7 +11,7 @@ patterns.  To define a new keymap, create a new array in kmap.h, like
 kmap_fa, and add it to kmaps array in the same header (the first entry
 of the new array specifies its name).  The current keymap may be
 changed with :cm ex command.  When in input mode, ^e activates the
-English kaymap and ^f switches to the alternate keymap (the last
+English keymap and ^f switches to the alternate keymap (the last
 keymap specified with :cm).
 
 Sadly, VTE-based terminals such as GNOME's implement a

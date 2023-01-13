@@ -80,7 +80,8 @@ static int bufs_open(char *path)
 	bufs[i].top = 0;
 	bufs[i].td = +1;
 	bufs[i].mtime = -1;
-	strcpy(bufs[i].ft, syn_filetype(path));
+	strncpy(bufs[i].ft, syn_filetype(path), sizeof(bufs[i].ft) - 1);
+	bufs[i].ft[sizeof(bufs[i].ft) - 1] = '\0';
 	return i;
 }
 
@@ -721,8 +722,9 @@ static int ec_glob(char *loc, char *cmd, char *arg)
 	char *pat;
 	char *s = arg;
 	int i;
+	char loc_default[] = "%";
 	if (!loc[0] && !xgdep)
-		strcpy(loc, "%");
+		loc = loc_default;
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	not = strchr(cmd, '!') || cmd[0] == 'v';
@@ -787,23 +789,21 @@ static char *cutword(char *s, char *d)
 static int ec_set(char *loc, char *cmd, char *arg)
 {
 	char tok[EXLEN];
-	char opt[EXLEN];
+	char *opt = tok;
 	char *s = arg;
 	int val = 0;
 	int i;
 	if (*s) {
 		s = cutword(s, tok);
 		if (tok[0] == 'n' && tok[1] == 'o') {
-			strcpy(opt, tok + 2);
+			opt = tok + 2;
 			val = 0;
 		} else {
 			char *r = strchr(tok, '=');
 			if (r) {
 				*r = '\0';
-				strcpy(opt, tok);
 				val = atoi(r + 1);
 			} else {
-				strcpy(opt, tok);
 				val = 1;
 			}
 		}

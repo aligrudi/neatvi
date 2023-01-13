@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vi.h"
@@ -16,9 +17,9 @@ static void reg_putraw(int c, char *s, int ln)
 {
 	unsigned char c_lower = tolower(c);
 	char *pre = isupper(c) && bufs[c_lower] ? bufs[c_lower] : "";
-	char *buf = malloc(strlen(pre) + strlen(s) + 1);
-	strcpy(buf, pre);
-	strcat(buf, s);
+	size_t size = strlen(pre) + strlen(s) + 1;
+	char *buf = malloc(size);
+	snprintf(buf, size, "%s%s", pre, s);
 	free(bufs[c_lower]);
 	bufs[c_lower] = buf;
 	lnmode[c_lower] = ln;

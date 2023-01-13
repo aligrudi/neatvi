@@ -556,11 +556,11 @@ static int ec_put(char *loc, char *cmd, char *arg)
 
 static int ec_lnum(char *loc, char *cmd, char *arg)
 {
-	char msg[128];
+	char msg[128] = { 0 };
 	int beg, end;
 	if (ex_region(loc, &beg, &end))
 		return 1;
-	sprintf(msg, "%d\n", end);
+	snprintf(msg, sizeof(msg) - 1, "%d\n", end);
 	ex_print(msg);
 	return 0;
 }
@@ -679,12 +679,12 @@ static int ec_exec(char *loc, char *cmd, char *arg)
 
 static int ec_make(char *loc, char *cmd, char *arg)
 {
-	char make[EXLEN];
+	char make[EXLEN] = { 0 };
 	char *target;
 	ex_modifiedbuffer(NULL);
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
-	sprintf(make, "make %s", target);
+	snprintf(make, sizeof(make) - 1, "make %s", target);
 	ex_print(NULL);
 	if (cmd_exec(make))
 		return 1;

@@ -14,13 +14,14 @@ char *reg_get(int c, int *ln)
 
 static void reg_putraw(int c, char *s, int ln)
 {
-	char *pre = isupper(c) && bufs[tolower(c)] ? bufs[tolower(c)] : "";
+	unsigned char c_lower = tolower(c);
+	char *pre = isupper(c) && bufs[c_lower] ? bufs[c_lower] : "";
 	char *buf = malloc(strlen(pre) + strlen(s) + 1);
 	strcpy(buf, pre);
 	strcat(buf, s);
-	free(bufs[tolower(c)]);
-	bufs[tolower(c)] = buf;
-	lnmode[tolower(c)] = ln;
+	free(bufs[c_lower]);
+	bufs[c_lower] = buf;
+	lnmode[c_lower] = ln;
 }
 
 void reg_put(int c, char *s, int ln)

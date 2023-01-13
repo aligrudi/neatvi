@@ -117,10 +117,10 @@ static struct highlight {
 	{"---", {8 | SYN_BD}, "^.*$"},
 };
 
-/* how to hightlight current line (hll option) */
+/* how to highlight current line (hll option) */
 #define SYN_LINE	(SYN_BGMK(11))
 
-/* how to hightlight text in the reverse direction */
+/* how to highlight text in the reverse direction */
 #define SYN_REVDIR	(SYN_BGMK(7))
 
 /* define it as "\33[8l" to disable BiDi in vte-based terminals */

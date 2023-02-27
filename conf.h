@@ -95,8 +95,8 @@ static struct highlight {
 	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
 	/* neatmail */
-	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},
-		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
+	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},
+		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[A-Z][HT].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[A-Z][MI].*$"},

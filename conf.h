@@ -95,8 +95,8 @@ static struct highlight {
 	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
 	/* neatmail */
-	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},
-		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
+	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},
+		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[A-Z][HT].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[A-Z][MI].*$"},
@@ -117,10 +117,10 @@ static struct highlight {
 	{"---", {8 | SYN_BD}, "^.*$"},
 };
 
-/* how to hightlight current line (hll option) */
+/* how to highlight current line (hll option) */
 #define SYN_LINE	(SYN_BGMK(11))
 
-/* how to hightlight text in the reverse direction */
+/* how to highlight text in the reverse direction */
 #define SYN_REVDIR	(SYN_BGMK(7))
 
 /* define it as "\33[8l" to disable BiDi in vte-based terminals */
@@ -163,4 +163,16 @@ static struct placeholder {
 } placeholders[] = {
 	{"‌", "-", 1},
 	{"‍", "-", 1},
+	{"ً", "ـً", 1},
+	{"ٌ", "ـٌ", 1},
+	{"ٍ", "ـٍ", 1},
+	{"َ", "ـَ", 1},
+	{"ُ", "ـُ", 1},
+	{"ِ", "ـِ", 1},
+	{"ّ", "ـّ", 1},
+	{"ْ", "ـْ", 1},
+	{"ٓ", "ـٓ", 1},
+	{"ٔ", "ـٔ", 1},
+	{"ٕ", "ـٕ", 1},
+	{"ٰ", "ـٰ", 1},
 };

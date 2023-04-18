@@ -152,13 +152,6 @@ static char *ren_placeholder(char *s, int *wid)
 			return dst;
 	if (wid)
 		*wid = 1;
-	if (uc_iscomb(s)) {
-		static char buf[16];
-		char cbuf[8] = "";
-		memcpy(cbuf, s, uc_len(s));
-		sprintf(buf, "ـ%s", cbuf);
-		return buf;
-	}
 	if (uc_isbell(s))
 		return "�";
 	return NULL;

@@ -372,7 +372,7 @@ static int vi_motionln(int *row, int cmd)
 	return c;
 }
 
-static int vi_curword(struct lbuf *lb, char *dst, int len, int row, int off)
+static int vi_curword(struct lbuf *lb, char *dst, int len, int row, int off, char *ext)
 {
 	char *ln = lbuf_get(lb, row);
 	char *beg, *end;
@@ -380,9 +380,11 @@ static int vi_curword(struct lbuf *lb, char *dst, int len, int row, int off)
 		return 1;
 	beg = uc_chr(ln, ren_noeol(ln, off));
 	end = beg;
-	while (*end && uc_kind(end) == 1)
+	while (*end && (uc_kind(end) == 1 ||
+			strchr(ext, (unsigned char) end[0]) != NULL))
 		end = uc_next(end);
-	while (beg > ln && uc_kind(uc_beg(ln, beg - 1)) == 1)
+	while (beg > ln && (uc_kind(uc_beg(ln, beg - 1)) == 1 ||
+			strchr(ext, (unsigned char) beg[-1]) != NULL))
 		beg = uc_beg(ln, beg - 1);
 	if (beg >= end)
 		return 1;
@@ -539,7 +541,7 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case TK_CTL('a'):
-		if (vi_curword(xb, cw, sizeof(cw), *row, *off) != 0)
+		if (vi_curword(xb, cw, sizeof(cw), *row, *off, "") != 0)
 			return -1;
 		snprintf(kw, sizeof(kw), "\\<%s\\>", cw);
 		ex_kwdset(kw, +1);
@@ -1071,7 +1073,7 @@ static int vc_gotodef(void)
 	int r = 0;
 	int o = 0;
 	int len = 0;
-	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff) != 0)
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") != 0)
 		return 1;
 	snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
 	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
@@ -1100,6 +1102,16 @@ static int vc_gotopop(void)
 		return 0;
 	}
 	return 1;
+}
+
+static int vc_gotopath(void)
+{
+	char cw[256], ex[256];
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0)
+		return 1;
+	snprintf(ex, sizeof(ex), "e %s", cw);
+	ex_command(ex);
+	return 0;
 }
 
 static void vi(void)
@@ -1317,6 +1329,9 @@ static void vi(void)
 						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
+				if (k == 'f')
+					if (!vc_gotopath())
+						mod = 2;
 				break;
 			case 'x':
 				vi_back(' ');

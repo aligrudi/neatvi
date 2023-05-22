@@ -77,6 +77,23 @@ static struct highlight {
 	{"sh", {SYN_BD}, "^\\. .*$"},
 	{"sh", {2 | SYN_IT}, "#.*$"},
 
+	/* go */
+	{"go", {0, 3 | SYN_BD, 0, 29 | SYN_BD}, "^\\<(func) (\\([^()]+\\) )?([a-zA-Z0-9_]+)\\>"},
+	{"go", {3 | SYN_BD}, "^\\<(func|type|var|const|package)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(func|type|var|const|package)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(import|interface|struct)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(break|case|chan|continue|default|defer|else|fallthrough|for|go|goto|if|map|range|return|select|switch)\\>"},
+	{"go", {0, 8}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
+	{"go", {8 | SYN_BD}, "\\<(true|false|iota|nil|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>"},
+	{"go", {2 | SYN_IT}, "//.*$"},
+	{"go", {2 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
+	{"go", {0, SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
+	{"go", {8}, "[a-zA-Z][a-zA-Z0-9_]+"},
+	{"go", {4}, "\"([^\"]|\\\\\")*\""},
+	{"go", {4}, "'([^']|\\\\')*'"},
+	{"go", {4}, "`([^`]|\\\\`)*`"},
+	{"go", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
+
 	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 12 | SYN_BD}, "^(%A) (.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%T) (.*)$", 1},

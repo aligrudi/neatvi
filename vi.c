@@ -1331,7 +1331,7 @@ static void vi(void)
 					vc_charinfo();
 				if (k == 'f')
 					if (!vc_gotopath())
-						mod = 2;
+						mod = 1;
 				break;
 			case 'x':
 				vi_back(' ');

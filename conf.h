@@ -19,7 +19,8 @@ static struct filetype {
 	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
 	{"bib", "bib$"},
 	{"nm", "\\.nm$"},
-	{"diff", "\\.(patch|diff)$"}
+	{"diff", "\\.(patch|diff)$"},
+	{"ls", "ls$"},
 };
 
 /* syntax highlighting patterns */
@@ -129,6 +130,10 @@ static struct highlight {
 	{"diff", {2}, "^\\+.*$"},
 	{"diff", {6}, "^@.*$"},
 	{"diff", {SYN_BD}, "^diff .*$"},
+
+	/* file listing */
+	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>"},
+	{"ls", {12}, "^#.*$"},
 
 	/* status bar */
 	{"---", {8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},

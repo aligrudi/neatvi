@@ -195,6 +195,7 @@ char **conf_kmap(int id);
 int conf_kmapfind(char *name);
 char *conf_digraph(int c1, int c2);
 char *conf_lnpref(void);
+char *conf_gotopat(char *ft);
 
 /* global variables */
 extern int xrow;

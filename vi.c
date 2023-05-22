@@ -372,13 +372,12 @@ static int vi_motionln(int *row, int cmd)
 	return c;
 }
 
-static char *vi_curword(struct lbuf *lb, int row, int off)
+static int vi_curword(struct lbuf *lb, char *dst, int len, int row, int off)
 {
-	struct sbuf *sb;
 	char *ln = lbuf_get(lb, row);
 	char *beg, *end;
 	if (!ln)
-		return NULL;
+		return 1;
 	beg = uc_chr(ln, ren_noeol(ln, off));
 	end = beg;
 	while (*end && uc_kind(end) == 1)
@@ -386,17 +385,17 @@ static char *vi_curword(struct lbuf *lb, int row, int off)
 	while (beg > ln && uc_kind(uc_beg(ln, beg - 1)) == 1)
 		beg = uc_beg(ln, beg - 1);
 	if (beg >= end)
-		return NULL;
-	sb = sbuf_make();
-	sbuf_str(sb, "\\<");
-	sbuf_mem(sb, beg, end - beg);
-	sbuf_str(sb, "\\>");
-	return sbuf_done(sb);
+		return 1;
+	len = len - 1 < end - beg ? len - 1 : end - beg;
+	dst[len] = '\0';
+	memcpy(dst, beg, len);
+	return 0;
 }
 
 /* read a motion */
 static int vi_motion(int *row, int *off)
 {
+	char kw[256], cw[256];
 	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
@@ -540,11 +539,11 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case TK_CTL('a'):
-		if (!(cs = vi_curword(xb, *row, *off)))
+		if (vi_curword(xb, cw, sizeof(cw), *row, *off) != 0)
 			return -1;
-		ex_kwdset(cs, +1);
+		snprintf(kw, sizeof(kw), "\\<%s\\>", cw);
+		ex_kwdset(kw, +1);
 		vi_soset = 0;
-		free(cs);
 		if (vi_search('n', cnt, row, off))
 			return -1;
 		break;
@@ -1058,6 +1057,51 @@ static void sigwinch(int signo)
 	vi_back(TK_CTL('c'));
 }
 
+#define GOTOCNT		32
+#define GOTOLEN		256
+
+static int goto_row[GOTOCNT];
+static int goto_off[GOTOCNT];
+static char goto_path[GOTOCNT][GOTOLEN];
+static int goto_pos = 0;
+
+static int vc_gotodef(void)
+{
+	char cw[256], kw[256];
+	int r = 0;
+	int o = 0;
+	int len = 0;
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff) != 0)
+		return 1;
+	snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
+	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
+		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>\n", kw);
+		return 1;
+	}
+	if (goto_pos < GOTOCNT) {
+		goto_row[goto_pos] = xrow;
+		goto_off[goto_pos] = xoff;
+		snprintf(goto_path[goto_pos], GOTOLEN, "e %s", ex_path());
+		goto_pos++;
+	}
+	xrow = r;
+	xoff = 0;
+	return 0;
+}
+
+static int vc_gotopop(void)
+{
+	if (goto_pos > 0) {
+		goto_pos--;
+		if (ex_path() == NULL || strcmp(goto_path[goto_pos], ex_path()) != 0)
+			ex_command(goto_path[goto_pos]);
+		xrow = goto_row[goto_pos];
+		xoff = goto_off[goto_pos];
+		return 0;
+	}
+	return 1;
+}
+
 static void vi(void)
 {
 	int xcol;
@@ -1182,6 +1226,14 @@ static void vi(void)
 			case TK_CTL('^'):
 				ex_command("e #");
 				mod = 1;
+				break;
+			case TK_CTL(']'):
+				if (!vc_gotodef())
+					mod = 1;
+				break;
+			case TK_CTL('t'):
+				if (!vc_gotopop())
+					mod = 1;
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);

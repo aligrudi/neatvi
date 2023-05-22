@@ -7,17 +7,19 @@
 static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
+	char *def;		/* pattern for ^] */
 } filetypes[] = {
-	{"c", "\\.[hc]$"},				/* C */
-	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$"},	/* troff */
-	{"tex", "\\.tex$"},				/* tex */
-	{"msg", "letter$|mbox$|mail$"},			/* email */
-	{"mk", "Makefile$|makefile$|\\.mk$"},		/* makefile */
-	{"sh", "\\.sh$"},				/* shell script */
-	{"py", "\\.py$"},				/* python */
-	{"bib", "bib$"},				/* refer */
-	{"nm", "\\.nm$"},				/* neatmail */
-	{"diff", "\\.(patch|diff)$"}			/* diff */
+	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
+	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
+	{"tex", "\\.tex$"},
+	{"msg", "letter$|mbox$|mail$"},
+	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
+	{"sh", "\\.sh$", "^(function +)%s *\\{"},
+	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>"},
+	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
+	{"bib", "bib$"},
+	{"nm", "\\.nm$"},
+	{"diff", "\\.(patch|diff)$"}
 };
 
 /* syntax highlighting patterns */

@@ -1188,13 +1188,19 @@ static void vi(void)
 			case TK_CTL(']'):
 				if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") == 0) {
 					snprintf(ex, sizeof(ex), "ta %s", cw);
-					if (!ex_command(ex))
+					if (!ex_command(ex)) {
 						mod = 1;
+					} else {
+						snprintf(vi_msg, sizeof(vi_msg), "not found\n");
+					}
 				}
 				break;
 			case TK_CTL('t'):
-				if (!ex_command("pop"))
+				if (!ex_command("pop")) {
 					mod = 1;
+				} else {
+					snprintf(vi_msg, sizeof(vi_msg), "empty\n");
+				}
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
@@ -1278,12 +1284,20 @@ static void vi(void)
 						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
-				if (k == 'n')
-					if (!ex_command("tn"))
+				if (k == 'n') {
+					if (!ex_command("tn")) {
 						mod = 1;
-				if (k == 'N')
-					if (!ex_command("tp"))
+					} else {
+						snprintf(vi_msg, sizeof(vi_msg), "empty\n");
+					}
+				}
+				if (k == 'N') {
+					if (!ex_command("tp")) {
 						mod = 1;
+					} else {
+						snprintf(vi_msg, sizeof(vi_msg), "empty\n");
+					}
+				}
 				if (k == 'f') {
 					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0) {
 						snprintf(ex, sizeof(ex), "e %s", cw);

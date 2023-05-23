@@ -1067,27 +1067,33 @@ static int goto_off[GOTOCNT];
 static char goto_path[GOTOCNT][GOTOLEN];
 static int goto_pos = 0;
 
-static int vc_gotodef(void)
+/* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
+static int vc_gotodef(int dir)
 {
 	char cw[256], kw[256];
-	int r = 0;
-	int o = 0;
+	char *s, *ln;
+	int r = 0, o = 0;
 	int len = 0;
 	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") != 0)
 		return 1;
 	snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
-	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
+	if (dir != 0)
+		r = xrow + dir;
+	if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0) {
 		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>\n", kw);
 		return 1;
 	}
-	if (goto_pos < GOTOCNT) {
+	ln = lbuf_get(xb, r);
+	if ((s = strstr(ln, cw)) != NULL)
+		o = s - ln;
+	if (dir == 0 && goto_pos < GOTOCNT) {
 		goto_row[goto_pos] = xrow;
 		goto_off[goto_pos] = xoff;
 		snprintf(goto_path[goto_pos], GOTOLEN, "e %s", ex_path());
 		goto_pos++;
 	}
 	xrow = r;
-	xoff = 0;
+	xoff = o;
 	return 0;
 }
 
@@ -1240,7 +1246,7 @@ static void vi(void)
 				mod = 1;
 				break;
 			case TK_CTL(']'):
-				if (!vc_gotodef())
+				if (!vc_gotodef(0))
 					mod = 1;
 				break;
 			case TK_CTL('t'):
@@ -1331,6 +1337,12 @@ static void vi(void)
 					vc_charinfo();
 				if (k == 'f')
 					if (!vc_gotopath())
+						mod = 1;
+				if (k == 'n')
+					if (!vc_gotodef(+1))
+						mod = 1;
+				if (k == 'N')
+					if (!vc_gotodef(-1))
 						mod = 1;
 				break;
 			case 'x':

@@ -397,7 +397,7 @@ static int vi_curword(struct lbuf *lb, char *dst, int len, int row, int off, cha
 /* read a motion */
 static int vi_motion(int *row, int *off)
 {
-	char kw[256], cw[256];
+	char cw[120], kw[128];
 	int cnt = (vi_arg1 ? vi_arg1 : 1) * (vi_arg2 ? vi_arg2 : 1);
 	char *ln = lbuf_get(xb, *row);
 	int dir = dir_context(ln ? ln : "");
@@ -1112,7 +1112,7 @@ static int vc_gotopop(void)
 
 static int vc_gotopath(void)
 {
-	char cw[256], ex[256];
+	char cw[120], ex[128];
 	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0)
 		return 1;
 	snprintf(ex, sizeof(ex), "e %s", cw);

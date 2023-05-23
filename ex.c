@@ -756,6 +756,96 @@ static int ec_glob(char *loc, char *cmd, char *arg)
 	return 0;
 }
 
+#define TAGCNT		32
+#define TAGLEN		128
+
+static int tag_row[TAGCNT];
+static int tag_off[TAGCNT];
+static int tag_pos[TAGCNT];
+static char tag_path[TAGCNT][TAGLEN];
+static char tag_name[TAGCNT][TAGLEN];
+static int tag_cnt = 0;
+
+static void ex_tagput(char *name)
+{
+	if (tag_cnt < TAGCNT) {
+		tag_row[tag_cnt] = xrow;
+		tag_off[tag_cnt] = xoff;
+		snprintf(tag_path[tag_cnt], TAGLEN, "%s", ex_path());
+		snprintf(tag_name[tag_cnt], TAGLEN, "%s", name);
+		tag_cnt++;
+	}
+}
+
+/* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
+static int tag_goto(char *cw, int dir)
+{
+	char kw[128];
+	char path[120], cmd[120];
+	char *s, *ln;
+	int r = 0, o = 0;
+	int len = 0;
+	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
+	if (tag_set()) {
+		if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd)))
+			return 1;
+		if (dir == 0)
+			ex_tagput(cw);
+		tag_pos[tag_cnt - 1] = pos;
+		if (strcmp(path, ex_path()) != 0)
+			ec_edit("", "e", path);
+		xrow = 0;
+		xoff = 0;
+		ex_command(cmd);
+	} else {
+		snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
+		if (dir != 0)
+			r = xrow + dir;
+		if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0)
+			return 1;
+		if (dir == 0)
+			ex_tagput(cw);
+		xrow = r;
+		xoff = o;
+	}
+	ln = lbuf_get(xb, xrow);
+	if (ln && (s = strstr(ln, cw)) != NULL)
+		xoff = s - ln;
+	return 0;
+}
+
+static int ec_tag(char *loc, char *cmd, char *arg)
+{
+	return tag_goto(arg, 0);
+}
+
+static int ec_pop(char *loc, char *cmd, char *arg)
+{
+	if (tag_cnt > 0) {
+		tag_cnt--;
+		if (ex_path() == NULL || strcmp(tag_path[tag_cnt], ex_path()) != 0)
+			ec_edit("", "e", tag_path[tag_cnt]);
+		xrow = tag_row[tag_cnt];
+		xoff = tag_off[tag_cnt];
+		return 0;
+	}
+	return 1;
+}
+
+static int ec_tnext(char *loc, char *cmd, char *arg)
+{
+	if (tag_cnt > 0)
+		return tag_goto(tag_name[tag_cnt - 1], +1);
+	return 1;
+}
+
+static int ec_tprev(char *loc, char *cmd, char *arg)
+{
+	if (tag_cnt > 0)
+		return tag_goto(tag_name[tag_cnt - 1], -1);
+	return 1;
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -837,10 +927,14 @@ static struct excmd {
 	{"g!", "global!", ec_glob},
 	{"=", "=", ec_lnum},
 	{"k", "mark", ec_mark},
+	{"po", "pop", ec_pop},
 	{"pu", "put", ec_put},
 	{"q", "quit", ec_quit},
 	{"q!", "quit!", ec_quit},
 	{"r", "read", ec_read},
+	{"ta", "tag", ec_tag},
+	{"tn", "tnext", ec_tnext},
+	{"tp", "tprev", ec_tprev},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
 	{"w!", "write!", ec_write},
@@ -913,7 +1007,7 @@ static char *ex_cmd(char *src, char *cmd)
 static char *ex_arg(char *src, char *dst, char *excmd)
 {
 	int c0 = excmd[0];
-	int c1 = excmd[1];
+	int c1 = c0 ? excmd[1] : 0;
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
@@ -972,11 +1066,12 @@ static int ex_exec(char *ln)
 }
 
 /* execute a single ex command */
-void ex_command(char *ln)
+int ex_command(char *ln)
 {
-	ex_exec(ln);
+	int ret = ex_exec(ln);
 	lbuf_modified(xb);
 	reg_put(':', ln, 0);
+	return ret;
 }
 
 /* ex main loop */

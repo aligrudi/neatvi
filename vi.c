@@ -1059,69 +1059,9 @@ static void sigwinch(int signo)
 	vi_back(TK_CTL('c'));
 }
 
-#define GOTOCNT		32
-#define GOTOLEN		256
-
-static int goto_row[GOTOCNT];
-static int goto_off[GOTOCNT];
-static char goto_path[GOTOCNT][GOTOLEN];
-static int goto_pos = 0;
-
-/* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
-static int vc_gotodef(int dir)
-{
-	char cw[256], kw[256];
-	char *s, *ln;
-	int r = 0, o = 0;
-	int len = 0;
-	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") != 0)
-		return 1;
-	snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
-	if (dir != 0)
-		r = xrow + dir;
-	if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0) {
-		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>\n", kw);
-		return 1;
-	}
-	ln = lbuf_get(xb, r);
-	if ((s = strstr(ln, cw)) != NULL)
-		o = s - ln;
-	if (dir == 0 && goto_pos < GOTOCNT) {
-		goto_row[goto_pos] = xrow;
-		goto_off[goto_pos] = xoff;
-		snprintf(goto_path[goto_pos], GOTOLEN, "e %s", ex_path());
-		goto_pos++;
-	}
-	xrow = r;
-	xoff = o;
-	return 0;
-}
-
-static int vc_gotopop(void)
-{
-	if (goto_pos > 0) {
-		goto_pos--;
-		if (ex_path() == NULL || strcmp(goto_path[goto_pos], ex_path()) != 0)
-			ex_command(goto_path[goto_pos]);
-		xrow = goto_row[goto_pos];
-		xoff = goto_off[goto_pos];
-		return 0;
-	}
-	return 1;
-}
-
-static int vc_gotopath(void)
-{
-	char cw[120], ex[128];
-	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0)
-		return 1;
-	snprintf(ex, sizeof(ex), "e %s", cw);
-	ex_command(ex);
-	return 0;
-}
-
 static void vi(void)
 {
+	char cw[128], ex[128];
 	int xcol;
 	int mark;
 	char *ln;
@@ -1246,11 +1186,14 @@ static void vi(void)
 				mod = 1;
 				break;
 			case TK_CTL(']'):
-				if (!vc_gotodef(0))
-					mod = 1;
+				if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") == 0) {
+					snprintf(ex, sizeof(ex), "ta %s", cw);
+					if (!ex_command(ex))
+						mod = 1;
+				}
 				break;
 			case TK_CTL('t'):
-				if (!vc_gotopop())
+				if (!ex_command("pop"))
 					mod = 1;
 				break;
 			case ':':
@@ -1335,15 +1278,19 @@ static void vi(void)
 						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
-				if (k == 'f')
-					if (!vc_gotopath())
-						mod = 1;
 				if (k == 'n')
-					if (!vc_gotodef(+1))
+					if (!ex_command("tn"))
 						mod = 1;
 				if (k == 'N')
-					if (!vc_gotodef(-1))
+					if (!ex_command("tp"))
 						mod = 1;
+				if (k == 'f') {
+					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0) {
+						snprintf(ex, sizeof(ex), "e %s", cw);
+						if (!ex_command(ex))
+							mod = 1;
+					}
+				}
 				break;
 			case 'x':
 				vi_back(' ');
@@ -1462,6 +1409,7 @@ int main(int argc, char *argv[])
 	}
 	dir_init();
 	syn_init();
+	tag_init("tags");
 	if (xled || xvis)
 		term_init();
 	if (!ex_init(argv + i)) {
@@ -1476,5 +1424,6 @@ int main(int argc, char *argv[])
 	reg_done();
 	syn_done();
 	dir_done();
+	tag_done();
 	return 0;
 }

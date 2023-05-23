@@ -143,7 +143,7 @@ int led_pos(char *s, int pos);
 
 /* ex commands */
 void ex(void);
-void ex_command(char *cmd);
+int ex_command(char *cmd);
 char *ex_read(char *msg);
 void ex_print(char *line);
 void ex_show(char *msg);
@@ -215,3 +215,9 @@ extern int xhll;
 extern int xkmap;
 extern int xkmap_alt;
 extern int xlim;
+
+/* tag file handling */
+int tag_init(char *path);
+int tag_set(void);
+int tag_find(char *name, int *pos, int dir, char *path, int pathlen, char *cmd, int cmdlen);
+void tag_done(void);

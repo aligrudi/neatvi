@@ -112,11 +112,20 @@ char *conf_lnpref(void)
 	return LNPREF;
 }
 
-char *conf_gotopat(char *ft)
+char *conf_definition(char *ft)
 {
 	int i;
 	for (i = 0; i < LEN(filetypes); i++)
 		if (!strcmp(ft, filetypes[i].ft) && filetypes[i].def)
 			return filetypes[i].def;
 	return "^%s\\>";
+}
+
+char *conf_section(char *ft)
+{
+	int i;
+	for (i = 0; i < LEN(filetypes); i++)
+		if (!strcmp(ft, filetypes[i].ft) && filetypes[i].sec)
+			return filetypes[i].sec;
+	return "^\\{";
 }

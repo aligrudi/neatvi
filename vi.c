@@ -501,14 +501,14 @@ static int vi_motion(int *row, int *off)
 		if (vi_read() != '[')
 			return -1;
 		for (i = 0; i < cnt; i++)
-			if (lbuf_sectionbeg(xb, -1, row, off))
+			if (lbuf_sectionbeg(xb, -1, conf_section(ex_filetype()), row, off))
 				break;
 		break;
 	case ']':
 		if (vi_read() != ']')
 			return -1;
 		for (i = 0; i < cnt; i++)
-			if (lbuf_sectionbeg(xb, +1, row, off))
+			if (lbuf_sectionbeg(xb, +1, conf_section(ex_filetype()), row, off))
 				break;
 		break;
 	case '0':
@@ -1061,7 +1061,7 @@ static void sigwinch(int signo)
 
 static void vi(void)
 {
-	char cw[128], ex[128];
+	char cw[120], ex[128];
 	int xcol;
 	int mark;
 	char *ln;

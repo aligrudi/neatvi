@@ -8,6 +8,7 @@ static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
 	char *def;		/* pattern for ^] */
+	char *sec;		/* section start pattern */
 } filetypes[] = {
 	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
 	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
@@ -15,7 +16,7 @@ static struct filetype {
 	{"msg", "letter$|mbox$|mail$"},
 	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
 	{"sh", "\\.sh$", "^(function +)%s *\\{"},
-	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>"},
+	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>", "^func "},
 	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
 	{"bib", "bib$"},
 	{"nm", "\\.nm$"},

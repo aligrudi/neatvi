@@ -798,7 +798,7 @@ static int tag_goto(char *cw, int dir)
 		xoff = 0;
 		ex_command(cmd);
 	} else {
-		snprintf(kw, sizeof(kw), conf_gotopat(ex_filetype()), cw);
+		snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
 		if (dir != 0)
 			r = xrow + dir;
 		if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0)

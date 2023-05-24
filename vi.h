@@ -28,7 +28,7 @@ int lbuf_globget(struct lbuf *lb, int pos, int dep);
 int lbuf_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *r, int *o);
 int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len);
 int lbuf_paragraphbeg(struct lbuf *lb, int dir, int *row, int *off);
-int lbuf_sectionbeg(struct lbuf *lb, int dir, int *row, int *off);
+int lbuf_sectionbeg(struct lbuf *lb, int dir, char *sec, int *row, int *off);
 int lbuf_wordbeg(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_pair(struct lbuf *lb, int *row, int *off);
@@ -195,7 +195,8 @@ char **conf_kmap(int id);
 int conf_kmapfind(char *name);
 char *conf_digraph(int c1, int c2);
 char *conf_lnpref(void);
-char *conf_gotopat(char *ft);
+char *conf_definition(char *ft);
+char *conf_section(char *ft);
 
 /* global variables */
 extern int xrow;

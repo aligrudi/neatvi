@@ -787,13 +787,16 @@ static int tag_goto(char *cw, int dir)
 	int len = 0;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
 	if (tag_set()) {
-		if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd)))
+		if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
+			ex_show("not found");
 			return 1;
+		}
 		if (dir == 0)
 			ex_tagput(cw);
 		tag_pos[tag_cnt - 1] = pos;
 		if (strcmp(path, ex_path()) != 0)
-			ec_edit("", "e", path);
+			if (ec_edit("", "e", path) != 0)
+				return 1;
 		xrow = 0;
 		xoff = 0;
 		ex_command(cmd);
@@ -801,8 +804,10 @@ static int tag_goto(char *cw, int dir)
 		snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
 		if (dir != 0)
 			r = xrow + dir;
-		if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0)
+		if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0) {
+			ex_show("not found");
 			return 1;
+		}
 		if (dir == 0)
 			ex_tagput(cw);
 		xrow = r;

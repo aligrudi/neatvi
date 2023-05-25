@@ -32,6 +32,14 @@ Commands not available in ex(1):
   Without filetype, prints the current file type.
   When filetype is specified, sets the file type of the
   current ex buffer.
+:ta[g] tag
+  Jumps to tag (tags file: TAGPATH environment variable or ./tags).
+:tn[ext]
+  Jumps to the next matching tag.
+:tp[rev]
+  Jumps to the previous matching tag.
+:po[p]
+  Pop tag stack.
 
 New key mappings:
 ^a in normal mode: searches for the word under the cursor.
@@ -41,6 +49,7 @@ zL, zl, zr, and zR in normal mode: change the value of td option.
 ze and zf in normal mode: switch to the English and alternate keymap.
 gu, gU, and g~ in normal mode: switch character case.
 ^l in normal mode: updates terminal dimensions (after resizing it).
+^], ^t, gn, gN: jump to tag, pop tag stack, and go to the next tag.
 
 OPTIONS
 -------

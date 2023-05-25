@@ -833,6 +833,8 @@ static int ec_pop(char *loc, char *cmd, char *arg)
 		xrow = tag_row[tag_cnt];
 		xoff = tag_off[tag_cnt];
 		return 0;
+	} else {
+		ex_show("not found");
 	}
 	return 1;
 }

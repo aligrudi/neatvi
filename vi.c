@@ -1311,7 +1311,7 @@ static void vi(void)
 					if (!vc_gotodef())
 						mod = 1;
 				if (k == 'f') {
-					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0) {
+					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.")) {
 						snprintf(ex, sizeof(ex), "e %s", cw);
 						if (!ex_command(ex))
 							mod = 1;

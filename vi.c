@@ -1024,6 +1024,12 @@ static int vc_replace(void)
 	return 0;
 }
 
+static void vi_marksave(void)
+{
+	lbuf_mark(xb, '\'', xrow, xoff);
+	lbuf_mark(xb, '`', xrow, xoff);
+}
+
 static int vc_gotodef(void)
 {
 	char cw[256], kw[256];
@@ -1040,8 +1046,7 @@ static int vc_gotodef(void)
 	ln = lbuf_get(xb, r);
 	if ((s = strstr(ln, cw)) != NULL)
 		o = s - ln;
-	lbuf_mark(xb, '\'', xrow, xoff);
-	lbuf_mark(xb, '`', xrow, xoff);
+	vi_marksave();
 	xrow = r;
 	xoff = o;
 	return 0;
@@ -1111,11 +1116,8 @@ static void vi(void)
 			vi_ybuf = vi_yankbuf();
 		mv = vi_motion(&nrow, &noff);
 		if (mv > 0) {
-			if (strchr("\'`GHML/?{}[]nN", mv) ||
-					(mv == '%' && noff < 0)) {
-				lbuf_mark(xb, '\'', xrow, xoff);
-				lbuf_mark(xb, '`', xrow, xoff);
-			}
+			if (strchr("\'`GHML/?{}[]nN", mv) || (mv == '%' && noff < 0))
+				vi_marksave();
 			xrow = nrow;
 			if (noff < 0 && !strchr("jk", mv))
 				noff = lbuf_indents(xb, xrow);
@@ -1211,13 +1213,17 @@ static void vi(void)
 			case TK_CTL(']'):
 				if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") == 0) {
 					snprintf(ex, sizeof(ex), "ta %s", cw);
-					if (!ex_command(ex))
+					if (!ex_command(ex)) {
+						vi_marksave();
 						mod = 1;
+					}
 				}
 				break;
 			case TK_CTL('t'):
-				if (!ex_command("pop"))
+				if (!ex_command("pop")) {
+					vi_marksave();
 					mod = 1;
+				}
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
@@ -1301,13 +1307,6 @@ static void vi(void)
 						mod = 2;
 				if (k == 'a')
 					vc_charinfo();
-				if (k == 'n') {
-					if (!ex_command("tn"))
-						mod = 1;
-				}
-				if (k == 'N')
-					if (!ex_command("tp"))
-						mod = 1;
 				if (k == 'd')
 					if (!vc_gotodef())
 						mod = 1;

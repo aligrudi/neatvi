@@ -780,39 +780,26 @@ static void ex_tagput(char *name)
 /* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
 static int tag_goto(char *cw, int dir)
 {
-	char kw[128];
 	char path[120], cmd[120];
 	char *s, *ln;
-	int r = 0, o = 0;
-	int len = 0;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
-	if (tag_set()) {
-		if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
-			ex_show("not found");
-			return 1;
-		}
-		if (dir == 0)
-			ex_tagput(cw);
-		tag_pos[tag_cnt - 1] = pos;
-		if (strcmp(path, ex_path()) != 0)
-			if (ec_edit("", "e", path) != 0)
-				return 1;
-		xrow = 0;
-		xoff = 0;
-		ex_command(cmd);
-	} else {
-		snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
-		if (dir != 0)
-			r = xrow + dir;
-		if (lbuf_search(xb, kw, dir >= 0 ? +1 : -1, &r, &o, &len) != 0) {
-			ex_show("not found");
-			return 1;
-		}
-		if (dir == 0)
-			ex_tagput(cw);
-		xrow = r;
-		xoff = o;
+	if (!tag_set()) {
+		ex_show("no tags");
+		return 1;
 	}
+	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
+		ex_show("not found");
+		return 1;
+	}
+	if (dir == 0)
+		ex_tagput(cw);
+	tag_pos[tag_cnt - 1] = pos;
+	if (strcmp(path, ex_path()) != 0)
+		if (ec_edit("", "e", path) != 0)
+			return 1;
+	xrow = 0;
+	xoff = 0;
+	ex_command(cmd);
 	ln = lbuf_get(xb, xrow);
 	if (ln && (s = strstr(ln, cw)) != NULL)
 		xoff = s - ln;

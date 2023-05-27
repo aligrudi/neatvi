@@ -1024,6 +1024,29 @@ static int vc_replace(void)
 	return 0;
 }
 
+static int vc_gotodef(void)
+{
+	char cw[256], kw[256];
+	char *s, *ln;
+	int r = 0, o = 0;
+	int len = 0;
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") != 0)
+		return 1;
+	snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
+	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
+		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>\n", kw);
+		return 1;
+	}
+	ln = lbuf_get(xb, r);
+	if ((s = strstr(ln, cw)) != NULL)
+		o = s - ln;
+	lbuf_mark(xb, '\'', xrow, xoff);
+	lbuf_mark(xb, '`', xrow, xoff);
+	xrow = r;
+	xoff = o;
+	return 0;
+}
+
 static char rep_cmd[4096];	/* the last command */
 static int rep_len;
 
@@ -1282,10 +1305,12 @@ static void vi(void)
 					if (!ex_command("tn"))
 						mod = 1;
 				}
-				if (k == 'N') {
+				if (k == 'N')
 					if (!ex_command("tp"))
 						mod = 1;
-				}
+				if (k == 'd')
+					if (!vc_gotodef())
+						mod = 1;
 				if (k == 'f') {
 					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.") != 0) {
 						snprintf(ex, sizeof(ex), "e %s", cw);

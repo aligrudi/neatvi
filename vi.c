@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 #include "vi.h"
 
 static char vi_msg[EXLEN];	/* current message */
@@ -1030,7 +1031,7 @@ static void vi_marksave(void)
 	lbuf_mark(xb, '`', xrow, xoff);
 }
 
-static int vc_gotodef(void)
+static int vc_definition(void)
 {
 	char cw[256], kw[256];
 	char *s, *ln;
@@ -1051,6 +1052,31 @@ static int vc_gotodef(void)
 	xoff = o;
 	return 0;
 }
+
+static int vc_openpath(int ln)
+{
+	char cw[250], ex[256];
+	char *sep;
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.:") != 0)
+		return 1;
+	sep = strchr(cw, ':');
+	if (sep)
+		*sep = '\0';
+	if (access(cw, R_OK) != 0) {
+		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", cw);
+		return 1;
+	}
+	snprintf(ex, sizeof(ex), "e %s", cw);
+	if (ex_command(ex))
+		return 1;
+	if (ln && sep && isdigit((unsigned char) sep[1])) {
+		int lnum = atoi(sep + 1);
+		vi_marksave();
+		xrow = MIN(MAX(0, lnum - 1), lbuf_len(xb) - 1);
+	}
+	return 0;
+}
+
 
 static char rep_cmd[4096];	/* the last command */
 static int rep_len;
@@ -1308,15 +1334,11 @@ static void vi(void)
 				if (k == 'a')
 					vc_charinfo();
 				if (k == 'd')
-					if (!vc_gotodef())
+					if (!vc_definition())
 						mod = 1;
-				if (k == 'f') {
-					if (!vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.")) {
-						snprintf(ex, sizeof(ex), "e %s", cw);
-						if (!ex_command(ex))
-							mod = 1;
-					}
-				}
+				if (k == 'f' || k == 'F')
+					if (!vc_openpath(k == 'F'))
+						mod = 1;
 				break;
 			case 'x':
 				vi_back(' ');

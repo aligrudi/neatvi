@@ -17,4 +17,4 @@ vi: $(OBJS)
 stag: $(STAG)
 	$(CC) -o $@ $(STAG) $(LDFLAGS)
 clean:
-	rm -f *.o vi
+	rm -f *.o vi stag

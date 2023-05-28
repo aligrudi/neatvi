@@ -7,7 +7,7 @@
 static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
-	char *def;		/* pattern for ^] */
+	char *def;		/* pattern for gd */
 	char *sec;		/* section start pattern */
 } filetypes[] = {
 	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
@@ -133,7 +133,7 @@ static struct highlight {
 	{"diff", {SYN_BD}, "^diff .*$"},
 
 	/* file listing */
-	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>"},
+	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 8}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
 	{"ls", {12}, "^#.*$"},
 
 	/* status bar */

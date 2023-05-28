@@ -50,7 +50,10 @@ ze and zf in normal mode: switch to the English and alternate keymap.
 gu, gU, and g~ in normal mode: switch character case.
 ^l in normal mode: updates terminal dimensions (after resizing it).
 ^] and ^t in normal mode: jump to tag and pop tag stack.
-gf in normal mode: edit the file whose address is under the cursor.
+gf and gF in normal mode: edit the file whose address is under the cursor.
+
+Note that Neatvi assumes POSIX extended regular expressions (ERE) in
+search patterns, conf.h variables, and even tags files.
 
 OPTIONS
 -------

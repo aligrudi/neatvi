@@ -190,6 +190,7 @@ int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_hlrev(void);
 int conf_hlline(void);
+int conf_hlmode(void);
 int conf_mode(void);
 char **conf_kmap(int id);
 int conf_kmapfind(char *name);

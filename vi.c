@@ -47,7 +47,9 @@ static void vi_drawmsg(void)
 {
 	int oleft = xleft;
 	xleft = 0;
+	syn_context(conf_hlmode());
 	led_printmsg(vi_msg, xrows, "---");
+	syn_context(0);
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }
@@ -131,7 +133,9 @@ static char *vi_prompt(char *msg, int *kmap)
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
+	syn_context(conf_hlmode());
 	s = led_prompt(msg, "", kmap, "---");
+	syn_context(0);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -1432,6 +1436,8 @@ static void vi(void)
 			if (xhll && xrow != orow)
 				vi_drawrow(xrow);
 		}
+		if (!vi_msg[0] && (mod == 1 || xtop != otop))
+			sprintf(vi_msg, "\n");
 		if (vi_msg[0])
 			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),

@@ -79,6 +79,11 @@ int conf_hlline(void)
 	return SYN_LINE;
 }
 
+int conf_hlmode(void)
+{
+	return SYN_MODE;
+}
+
 int conf_mode(void)
 {
 	return MKFILE_MODE;

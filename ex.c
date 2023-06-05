@@ -32,7 +32,7 @@ static struct buf {
 	char ft[32];		/* file type */
 	char *path;		/* file path */
 	struct lbuf *lb;
-	int row, off, top;
+	int row, off, top, left;
 	short id, td;		/* buffer id and text direction */
 	long mtime;		/* modification time */
 } bufs[8];
@@ -78,6 +78,7 @@ static int bufs_open(char *path)
 	bufs[i].row = 0;
 	bufs[i].off = 0;
 	bufs[i].top = 0;
+	bufs[i].left = 0;
 	bufs[i].td = +1;
 	bufs[i].mtime = -1;
 	strcpy(bufs[i].ft, syn_filetype(path));
@@ -90,6 +91,7 @@ static void bufs_switch(int idx)
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
 	bufs[0].top = xtop;
+	bufs[0].left = xleft;
 	bufs[0].td = xtd;
 	memcpy(&tmp, &bufs[idx], sizeof(tmp));
 	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
@@ -97,6 +99,7 @@ static void bufs_switch(int idx)
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
 	xtop = bufs[0].top;
+	xleft = bufs[0].left;
 	xtd = bufs[0].td;
 }
 
@@ -1029,7 +1032,7 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 		*dst++ = *src++;
 	}
 	if (*src == '"') {
-		while (*src != '\n')
+		while (*src && *src != '\n')
 			src++;
 	}
 	if (*src == '\n' || *src == '|')

@@ -84,6 +84,11 @@ int conf_hlmode(void)
 	return SYN_MODE;
 }
 
+int conf_hlback(void)
+{
+	return SYN_BACK;
+}
+
 int conf_mode(void)
 {
 	return MKFILE_MODE;

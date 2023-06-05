@@ -33,6 +33,12 @@ static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d*/
 static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
+static int vi_wincnt = 1;	/* window count */
+static int vi_wincur;		/* active window identifier */
+static int vi_wintmp;		/* temporary window */
+static char *vi_other;		/* alternate window path */
+
+static void vc_status(void);
 
 static void vi_wait(void)
 {
@@ -46,9 +52,10 @@ static void vi_wait(void)
 static void vi_drawmsg(void)
 {
 	int oleft = xleft;
+	int ctx = vi_wintmp ? conf_hlback() : conf_hlmode();
 	xleft = 0;
-	syn_context(conf_hlmode());
-	led_printmsg(vi_msg, xrows, "---");
+	syn_context(ctx);
+	led_printmsg(vi_msg[0] || !ctx ? vi_msg : "\n", xrows, "---");
 	syn_context(0);
 	vi_msg[0] = '\0';
 	xleft = oleft;
@@ -109,6 +116,30 @@ static void vi_drawrm(int r1, int r2, int newln)
 	term_room(r1 - r2 + newln);
 }
 
+static int vi_switch(int id)
+{
+	int beg = 0;
+	int cnt = term_rowx();
+	if (id >= vi_wincnt)
+		return 1;
+	if (id != vi_wincur) {
+		char cmd[1024];
+		char *old = vi_other && vi_other[0] ? vi_other : "unnamed";
+		snprintf(cmd, sizeof(cmd), "e! %s", old);
+		free(vi_other);
+		vi_other = uc_dup(ex_path());
+		ex_command(cmd);
+	}
+	if (vi_wincnt == 2) {
+		int half = cnt / 2;
+		beg = id == 1 ? 0 : half;
+		cnt = id == 1 ? half : term_rowx() - half;
+	}
+	term_window(beg, cnt);
+	vi_wincur = id;
+	return 0;
+}
+
 static int vi_buf[128];
 static int vi_buflen;
 
@@ -149,9 +180,7 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	int c;
 	if (xled) {
-		int oleft = xleft;
 		char *s = led_prompt(msg, "", &xkmap, "---");
-		xleft = oleft;
 		if (s)
 			term_chr('\n');
 		return s;
@@ -1131,7 +1160,7 @@ static void vi(void)
 	vi_drawagain(xcol, 0);
 	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
-		int mod = 0;	/* screen should be redrawn (1: the whole screen, 2: the current line) */
+		int mod = 0;	/* redrawn the screen (1: window, 2: current line, 4: other windows) */
 		int nrow = xrow;
 		int noff = ren_noeol(lbuf_get(xb, xrow), xoff);
 		int otop = xtop;
@@ -1215,7 +1244,7 @@ static void vi(void)
 			case TK_CTL('z'):
 				term_pos(xrows, 0);
 				term_suspend();
-				mod = 1;
+				mod = 5;
 				break;
 			case 'u':
 				if (!lbuf_undo(xb)) {
@@ -1255,11 +1284,37 @@ static void vi(void)
 					mod = 1;
 				}
 				break;
+			case TK_CTL('w'):
+				k = vi_read();
+				if (k == 's') {
+					if (vi_wincnt < 2) {
+						free(vi_other);
+						vi_other = uc_dup(ex_path());
+						vi_wincnt = 2;
+						vi_switch(0);
+						mod = 5;
+					}
+				}
+				if (k == 'j' || k == 'k') {
+					if (vi_wincnt > 1) {
+						vi_switch(1 - vi_wincur);
+						mod = 5;
+					}
+				}
+				if (k == 'o') {
+					if (vi_wincnt > 1) {
+						vi_wincnt = 1;
+						vi_wincur = 0;
+						vi_switch(0);
+						mod = 1;
+					}
+				}
+				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
 				if (ln && ln[0]) {
-					ex_command(ln);
-					mod = 1;
+					if (!ex_command(ln))
+						mod = 5;
 				}
 				free(ln);
 				if (xquit)
@@ -1290,7 +1345,7 @@ static void vi(void)
 			case TK_CTL('l'):
 				term_done();
 				term_init();
-				mod = 1;
+				mod = 5;
 				break;
 			case 'm':
 				if ((mark = vi_read()) > 0 && islower(mark))
@@ -1426,6 +1481,18 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
+		if (mod & 4 && vi_wincnt > 1) {
+			int wid = vi_wincur;
+			vi_wintmp = 1;
+			vi_switch(1 - wid);
+			vc_status();
+			vi_drawagain(vi_off2col(xb, xrow, xoff), 0);
+			vi_wintmp = 0;
+			vi_switch(wid);
+			vc_status();
+		}
+		if (!vi_msg[0] && vi_wincnt > 1)
+			vc_status();
 		if (mod || xleft != oleft) {
 			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);
 		} else {
@@ -1435,11 +1502,9 @@ static void vi(void)
 				vi_drawrow(orow);
 			if (xhll && xrow != orow)
 				vi_drawrow(xrow);
+			if (vi_msg[0])
+				vi_drawmsg();
 		}
-		if (!vi_msg[0] && (mod == 1 || xtop != otop))
-			sprintf(vi_msg, "\n");
-		if (vi_msg[0])
-			vi_drawmsg();
 		term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
 		lbuf_modified(xb);
@@ -1473,6 +1538,7 @@ int main(int argc, char *argv[])
 			ex();
 		ex_done();
 	}
+	free(vi_other);
 	if (xled || xvis)
 		term_done();
 	reg_done();

@@ -8,8 +8,10 @@
 #include <unistd.h>
 #include "vi.h"
 
-static struct sbuf *term_sbuf;
-static int rows, cols;
+static struct sbuf *term_sbuf;	/* output buffer if not NULL */
+static int rows, cols;		/* number of terminal rows and columns */
+static int win_beg, win_rows;	/* active window rows */
+static int last_beg, last_rows;	/* saved window rows */
 static struct termios termios;
 
 void term_init(void)
@@ -32,11 +34,35 @@ void term_init(void)
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;
 	term_str("\33[m");
+	win_rows = rows;
+	win_beg = 0;
+	if (last_rows > 0)
+		term_window(last_beg, last_rows);
+}
+
+void term_window(int row, int cnt)
+{
+	char cmd[64];
+	win_beg = row;
+	win_rows = cnt;
+	if (row == 0 && win_rows == rows) {
+		term_str("\33[r");
+		term_str("\33[?6l");
+	} else {
+		sprintf(cmd, "\33[%d;%dr", win_beg + 1, win_beg + win_rows);
+		term_str(cmd);
+		term_str("\33[?6h");
+	}
 }
 
 void term_done(void)
 {
 	term_commit();
+	last_beg = win_beg;
+	last_rows = win_rows;
+	term_window(0, rows);
+	term_pos(rows - 1, 0);
+	term_kill();
 	tcsetattr(0, 0, &termios);
 }
 
@@ -102,7 +128,7 @@ void term_pos(int r, int c)
 	char buf[32] = "\r";
 	if (c < 0)
 		c = 0;
-	if (c >= xcols)
+	if (c >= term_cols())
 		c = cols - 1;
 	if (r < 0)
 		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
@@ -111,9 +137,14 @@ void term_pos(int r, int c)
 	term_out(buf);
 }
 
-int term_rows(void)
+int term_rowx(void)
 {
 	return rows;
+}
+
+int term_rows(void)
+{
+	return win_rows;
 }
 
 int term_cols(void)

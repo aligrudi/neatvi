@@ -137,7 +137,7 @@ static int td_set(int td)
 void led_printmsg(char *s, int row, char *syn)
 {
 	int td = td_set(+2);
-	char *r = led_render(s, xleft, xleft + xcols, syn);
+	char *r = led_render(s, 0, xcols, syn);
 	td_set(td);
 	term_pos(row, 0);
 	term_kill();
@@ -326,7 +326,9 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn)
 {
 	int key;
 	int td = td_set(+2);
+	int oleft = xleft;
 	char *s = led_line(pref, post, "", 0, &key, kmap, syn);
+	xleft = oleft;
 	td_set(td);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
@@ -342,7 +344,7 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn)
 	return NULL;
 }
 
-/* read visual command input */
+/* read visual command input; may update xleft */
 char *led_input(char *pref, char *post, int *kmap, char *syn)
 {
 	struct sbuf *sb = sbuf_make();

@@ -1127,18 +1127,15 @@ static int vc_definition(int newwin)
 		o = s - ln;
 	vi_marksave();
 	if (newwin) {
-		vi_wonly();
 		vi_wsplit();
 		vi_switch(1 - w_cur);
 	}
 	xrow = r;
 	xoff = o;
-	if (newwin)
-		vi_switch(1 - w_cur);
 	return 0;
 }
 
-static int vc_openpath(int ln)
+static int vc_openpath(int ln, int newwin)
 {
 	char cw[250], ex[256];
 	char *sep;
@@ -1150,6 +1147,10 @@ static int vc_openpath(int ln)
 	if (access(cw, R_OK) != 0) {
 		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", cw);
 		return 1;
+	}
+	if (newwin) {
+		vi_wsplit();
+		vi_switch(1 - w_cur);
 	}
 	snprintf(ex, sizeof(ex), "e %s", cw);
 	if (ex_command(ex))
@@ -1169,13 +1170,13 @@ static int vc_tag(int newwin)
 		return 1;
 	snprintf(ex, sizeof(ex), "ta %s", cw);
 	vi_marksave();
-	if (ex_command(ex) != 0)
-		return 1;
 	if (newwin) {
 		vi_wonly();
 		vi_wsplit();
-		ex_command("po");
+		vi_switch(1 - w_cur);
 	}
+	if (ex_command(ex) != 0)
+		return 1;
 	return 0;
 }
 
@@ -1208,11 +1209,13 @@ static void vc_execute(void)
 			term_push(buf, strlen(buf));
 }
 
-static int vc_ecmd(int c)
+static int vc_ecmd(int c, int newwin)
 {
 	char cmd[256], ex[256];
 	char *out, *sep;
 	int lnum = 0;
+	if (strchr("dfiglc", c) == NULL)
+		return 1;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 0, 1)) == NULL) {
@@ -1236,8 +1239,10 @@ static int vc_ecmd(int c)
 		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", ex + 2);
 		return 1;
 	}
-	if (w_cnt == 2)
+	if (newwin) {
+		vi_wsplit();
 		vi_switch(1 - w_cur);
+	}
 	if (ex_command(ex))
 		return 1;
 	if (lnum > 0) {
@@ -1402,12 +1407,23 @@ static void vi(void)
 				if (k == 'c')
 					if (!vi_wclose())
 						mod = 1;
-				if (k == 'd')
-					if (!vc_definition(1))
-						mod = 5;
-				if (k == ']')
+				if (k == TK_CTL(']') || k == ']')
 					if (!vc_tag(1))
 						mod = 5;
+				if (k == 'g') {
+					int j = vi_read();
+					if (j == 'f' || j == 'F')
+						if (!vc_openpath(j == 'F', 1))
+							mod = 5;
+					if (j == 'd')
+						if (!vc_definition(1))
+							mod = 5;
+				}
+				if (k == 'q') {
+					int j = vi_read();
+					if (!vc_ecmd(j, 1))
+						mod = 5;
+				}
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
@@ -1495,7 +1511,7 @@ static void vi(void)
 					if (!vc_definition(0))
 						mod = 1;
 				if (k == 'f' || k == 'F')
-					if (!vc_openpath(k == 'F'))
+					if (!vc_openpath(k == 'F', 0))
 						mod = 1;
 				break;
 			case 'x':
@@ -1520,9 +1536,8 @@ static void vi(void)
 				break;
 			case 'q':
 				k = vi_read();
-				if (strchr("gdflc", k) != NULL)
-					if (!vc_ecmd(k))
-						mod = 5;
+				if (!vc_ecmd(k, 0))
+					mod = 5;
 				break;
 			case 'r':
 				if (!vc_replace())

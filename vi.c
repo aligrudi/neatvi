@@ -1217,8 +1217,6 @@ static int vc_ecmd(int c, int newwin)
 	char cmd[256], ex[256];
 	char *out, *sep;
 	int lnum = 0;
-	if (strchr("dfiglc", c) == NULL)
-		return 1;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 0, 1)) == NULL) {

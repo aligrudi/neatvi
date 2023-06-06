@@ -33,10 +33,11 @@ static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d*/
 static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
-static int vi_wincnt = 1;	/* window count */
-static int vi_wincur;		/* active window identifier */
-static int vi_wintmp;		/* temporary window */
-static char *vi_other;		/* alternate window path */
+static int w_cnt = 1;		/* window count */
+static int w_cur;		/* active window identifier */
+static int w_tmp;		/* temporary window */
+static char *w_path;		/* saved window path */
+static int w_row, w_off, w_top, w_left;	/* saved window configuration */
 
 static void vc_status(void);
 
@@ -52,7 +53,7 @@ static void vi_wait(void)
 static void vi_drawmsg(void)
 {
 	int oleft = xleft;
-	int ctx = vi_wintmp ? conf_hlback() : conf_hlmode();
+	int ctx = w_tmp ? conf_hlback() : conf_hlmode();
 	xleft = 0;
 	syn_context(ctx);
 	led_printmsg(vi_msg[0] || !ctx ? vi_msg : "\n", xrows, "---");
@@ -120,45 +121,62 @@ static int vi_switch(int id)
 {
 	int beg = 0;
 	int cnt = term_rowx();
-	if (id >= vi_wincnt)
+	if (id >= w_cnt)
 		return 1;
-	if (id != vi_wincur) {
+	if (id != w_cur) {
 		char cmd[1024];
-		char *old = vi_other && vi_other[0] ? vi_other : "unnamed";
+		char *old = w_path && w_path[0] ? w_path : "unnamed";
+		int row = w_row, off = w_off, top = w_top, left = w_left;
 		snprintf(cmd, sizeof(cmd), "e! %s", old);
-		free(vi_other);
-		vi_other = uc_dup(ex_path());
+		free(w_path);
+		w_path = uc_dup(ex_path());
+		w_row = xrow, w_off = xoff, w_top = xtop, w_left = xleft;
 		ex_command(cmd);
+		xrow = row, xoff = off, xtop = top, xleft = left;
 	}
-	if (vi_wincnt == 2) {
+	if (w_cnt == 2) {
 		int half = cnt / 2;
 		beg = id == 1 ? 0 : half;
 		cnt = id == 1 ? half : term_rowx() - half;
 	}
 	term_window(beg, cnt);
-	vi_wincur = id;
+	w_cur = id;
 	return 0;
 }
 
 static int vi_wsplit(void)
 {
-	if (vi_wincnt != 1)
+	if (w_cnt != 1)
 		return 1;
-	free(vi_other);
-	vi_other = uc_dup(ex_path());
-	vi_wincnt = 2;
+	free(w_path);
+	w_cnt = 2;
+	w_path = uc_dup(ex_path());
+	w_row = xrow, w_off = xoff, w_top = xtop, w_left = xleft;
 	vi_switch(0);
 	return 0;
 }
 
 static int vi_wone(void)
 {
-	if (vi_wincnt != 2)
+	if (w_cnt != 2)
 		return 1;
-	vi_wincnt = 1;
-	vi_wincur = 0;
+	w_cnt = 1;
+	w_cur = 0;
 	vi_switch(0);
 	return 0;
+}
+
+static void vi_wfix(void)
+{
+	if (xrow < 0 || xrow >= lbuf_len(xb))
+		xrow = lbuf_len(xb) ? lbuf_len(xb) - 1 : 0;
+	if (xtop > xrow)
+		xtop = xtop - xrows / 2 > xrow ?
+				MAX(0, xrow - xrows / 2) : xrow;
+	if (xtop + xrows <= xrow)
+		xtop = xtop + xrows + xrows / 2 <= xrow ?
+				xrow - xrows / 2 : xrow - xrows + 1;
+	xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
 }
 
 static int vi_buf[128];
@@ -1085,7 +1103,7 @@ static void vi_marksave(void)
 	lbuf_mark(xb, '`', xrow, xoff);
 }
 
-static int vc_definition(void)
+static int vc_definition(int newwin)
 {
 	char cw[256], kw[256];
 	char *s, *ln;
@@ -1102,8 +1120,15 @@ static int vc_definition(void)
 	if ((s = strstr(ln, cw)) != NULL)
 		o = s - ln;
 	vi_marksave();
+	if (newwin) {
+		vi_wone();
+		vi_wsplit();
+		vi_switch(1 - w_cur);
+	}
 	xrow = r;
 	xoff = o;
+	if (newwin)
+		vi_switch(1 - w_cur);
 	return 0;
 }
 
@@ -1131,6 +1156,22 @@ static int vc_openpath(int ln)
 	return 0;
 }
 
+static int vc_tag(int newwin)
+{
+	char cw[120], ex[128];
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") != 0)
+		return 1;
+	snprintf(ex, sizeof(ex), "ta %s", cw);
+	vi_marksave();
+	if (ex_command(ex) != 0)
+		return 1;
+	if (newwin) {
+		vi_wone();
+		vi_wsplit();
+		ex_command("po");
+	}
+	return 0;
+}
 
 static char rep_cmd[4096];	/* the last command */
 static int rep_len;
@@ -1189,8 +1230,8 @@ static int vc_ecmd(int c)
 		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", ex + 2);
 		return 1;
 	}
-	if (vi_wincnt == 2)
-		vi_switch(1 - vi_wincur);
+	if (w_cnt == 2)
+		vi_switch(1 - w_cur);
 	if (ex_command(ex))
 		return 1;
 	if (lnum > 0) {
@@ -1208,7 +1249,6 @@ static void sigwinch(int signo)
 
 static void vi(void)
 {
-	char cw[120], ex[128];
 	int xcol;
 	int mark;
 	char *ln;
@@ -1330,13 +1370,8 @@ static void vi(void)
 				mod = 1;
 				break;
 			case TK_CTL(']'):
-				if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "") == 0) {
-					snprintf(ex, sizeof(ex), "ta %s", cw);
-					if (!ex_command(ex)) {
-						vi_marksave();
-						mod = 1;
-					}
-				}
+				if (!vc_tag(0))
+					mod = 1;
 				break;
 			case TK_CTL('t'):
 				if (!ex_command("pop")) {
@@ -1346,20 +1381,24 @@ static void vi(void)
 				break;
 			case TK_CTL('w'):
 				k = vi_read();
-				if (k == 's') {
+				if (k == 's')
 					if (!vi_wsplit())
 						mod = 5;
-				}
 				if (k == 'j' || k == 'k') {
-					if (vi_wincnt > 1) {
-						vi_switch(1 - vi_wincur);
+					if (w_cnt > 1) {
+						vi_switch(1 - w_cur);
 						mod = 5;
 					}
 				}
-				if (k == 'o') {
+				if (k == 'o')
 					if (!vi_wone())
 						mod = 1;
-				}
+				if (k == 'd')
+					if (!vc_definition(1))
+						mod = 5;
+				if (k == ']')
+					if (!vc_tag(1))
+						mod = 5;
 				break;
 			case ':':
 				ln = vi_prompt(":", &kmap);
@@ -1444,7 +1483,7 @@ static void vi(void)
 				if (k == 'a')
 					vc_charinfo();
 				if (k == 'd')
-					if (!vc_definition())
+					if (!vc_definition(0))
 						mod = 1;
 				if (k == 'f' || k == 'F')
 					if (!vc_openpath(k == 'F'))
@@ -1522,15 +1561,7 @@ static void vi(void)
 				}
 			}
 		}
-		if (xrow < 0 || xrow >= lbuf_len(xb))
-			xrow = lbuf_len(xb) ? lbuf_len(xb) - 1 : 0;
-		if (xtop > xrow)
-			xtop = xtop - xrows / 2 > xrow ?
-					MAX(0, xrow - xrows / 2) : xrow;
-		if (xtop + xrows <= xrow)
-			xtop = xtop + xrows + xrows / 2 <= xrow ?
-					xrow - xrows / 2 : xrow - xrows + 1;
-		xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
+		vi_wfix();
 		if (mod)
 			xcol = vi_off2col(xb, xrow, xoff);
 		if (xcol >= xleft + xcols)
@@ -1538,17 +1569,18 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
-		if (mod & 4 && vi_wincnt > 1) {
-			int wid = vi_wincur;
-			vi_wintmp = 1;
-			vi_switch(1 - wid);
+		if (mod & 4 && w_cnt > 1) {
+			int id = w_cur;
+			w_tmp = 1;
+			vi_switch(1 - id);
+			vi_wfix();
 			vc_status();
 			vi_drawagain(vi_off2col(xb, xrow, xoff), 0);
-			vi_wintmp = 0;
-			vi_switch(wid);
+			w_tmp = 0;
+			vi_switch(id);
 			vc_status();
 		}
-		if (!vi_msg[0] && vi_wincnt > 1)
+		if (!vi_msg[0] && w_cnt > 1)
 			vc_status();
 		if (mod || xleft != oleft) {
 			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);
@@ -1595,7 +1627,7 @@ int main(int argc, char *argv[])
 			ex();
 		ex_done();
 	}
-	free(vi_other);
+	free(w_path);
 	if (xled || xvis)
 		term_done();
 	reg_done();

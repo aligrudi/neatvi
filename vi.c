@@ -152,18 +152,24 @@ static int vi_wsplit(void)
 	w_cnt = 2;
 	w_path = uc_dup(ex_path());
 	w_row = xrow, w_off = xoff, w_top = xtop, w_left = xleft;
-	vi_switch(0);
-	return 0;
+	return vi_switch(0);
 }
 
-static int vi_wone(void)
+static int vi_wonly(void)
 {
 	if (w_cnt != 2)
 		return 1;
 	w_cnt = 1;
 	w_cur = 0;
-	vi_switch(0);
-	return 0;
+	return vi_switch(0);
+}
+
+static int vi_wclose(void)
+{
+	if (w_cnt != 2)
+		return 1;
+	vi_switch(1 - w_cur);
+	return vi_wonly();
 }
 
 static void vi_wfix(void)
@@ -1121,7 +1127,7 @@ static int vc_definition(int newwin)
 		o = s - ln;
 	vi_marksave();
 	if (newwin) {
-		vi_wone();
+		vi_wonly();
 		vi_wsplit();
 		vi_switch(1 - w_cur);
 	}
@@ -1166,7 +1172,7 @@ static int vc_tag(int newwin)
 	if (ex_command(ex) != 0)
 		return 1;
 	if (newwin) {
-		vi_wone();
+		vi_wonly();
 		vi_wsplit();
 		ex_command("po");
 	}
@@ -1391,7 +1397,10 @@ static void vi(void)
 					}
 				}
 				if (k == 'o')
-					if (!vi_wone())
+					if (!vi_wonly())
+						mod = 1;
+				if (k == 'c')
+					if (!vi_wclose())
 						mod = 1;
 				if (k == 'd')
 					if (!vc_definition(1))

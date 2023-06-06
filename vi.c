@@ -1135,24 +1135,21 @@ static int vc_definition(int newwin)
 	return 0;
 }
 
-static int vc_openpath(int ln, int newwin)
+static int vi_openpath(char *path, int ln, int newwin)
 {
-	char cw[250], ex[256];
-	char *sep;
-	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.:") != 0)
-		return 1;
-	sep = strchr(cw, ':');
+	char ex[256];
+	char *sep = strchr(path, ':');
 	if (sep)
 		*sep = '\0';
-	if (access(cw, R_OK) != 0) {
-		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", cw);
+	if (access(path, R_OK) != 0) {
+		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", path);
 		return 1;
 	}
 	if (newwin) {
 		vi_wsplit();
 		vi_switch(1 - w_cur);
 	}
-	snprintf(ex, sizeof(ex), "e %s", cw);
+	snprintf(ex, sizeof(ex), "e %s", path);
 	if (ex_command(ex))
 		return 1;
 	if (ln && sep && isdigit((unsigned char) sep[1])) {
@@ -1164,6 +1161,14 @@ static int vc_openpath(int ln, int newwin)
 			xoff = ren_noeol(lbuf_get(xb, xrow), atoi(col + 1) - 1);
 	}
 	return 0;
+}
+
+static int vc_openpath(int ln, int newwin)
+{
+	char cw[250];
+	if (vi_curword(xb, cw, sizeof(cw), xrow, xoff, "-/.:") != 0)
+		return 1;
+	return vi_openpath(cw, ln, newwin);
 }
 
 static int vc_tag(int newwin)
@@ -1214,43 +1219,23 @@ static void vc_execute(void)
 
 static int vc_ecmd(int c, int newwin)
 {
-	char cmd[256], ex[256];
-	char *out, *sep;
-	int lnum = 0;
+	char cmd[256];
+	char *out, *end;
+	int ret;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 0, 1)) == NULL) {
 		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
 		return 1;
 	}
-	sep = out;
-	while (*sep && (uc_kind(sep) == 1 ||
-			strchr("./-", (unsigned char) sep[0]) != NULL))
-		sep++;
-	if (*sep == ':' && isdigit((unsigned char) sep[1]))
-		lnum = atoi(sep + 1);
-	*sep = '\0';
-	snprintf(ex, sizeof(ex), "e %s", out);
+	end = out;
+	while (*end && (uc_kind(end) == 1 ||
+			strchr("./-:", (unsigned char) end[0]) != NULL))
+		end++;
+	*end = '\0';
+	ret = vi_openpath(out, 1, newwin);
 	free(out);
-	if (ex[2] == '\0') {
-		snprintf(vi_msg, sizeof(vi_msg), "no output\n");
-		return 1;
-	}
-	if (access(ex + 2, R_OK) != 0) {
-		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", ex + 2);
-		return 1;
-	}
-	if (newwin) {
-		vi_wsplit();
-		vi_switch(1 - w_cur);
-	}
-	if (ex_command(ex))
-		return 1;
-	if (lnum > 0) {
-		vi_marksave();
-		xrow = MIN(MAX(0, lnum - 1), lbuf_len(xb) - 1);
-	}
-	return 0;
+	return ret;
 }
 
 static void sigwinch(int signo)

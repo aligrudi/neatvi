@@ -85,7 +85,7 @@ static struct highlight {
 	{"go", {3 | SYN_BD}, "\\<(func|type|var|const|package)\\>"},
 	{"go", {3 | SYN_BD}, "\\<(import|interface|struct)\\>"},
 	{"go", {3 | SYN_BD}, "\\<(break|case|chan|continue|default|defer|else|fallthrough|for|go|goto|if|map|range|return|select|switch)\\>"},
-	{"go", {0, 8}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
+	{"go", {0, 8 | SYN_BD}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
 	{"go", {8 | SYN_BD}, "\\<(true|false|iota|nil|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>"},
 	{"go", {2 | SYN_IT}, "//.*$"},
 	{"go", {2 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},

@@ -1156,9 +1156,12 @@ static int vc_openpath(int ln, int newwin)
 	if (ex_command(ex))
 		return 1;
 	if (ln && sep && isdigit((unsigned char) sep[1])) {
+		char *col = strchr(sep + 1, ':');
 		int lnum = atoi(sep + 1);
 		vi_marksave();
 		xrow = MIN(MAX(0, lnum - 1), lbuf_len(xb) - 1);
+		if (col && isdigit((unsigned char) col[1]))
+			xoff = ren_noeol(lbuf_get(xb, xrow), atoi(col + 1) - 1);
 	}
 	return 0;
 }
@@ -1412,8 +1415,8 @@ static void vi(void)
 						mod = 5;
 				if (k == 'g') {
 					int j = vi_read();
-					if (j == 'f' || j == 'F')
-						if (!vc_openpath(j == 'F', 1))
+					if (j == 'f' || j == 'l')
+						if (!vc_openpath(j == 'l', 1))
 							mod = 5;
 					if (j == 'd')
 						if (!vc_definition(1))
@@ -1510,8 +1513,8 @@ static void vi(void)
 				if (k == 'd')
 					if (!vc_definition(0))
 						mod = 1;
-				if (k == 'f' || k == 'F')
-					if (!vc_openpath(k == 'F', 0))
+				if (k == 'f' || k == 'l')
+					if (!vc_openpath(k == 'l', 0))
 						mod = 1;
 				break;
 			case 'x':

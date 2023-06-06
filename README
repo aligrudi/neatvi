@@ -42,15 +42,18 @@ Commands not available in ex(1):
   Pop tag stack.
 
 New key mappings:
-^a in normal mode: searches for the word under the cursor.
-^p in insert mode: inserts the contents of the default yank buffer.
-zL, zl, zr, and zR in normal mode: change the value of td option.
-^e and ^f in insert mode: switch to the English and alternate keymap.
-ze and zf in normal mode: switch to the English and alternate keymap.
-gu, gU, and g~ in normal mode: switch character case.
-^l in normal mode: updates terminal dimensions (after resizing it).
-^] and ^t in normal mode: jump to tag and pop tag stack.
-gf and gF in normal mode: edit the file whose address is under the cursor.
+- ^a in normal mode: searches for the word under the cursor.
+- ^p in insert mode: inserts the contents of the default yank buffer.
+- zL, zl, zr, and zR in normal mode: change the value of td option.
+- ^e and ^f in insert mode: switches to the English and alternate keymap.
+- ze and zf in normal mode: switches to the English and alternate keymap.
+- gu, gU, and g~ in normal mode: switches character case.
+- ^l in normal mode: updates terminal dimensions (after resizing it).
+- ^] and ^t in normal mode: jumps to tag and pops tag stack.
+- gf in normal mode: edits the file whose address is under the cursor.
+- gl in normal mode: like gf, but it reads line and column numbers too.
+- ^ws, ^wo, ^wc, ^wj, ^wk in normal mode: manages windows.
+- ^wgf, ^wgl, ^w^]: executes gf, gl, ^] in a new window.
 
 Note that Neatvi assumes POSIX extended regular expressions (ERE) in
 search patterns, conf.h variables, and even tags files.

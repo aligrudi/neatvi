@@ -86,7 +86,9 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 				close(fds[0].fd);
 				fds[0].fd = -1;
 			}
-			continue;
+		} else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			close(fds[0].fd);
+			fds[0].fd = -1;
 		}
 		if (fds[1].revents & POLLOUT) {
 			int ret = write(fds[1].fd, ibuf + nw, slen - nw);
@@ -96,7 +98,9 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 				close(fds[1].fd);
 				fds[1].fd = -1;
 			}
-			continue;
+		} else if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			close(fds[1].fd);
+			fds[1].fd = -1;
 		}
 		if (fds[2].revents & POLLIN) {
 			int ret = read(fds[2].fd, buf, sizeof(buf));
@@ -104,17 +108,9 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 			for (i = 0; i < ret; i++)
 				if ((unsigned char) buf[i] == TK_CTL('c'))
 					kill(pid, SIGINT);
-		}
-		if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-			close(fds[0].fd);
-			fds[0].fd = -1;
-		}
-		if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-			close(fds[1].fd);
-			fds[1].fd = -1;
-		}
-		if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL))
+		} else if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			fds[2].fd = -1;
+		}
 	}
 	close(fds[0].fd);
 	close(fds[1].fd);

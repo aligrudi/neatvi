@@ -140,6 +140,27 @@ static int vi_switch(int id)
 	return 0;
 }
 
+static int vi_wsplit(void)
+{
+	if (vi_wincnt != 1)
+		return 1;
+	free(vi_other);
+	vi_other = uc_dup(ex_path());
+	vi_wincnt = 2;
+	vi_switch(0);
+	return 0;
+}
+
+static int vi_wone(void)
+{
+	if (vi_wincnt != 2)
+		return 1;
+	vi_wincnt = 1;
+	vi_wincur = 0;
+	vi_switch(0);
+	return 0;
+}
+
 static int vi_buf[128];
 static int vi_buflen;
 
@@ -1140,6 +1161,45 @@ static void vc_execute(void)
 			term_push(buf, strlen(buf));
 }
 
+static int vc_ecmd(int c)
+{
+	char cmd[256], ex[256];
+	char *out, *sep;
+	int lnum = 0;
+	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
+		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
+	if ((out = cmd_pipe(cmd, NULL, 0, 1)) == NULL) {
+		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
+		return 1;
+	}
+	sep = out;
+	while (*sep && (uc_kind(sep) == 1 ||
+			strchr("./-", (unsigned char) sep[0]) != NULL))
+		sep++;
+	if (*sep == ':' && isdigit((unsigned char) sep[1]))
+		lnum = atoi(sep + 1);
+	*sep = '\0';
+	snprintf(ex, sizeof(ex), "e %s", out);
+	free(out);
+	if (ex[2] == '\0') {
+		snprintf(vi_msg, sizeof(vi_msg), "no output\n");
+		return 1;
+	}
+	if (access(ex + 2, R_OK) != 0) {
+		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", ex + 2);
+		return 1;
+	}
+	if (vi_wincnt == 2)
+		vi_switch(1 - vi_wincur);
+	if (ex_command(ex))
+		return 1;
+	if (lnum > 0) {
+		vi_marksave();
+		xrow = MIN(MAX(0, lnum - 1), lbuf_len(xb) - 1);
+	}
+	return 0;
+}
+
 static void sigwinch(int signo)
 {
 	vi_back(TK_CTL('l'));
@@ -1287,13 +1347,8 @@ static void vi(void)
 			case TK_CTL('w'):
 				k = vi_read();
 				if (k == 's') {
-					if (vi_wincnt < 2) {
-						free(vi_other);
-						vi_other = uc_dup(ex_path());
-						vi_wincnt = 2;
-						vi_switch(0);
+					if (!vi_wsplit())
 						mod = 5;
-					}
 				}
 				if (k == 'j' || k == 'k') {
 					if (vi_wincnt > 1) {
@@ -1302,12 +1357,8 @@ static void vi(void)
 					}
 				}
 				if (k == 'o') {
-					if (vi_wincnt > 1) {
-						vi_wincnt = 1;
-						vi_wincur = 0;
-						vi_switch(0);
+					if (!vi_wone())
 						mod = 1;
-					}
 				}
 				break;
 			case ':':
@@ -1418,6 +1469,12 @@ static void vi(void)
 				vi_back('$');
 				if (!vc_motion('d'))
 					mod = 2;
+				break;
+			case 'q':
+				k = vi_read();
+				if (strchr("gdflc", k) != NULL)
+					if (!vc_ecmd(k))
+						mod = 5;
 				break;
 			case 'r':
 				if (!vc_replace())

@@ -139,3 +139,8 @@ char *conf_section(char *ft)
 			return filetypes[i].sec;
 	return "^\\{";
 }
+
+char *conf_ecmd(void)
+{
+	return ECMD;
+}

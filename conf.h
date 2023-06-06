@@ -207,3 +207,6 @@ static struct placeholder {
 	{"ٕ", "ـٕ", 1},
 	{"ٰ", "ـٰ", 1},
 };
+
+/* external commands */
+#define ECMD	"neatvi.sh"

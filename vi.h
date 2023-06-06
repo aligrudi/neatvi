@@ -201,6 +201,7 @@ char *conf_digraph(int c1, int c2);
 char *conf_lnpref(void);
 char *conf_definition(char *ft);
 char *conf_section(char *ft);
+char *conf_ecmd(void);
 
 /* global variables */
 extern int xrow;

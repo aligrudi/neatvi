@@ -331,8 +331,10 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 			return 1;
 	if (!(path = ex_pathexpand(arg, 0)))
 		return 1;
+	/* ew: switch buffer without changing # */
 	if (path[0] && cmd[0] == 'e' && cmd[1] == 'w' && bufs_find(path) > 1)
 		bufs_switch(1);
+	/* check if the buffer is already available */
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;

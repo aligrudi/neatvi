@@ -172,6 +172,14 @@ static int vi_wclose(void)
 	return vi_wonly();
 }
 
+static int vi_wswap(void)
+{
+	if (w_cnt != 2)
+		return 1;
+	w_cur = 1 - w_cur;
+	return 0;
+}
+
 static void vi_wfix(void)
 {
 	if (xrow < 0 || xrow >= lbuf_len(xb))
@@ -1393,6 +1401,9 @@ static void vi(void)
 				if (k == 'c')
 					if (!vi_wclose())
 						mod = 1;
+				if (k == 'x')
+					if (!vi_wswap())
+						mod = 5;
 				if (k == TK_CTL(']') || k == ']')
 					if (!vc_tag(1))
 						mod = 5;

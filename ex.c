@@ -331,6 +331,8 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 			return 1;
 	if (!(path = ex_pathexpand(arg, 0)))
 		return 1;
+	if (path[0] && cmd[0] == 'e' && cmd[1] == 'w' && bufs_find(path) > 1)
+		bufs_switch(1);
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
 		return 0;
@@ -920,6 +922,7 @@ static struct excmd {
 	{"c", "change", ec_insert},
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
+	{"ew", "ew", ec_edit},
 	{"g", "global", ec_glob},
 	{"g!", "global!", ec_glob},
 	{"=", "=", ec_lnum},

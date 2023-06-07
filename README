@@ -52,7 +52,7 @@ New key mappings:
 - ^] and ^t in normal mode: jumps to tag and pops tag stack.
 - gf in normal mode: edits the file whose address is under the cursor.
 - gl in normal mode: like gf, but it reads line and column numbers too.
-- ^ws, ^wo, ^wc, ^wj, ^wk in normal mode: manages windows.
+- ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
 - ^wgf, ^wgl, ^w^]: executes gf, gl, ^] in a new window.
 
 Note that Neatvi assumes POSIX extended regular expressions (ERE) in

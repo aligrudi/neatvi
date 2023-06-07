@@ -1138,6 +1138,7 @@ static int vc_definition(int newwin)
 		o = s - ln;
 	vi_marksave();
 	if (newwin) {
+		vi_wonly();
 		vi_wsplit();
 		vi_switch(1 - w_cur);
 	}

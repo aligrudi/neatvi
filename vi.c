@@ -1190,13 +1190,15 @@ static int vc_tag(int newwin)
 		return 1;
 	snprintf(ex, sizeof(ex), "ta %s", cw);
 	vi_marksave();
+	if (ex_command(ex) != 0)
+		return 1;
 	if (newwin) {
+		ex_command("po");
 		vi_wonly();
 		vi_wsplit();
 		vi_switch(1 - w_cur);
+		ex_command(ex);
 	}
-	if (ex_command(ex) != 0)
-		return 1;
 	return 0;
 }
 

@@ -64,7 +64,7 @@ void term_done(void)
 void term_suspend(void)
 {
 	term_done();
-	kill(getpid(), SIGSTOP);
+	kill(0, SIGSTOP);
 	term_init();
 }
 

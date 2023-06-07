@@ -11,7 +11,6 @@
 static struct sbuf *term_sbuf;	/* output buffer if not NULL */
 static int rows, cols;		/* number of terminal rows and columns */
 static int win_beg, win_rows;	/* active window rows */
-static int last_beg, last_rows;	/* saved window rows */
 static struct termios termios;
 
 void term_init(void)
@@ -36,8 +35,6 @@ void term_init(void)
 	term_str("\33[m");
 	win_rows = rows;
 	win_beg = 0;
-	if (last_rows > 0)
-		term_window(last_beg, last_rows);
 }
 
 void term_window(int row, int cnt)
@@ -58,8 +55,6 @@ void term_window(int row, int cnt)
 void term_done(void)
 {
 	term_commit();
-	last_beg = win_beg;
-	last_rows = win_rows;
 	term_window(0, rows);
 	term_pos(rows - 1, 0);
 	term_kill();

@@ -925,6 +925,7 @@ static struct excmd {
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
 	{"ew", "ew", ec_edit},
+	{"ew!", "ew!", ec_edit},
 	{"g", "global", ec_glob},
 	{"g!", "global!", ec_glob},
 	{"=", "=", ec_lnum},

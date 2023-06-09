@@ -130,7 +130,7 @@ static int vi_switch(int id)
 		char *ec = "ew";
 		if (w_path && strcmp(w_path, ex_path()) == 0)
 			ec = "e";
-		snprintf(cmd, sizeof(cmd), "%s %s", ec, old);
+		snprintf(cmd, sizeof(cmd), "%s! %s", ec, old);
 		free(w_path);
 		w_path = uc_dup(ex_path());
 		w_row = xrow, w_off = xoff, w_top = xtop, w_left = xleft;

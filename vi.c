@@ -1247,7 +1247,8 @@ static int vc_ecmd(int c, int newwin)
 			strchr("./-:", (unsigned char) end[0]) != NULL))
 		end++;
 	*end = '\0';
-	ret = vi_openpath(out, 1, newwin);
+	if (!(ret = vi_openpath(out, 1, newwin)))
+		ex_command("e");
 	free(out);
 	return ret;
 }

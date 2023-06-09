@@ -1242,13 +1242,19 @@ static int vc_ecmd(int c, int newwin)
 		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
 		return 1;
 	}
-	end = out;
-	while (*end && (uc_kind(end) == 1 ||
-			strchr("./-:", (unsigned char) end[0]) != NULL))
-		end++;
+	end = strchr(out, '\n');
+	if (!end || end == out) {
+		snprintf(vi_msg, sizeof(vi_msg), "no output\n");
+		free(out);
+		return 1;
+	}
 	*end = '\0';
-	if (!(ret = vi_openpath(out, 1, newwin)))
-		ex_command("e");
+	if (newwin) {
+		vi_wonly();
+		vi_wsplit();
+		vi_switch(1 - w_cur);
+	}
+	ret = ex_command(out);
 	free(out);
 	return ret;
 }

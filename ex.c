@@ -146,6 +146,25 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 	return buf;
 }
 
+/* read :e +cmd arguments */
+static char *ex_plus(char *src, char *dst)
+{
+	while (*src == ' ')
+		src++;
+	*dst = '\0';
+	if (*src != '+')
+		return src;
+	while (*src && *src != ' ') {
+		*dst++ = *src++;
+		if (src[-1] == '\\' && *src)
+			*dst++ = *src;
+	}
+	*dst = '\0';
+	while (*src == ' ' || *src == '\t')
+		src++;
+	return src;
+}
+
 /* the previous search keyword */
 int ex_kwd(char **kwd, int *dir)
 {
@@ -323,12 +342,14 @@ static int ec_quit(char *loc, char *cmd, char *arg)
 
 static int ec_edit(char *loc, char *cmd, char *arg)
 {
+	char pls[1024];
 	char msg[128];
 	char *path;
 	int fd;
 	if (!strchr(cmd, '!'))
 		if (xb && ex_modifiedbuffer("buffer modified\n"))
 			return 1;
+	arg = ex_plus(arg, pls);
 	if (!(path = ex_pathexpand(arg, 0)))
 		return 1;
 	/* ew: switch buffer without changing # */
@@ -337,6 +358,8 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 	/* check if the buffer is already available */
 	if (path[0] && bufs_find(path) >= 0) {
 		bufs_switch(bufs_find(path));
+		if (pls[0] == '+')
+			return ex_command(pls + 1);
 		return 0;
 	}
 	if (path[0] || !bufs[0].path)
@@ -357,6 +380,8 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 	xrow = MAX(0, MIN(xrow, lbuf_len(xb) - 1));
 	xoff = 0;
 	xtop = MAX(0, MIN(xtop, lbuf_len(xb) - 1));
+	if (pls[0] == '+')
+		return ex_command(pls + 1);
 	return 0;
 }
 
@@ -503,7 +528,7 @@ static int ec_print(char *loc, char *cmd, char *arg)
 		return 1;
 	for (i = beg; i < end; i++)
 		ex_print(lbuf_get(xb, i));
-	xrow = end;
+	xrow = MAX(beg, end - 1);
 	xoff = 0;
 	return 0;
 }
@@ -511,8 +536,10 @@ static int ec_print(char *loc, char *cmd, char *arg)
 static int ec_null(char *loc, char *cmd, char *arg)
 {
 	int beg, end;
-	if (!xvis)
+	if (!xvis) {
+		xrow = xrow + 1 < lbuf_len(xb) ? xrow + 1 : xrow;
 		return ec_print(loc, cmd, arg);
+	}
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	xrow = MAX(beg, end - 1);

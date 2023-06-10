@@ -155,9 +155,9 @@ static char *ex_plus(char *src, char *dst)
 	if (*src != '+')
 		return src;
 	while (*src && *src != ' ') {
+		if (src[0] == '\\' && src[1])
+			src++;
 		*dst++ = *src++;
-		if (src[-1] == '\\' && *src)
-			*dst++ = *src;
 	}
 	*dst = '\0';
 	while (*src == ' ' || *src == '\t')

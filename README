@@ -53,7 +53,8 @@ New key mappings:
 - gf in normal mode: edits the file whose address is under the cursor.
 - gl in normal mode: like gf, but it reads line and column numbers too.
 - ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
-- ^wgf, ^wgl, ^w^]: executes gf, gl, ^] in a new window.
+- ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
+- qX in normal mode: see q-commands section (X can be any letter).
 
 Note that Neatvi assumes POSIX extended regular expressions (ERE) in
 search patterns, conf.h variables, and even tags files.
@@ -96,10 +97,45 @@ MARKS AND BUFFERS
 -----------------
 
 Special marks:
-* the position of the previous change
-[ the first line of the previous change
-] the last line of the previous change
+- * the position of the previous change
+- [ the first line of the previous change
+- ] the last line of the previous change
 
 Special yank buffers:
-/ the previous search keyword
-: the previous ex command
+- / the previous search keyword
+- : the previous ex command
+
+Q-COMMANDS
+----------
+
+For qX command in normal mode, Neatvi executes ECMD (defined in conf.h)
+with the following parameters:
+- X (the key following q)
+- current file
+- current line number
+- current line offset
+
+ECMD must print a line of ex commands and Neatvi executes this line.
+Q-commands can be used to add interesting features to Neatvi, such as
+language-dependent IDE features, for instance by connecting to an LSP
+(language server protocol) server.  As an example, the following
+script shows how to use gopls to implement goto defintion and find
+references for Go.
+
+  # Compile.
+  if test "$1" = "c"; then
+    go build >.make.ls 2>&1
+    echo ":e +1 .make.ls | :e"
+  fi
+  # Goto definition; uses gopls (not very efficient without using LSP).
+  if test "$1" = "d"; then
+    loc=`gopls definition $2:$3:$4`
+    if test -n "$loc"; then
+      echo $loc | sed -E 's/^([^:]+):([^:]+):([^:]+).*$/:e +\2 \1/'
+    fi
+  fi
+  # Find references.  Use gl command on each line.
+  if test "$1" = "f"; then
+    gopls references $2:$3:$4 >$OUT/.out.ls
+    echo ":e +1 $OUT/.out.ls | :e"
+  fi

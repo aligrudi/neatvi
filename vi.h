@@ -161,7 +161,7 @@ void ex_kwdset(char *kwd, int dir);
 #define xb 	ex_lbuf()
 
 /* process management */
-char *cmd_pipe(char *cmd, char *s, int iproc, int oproc);
+char *cmd_pipe(char *cmd, char *s, int oproc);
 int cmd_exec(char *cmd);
 
 /* syntax highlighting */

@@ -841,7 +841,7 @@ static void vi_pipe(int r1, int r2)
 	if (!cmd)
 		return;
 	text = lbuf_cp(xb, r1, r2 + 1);
-	rep = cmd_pipe(cmd, text, 1, 1);
+	rep = cmd_pipe(cmd, text, 1);
 	if (rep)
 		lbuf_edit(xb, rep, r1, r2 + 1);
 	free(cmd);
@@ -1238,7 +1238,7 @@ static int vc_ecmd(int c, int newwin)
 	int ret;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
-	if ((out = cmd_pipe(cmd, NULL, 0, 1)) == NULL) {
+	if ((out = cmd_pipe(cmd, NULL, 2)) == NULL) {
 		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
 		return 1;
 	}
@@ -1431,7 +1431,7 @@ static void vi(void)
 				}
 				if (k == 'q') {
 					int j = vi_read();
-					if (!vc_ecmd(j, 1))
+					if (isalpha(j) && !vc_ecmd(j, 1))
 						mod = 5;
 				}
 				break;
@@ -1546,7 +1546,7 @@ static void vi(void)
 				break;
 			case 'q':
 				k = vi_read();
-				if (!vc_ecmd(k, 0))
+				if (isalpha(k) && !vc_ecmd(k, 0))
 					mod = 5;
 				break;
 			case 'r':

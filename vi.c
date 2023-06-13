@@ -1234,29 +1234,26 @@ static void vc_execute(void)
 static int vc_ecmd(int c, int newwin)
 {
 	char cmd[256];
-	char *out, *end;
-	int ret;
+	char *out;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 2)) == NULL) {
 		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
 		return 1;
 	}
-	end = strchr(out, '\n');
-	if (!end || end == out) {
+	if (!strchr(out, '\n')) {
 		snprintf(vi_msg, sizeof(vi_msg), "no output\n");
 		free(out);
 		return 1;
 	}
-	*end = '\0';
 	if (newwin) {
 		vi_wonly();
 		vi_wsplit();
 		vi_switch(1 - w_cur);
 	}
-	ret = ex_command(out);
+	ex_command(out);
 	free(out);
-	return ret;
+	return 0;
 }
 
 static void sigwinch(int signo)

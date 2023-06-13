@@ -342,7 +342,7 @@ static int ec_quit(char *loc, char *cmd, char *arg)
 
 static int ec_edit(char *loc, char *cmd, char *arg)
 {
-	char pls[1024];
+	char pls[EXLEN];
 	char msg[128];
 	char *path;
 	int fd;

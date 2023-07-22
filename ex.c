@@ -999,7 +999,7 @@ static char *ex_loc(char *src, char *loc)
 {
 	while (*src == ':' || *src == ' ' || *src == '\t')
 		src++;
-	while (*src && !isalpha((unsigned char) *src) && *src != '=' && *src != '!') {
+	while (*src && strchr(".$0123456789'/?+-,;%", (unsigned char) *src) != NULL) {
 		if (*src == '\'')
 			*loc++ = *src++;
 		if (*src == '/' || *src == '?') {

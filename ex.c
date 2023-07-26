@@ -134,6 +134,16 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 			}
 			dst += snprintf(dst, end - dst, "%s", bufs[idx].path);
 			src++;
+		} else if (dst == buf && *src == '=') {
+			char *cur = bufs[0].path;
+			char *dir = cur != NULL ? strrchr(cur, '/') : NULL;
+			if (cur != NULL && dir != NULL) {
+				int len = MIN(dir - cur, end - dst - 2);
+				memcpy(dst, cur, len);
+				dst += len;
+				*dst++ = '/';
+			}
+			src++;
 		} else {
 			if (*src == '\\' && src[1])
 				src++;

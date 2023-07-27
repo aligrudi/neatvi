@@ -317,23 +317,29 @@ static int ex_modifiedbuffer(char *msg)
 
 static int ec_buffer(char *loc, char *cmd, char *arg)
 {
+	char *aliases = "%#^";
 	char ln[128];
-	int id;
-	int i;
-	id = arg[0] ? atoi(arg) : 0;
-	for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) {
-		if (id) {
-			if (id == bufs[i].id)
-				break;
-		} else {
-			char c = i < 2 ? "%#"[i] : ' ';
-			snprintf(ln, LEN(ln), "%i %c %s",
-					(int) bufs[i].id, c, bufs[i].path);
+	int i = 0;
+	if (!arg[0]) {
+		ex_print("buffers");
+		for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) {
+			char c = i < strlen(aliases) ? aliases[i] : ' ';
+			char m = lbuf_modified(bufs[i].lb) ? '*' : ' ';
+			snprintf(ln, LEN(ln), "%i %c %s %c",
+					(int) bufs[i].id, c, bufs[i].path, m);
 			ex_print(ln);
 		}
-	}
-	if (id) {
-		if (i < LEN(bufs) && bufs[i].lb)
+	} else {
+		int id = arg[0] ? atoi(arg) : 0;
+		if (isdigit((unsigned char) arg[0])) {
+			for (i = 0; i < LEN(bufs) && bufs[i].lb; i++)
+				if (id == bufs[i].id)
+					break;
+		} else {
+			char *r = strchr(aliases, (unsigned char) arg[0]);
+			i = r ? r - aliases : -1;
+		}
+		if (i >= 0 && i < LEN(bufs) && bufs[i].lb)
 			bufs_switch(i);
 		else
 			ex_show("no such buffer\n");

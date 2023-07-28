@@ -53,11 +53,8 @@ static void vi_wait(void)
 static void vi_drawmsg(void)
 {
 	int oleft = xleft;
-	int ctx = w_tmp ? conf_hlback() : conf_hlmode();
 	xleft = 0;
-	syn_context(ctx);
-	led_printmsg(vi_msg[0] || !ctx ? vi_msg : "\n", xrows, "---");
-	syn_context(0);
+	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, "---");
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }
@@ -220,9 +217,7 @@ static char *vi_prompt(char *msg, int *kmap)
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	syn_context(conf_hlmode());
 	s = led_prompt(msg, "", kmap, "---");
-	syn_context(0);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -1063,11 +1058,12 @@ static int vi_scrollbackward(int cnt)
 static void vc_status(void)
 {
 	int col = vi_off2col(xb, xrow, xoff);
+	int win = w_tmp ? '-' : '=';
 	snprintf(vi_msg, sizeof(vi_msg),
-		"\"%s\"%c %d lines  L%d C%d\n",
+		"\"%s\"%c [%c%d]  L%d C%d",
 		ex_path()[0] ? ex_path() : "unnamed",
 		lbuf_modified(xb) ? '*' : ' ',
-		lbuf_len(xb), xrow + 1,
+		win, lbuf_len(xb), xrow + 1,
 		ren_cursor(lbuf_get(xb, xrow), col) + 1);
 }
 

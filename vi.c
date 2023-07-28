@@ -43,7 +43,7 @@ static void vc_status(void);
 
 static void vi_wait(void)
 {
-	if (vi_printed > 1) {
+	if (vi_printed > 0) {
 		free(ex_read("[enter to continue]"));
 		vi_msg[0] = '\0';
 	}
@@ -392,7 +392,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		}
 	}
 	if (failed != NULL)
-		snprintf(vi_msg, sizeof(vi_msg), "/%s/%s\n", kwd, failed ? failed : "");
+		snprintf(vi_msg, sizeof(vi_msg), "/%s/%s", kwd, failed ? failed : "");
 	return failed != NULL;
 }
 
@@ -963,7 +963,7 @@ static int vc_put(int cmd)
 	char *buf = reg_get(vi_ybuf, &lnmode);
 	int i;
 	if (!buf)
-		snprintf(vi_msg, sizeof(vi_msg), "yank buffer empty\n");
+		snprintf(vi_msg, sizeof(vi_msg), "yank buffer empty");
 	if (!buf || !buf[0])
 		return 1;
 	if (lnmode) {
@@ -1073,7 +1073,7 @@ static void vc_charinfo(void)
 	if (c) {
 		char cbuf[8] = "";
 		memcpy(cbuf, c, uc_len(c));
-		snprintf(vi_msg, sizeof(vi_msg), "<%s> %04x\n", cbuf, uc_code(c));
+		snprintf(vi_msg, sizeof(vi_msg), "<%s> %04x", cbuf, uc_code(c));
 	}
 }
 
@@ -1126,7 +1126,7 @@ static int vc_definition(int newwin)
 		return 1;
 	snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
 	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
-		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>\n", kw);
+		snprintf(vi_msg, sizeof(vi_msg), "not found <%s>", kw);
 		return 1;
 	}
 	ln = lbuf_get(xb, r);
@@ -1150,7 +1150,7 @@ static int vi_openpath(char *path, int ln, int newwin)
 	if (sep)
 		*sep = '\0';
 	if (access(path, R_OK) != 0) {
-		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>\n", path);
+		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>", path);
 		return 1;
 	}
 	if (newwin) {
@@ -1234,11 +1234,11 @@ static int vc_ecmd(int c, int newwin)
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 2)) == NULL) {
-		snprintf(vi_msg, sizeof(vi_msg), "command failed\n");
+		snprintf(vi_msg, sizeof(vi_msg), "command failed");
 		return 1;
 	}
 	if (!strchr(out, '\n')) {
-		snprintf(vi_msg, sizeof(vi_msg), "no output\n");
+		snprintf(vi_msg, sizeof(vi_msg), "no output");
 		free(out);
 		return 1;
 	}
@@ -1362,7 +1362,7 @@ static void vi(void)
 					lbuf_jump(xb, '*', &xrow, &xoff);
 					mod = 1;
 				} else {
-					snprintf(vi_msg, sizeof(vi_msg), "undo failed\n");
+					snprintf(vi_msg, sizeof(vi_msg), "undo failed");
 				}
 				break;
 			case TK_CTL('r'):
@@ -1370,7 +1370,7 @@ static void vi(void)
 					lbuf_jump(xb, '*', &xrow, &xoff);
 					mod = 1;
 				} else {
-					snprintf(vi_msg, sizeof(vi_msg), "redo failed\n");
+					snprintf(vi_msg, sizeof(vi_msg), "redo failed");
 				}
 				break;
 			case TK_CTL('g'):
@@ -1597,7 +1597,9 @@ static void vi(void)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
 		if (mod & 4 && w_cnt > 1) {
+			char msg[sizeof(vi_msg)];
 			int id = w_cur;
+			strcpy(msg, vi_msg);
 			w_tmp = 1;
 			vi_switch(1 - id);
 			vi_wfix();
@@ -1606,6 +1608,8 @@ static void vi(void)
 			w_tmp = 0;
 			vi_switch(id);
 			vc_status();
+			if (msg[0])
+				strcpy(vi_msg, msg);
 		}
 		if (!vi_msg[0] && w_cnt > 1)
 			vc_status();

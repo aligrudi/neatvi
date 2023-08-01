@@ -8,9 +8,9 @@ STAG = stag.o regex.o
 
 all: vi
 
-conf.o: conf.h
+conf.o: conf.h kmap.h
 
-%.o: %.c
+%.o: %.c vi.h
 	$(CC) -c $(CFLAGS) $<
 vi: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)

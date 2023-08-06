@@ -842,9 +842,14 @@ static int tag_goto(char *cw, int dir)
 	if (dir == 0)
 		ex_tagput(cw);
 	tag_pos[tag_cnt - 1] = pos;
-	if (strcmp(path, ex_path()) != 0)
+	if (strcmp(path, ex_path()) != 0) {
+		if (access(path, R_OK) != 0) {
+			ex_show("cannot open");
+			return 1;
+		}
 		if (ec_edit("", "e", path) != 0)
 			return 1;
+	}
 	xrow = 0;
 	xoff = 0;
 	ex_command(cmd);

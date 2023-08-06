@@ -39,7 +39,10 @@ Commands not available in ex(1):
 :tp[rev]
   Jumps to the previous matching tag.
 :po[p]
-  Pop tag stack.
+  Pops tag stack.
+:b[uffer] [buf]
+  Switch to buffer buf (buffer number or alias); lists buffers
+  if buf is missing.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -56,17 +59,22 @@ New key mappings:
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
 - qX in normal mode: see q-commands section (X can be any letter).
 
-Note that Neatvi assumes POSIX extended regular expressions (ERE) in
-search patterns, conf.h variables, and even tags files.
+Other noteworthy differences with vi(1):
+- Neatvi assumes POSIX extended regular expressions (ERE) in search
+  patterns, conf.h variables, and even tags files.
+- If paths start with =, they are assumed to be relative to the
+  directory of the current file.
+- Neatvi highlights files whose names ends with ls as directory
+  listings; the gl command can be used to edit its files.
 
 OPTIONS
 -------
 
-To improve neatvi's performance, shaping, character reordering, and
+To improve Neatvi's performance, shaping, character reordering, and
 syntax highlighting can be disabled by defining the EXINIT environment
 variable as "set noshape | set noorder | set nohl | set td=+2".
 
-Options supported in neatvi:
+Options supported in Neatvi:
 
 td, textdirection
   Current direction context.  The following values are meaningful:

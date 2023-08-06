@@ -19,6 +19,7 @@ int tag_init(char *path)
 	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(sb, buf, nr);
+	close(fd);
 	tag = sbuf_done(sb);
 	return 0;
 }

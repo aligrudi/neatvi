@@ -31,6 +31,13 @@ static struct highlight {
 	char *pat;		/* regular expression */
 	int end;		/* the group ending this pattern */
 } highlights[] = {
+	/* status bar */
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 4}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(6) | 8 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD}, "^.*$"},
+
+	/* C */
 	{"c", {5}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
 	{"c", {5}, "\\<(static|extern|register)\\>"},
 	{"c", {4}, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
@@ -42,6 +49,7 @@ static struct highlight {
 	{"c", {4}, "'([^\\]|\\\\.)'"},
 	{"c", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
 
+	/* troff */
 	{"roff", {4, 0, 5 | SYN_BD, 4 | SYN_BD, 5 | SYN_BD, 4 | SYN_BD},
 		"^[.'][ \t]*((SH.*)|(de) (.*)|([^ \t\\]{2,}))?.*$", 1},
 	{"roff", {2 | SYN_IT}, "\\\\\".*$"},
@@ -49,6 +57,7 @@ static struct highlight {
 	{"roff", {3}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
 	{"roff", {3}, "\\$[^$]+\\$"},
 
+	/* tex */
 	{"tex", {4 | SYN_BD, 0, 3, 0, 5},
 		"\\\\[^[{ \t]+(\\[([^]]+)\\])?(\\{([^}]*)\\})?"},
 	{"tex", {3}, "\\$[^$]+\\$"},
@@ -96,6 +105,7 @@ static struct highlight {
 	{"go", {4}, "`([^`]|\\\\`)*`"},
 	{"go", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
 
+	/* refer */
 	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 12 | SYN_BD}, "^(%A) (.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%T) (.*)$", 1},
@@ -115,7 +125,7 @@ static struct highlight {
 	{"py", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
 	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
-	/* neatmail */
+	/* neatmail listing */
 	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},
 		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
@@ -132,15 +142,9 @@ static struct highlight {
 	{"diff", {6}, "^@.*$"},
 	{"diff", {SYN_BD}, "^diff .*$"},
 
-	/* file listing */
+	/* directory listing */
 	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 8}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
 	{"ls", {12}, "^#.*$"},
-
-	/* status bar */
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 4}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(6) | 8 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD}, "^.*$"},
 };
 
 /* how to highlight current line (hll option) */

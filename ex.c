@@ -1110,6 +1110,8 @@ static int ex_exec(char *ln)
 		ln = ex_arg(ln, arg, idx >= 0 ? excmds[idx].abbr : "unknown");
 		if (idx >= 0)
 			ret = excmds[idx].ec(loc, cmd, arg);
+		else
+			ex_show("unknown command");
 	}
 	return ret;
 }

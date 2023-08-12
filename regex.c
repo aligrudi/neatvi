@@ -278,22 +278,26 @@ static int ratom_match(struct ratom *ra, struct rstate *rs)
 		return 0;
 	}
 	if (ra->ra == RA_ANY) {
-		if (!rs->s[0] || (rs->s[0] == '\n' && !(rs->flg & REG_NOTEOL)))
+		if (!rs->s[0] || (rs->s[0] == '\n' && !!(rs->flg & REG_NEWLINE)))
 			return 1;
 		rs->s += uc_len(rs->s);
 		return 0;
 	}
 	if (ra->ra == RA_BRK) {
 		int c = uc_dec(rs->s);
-		if (!c || (c == '\n' && !(rs->flg & REG_NOTEOL)))
+		if (!c || (c == '\n' && !!(rs->flg & REG_NEWLINE) && ra->s[1] == '^'))
 			return 1;
 		rs->s += uc_len(rs->s);
 		return brk_match(ra->s + 1, c, rs->flg);
 	}
-	if (ra->ra == RA_BEG && !(rs->flg & REG_NOTBOL))
-		return !(rs->s == rs->o || rs->s[-1] == '\n');
-	if (ra->ra == RA_END && !(rs->flg & REG_NOTEOL))
-		return rs->s[0] != '\0' && rs->s[0] != '\n';
+	if (ra->ra == RA_BEG && rs->s == rs->o)
+		return !!(rs->flg & REG_NOTBOL);
+	if (ra->ra == RA_BEG && rs->s > rs->o && rs->s[-1] == '\n')
+		return !(rs->flg & REG_NEWLINE);
+	if (ra->ra == RA_END && rs->s[0] == '\0')
+		return !!(rs->flg & REG_NOTEOL);
+	if (ra->ra == RA_END && rs->s[0] == '\n')
+		return !(rs->flg & REG_NEWLINE);
 	if (ra->ra == RA_WBEG)
 		return !((rs->s == rs->o || !isword(uc_beg(rs->o, rs->s - 1))) &&
 			isword(rs->s));

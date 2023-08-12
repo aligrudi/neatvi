@@ -91,7 +91,7 @@ int rset_find(struct rset *rs, char *s, int n, int *grps, int flg)
 {
 	regmatch_t *subs;
 	int found, i, set = -1;
-	int regex_flg = 0;
+	int regex_flg = REG_NEWLINE;
 	if (rs->grpcnt <= 2)
 		return -1;
 	if (flg & RE_NOTBOL)

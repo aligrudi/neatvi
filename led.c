@@ -69,9 +69,6 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	pos = ren_position(s0);
 	off = malloc((cend - cbeg) * sizeof(off[0]));
 	memset(off, 0xff, (cend - cbeg) * sizeof(off[0]));
-	/* ignore newline character */
-	if (n > 0 && chrs[n - 1][0] == '\n')
-		n--;
 	/* initialise off[] using pos[] */
 	for (i = 0; i < n; i++) {
 		int curwid = ren_cwid(chrs[i], pos[i]);

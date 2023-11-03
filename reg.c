@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vi.h"
@@ -14,13 +15,14 @@ char *reg_get(int c, int *ln)
 
 static void reg_putraw(int c, char *s, int ln)
 {
-	char *pre = isupper(c) && bufs[tolower(c)] ? bufs[tolower(c)] : "";
-	char *buf = malloc(strlen(pre) + strlen(s) + 1);
-	strcpy(buf, pre);
-	strcat(buf, s);
-	free(bufs[tolower(c)]);
-	bufs[tolower(c)] = buf;
-	lnmode[tolower(c)] = ln;
+	unsigned char c_lower = tolower(c);
+	char *pre = isupper(c) && bufs[c_lower] ? bufs[c_lower] : "";
+	size_t size = strlen(pre) + strlen(s) + 1;
+	char *buf = malloc(size);
+	snprintf(buf, size, "%s%s", pre, s);
+	free(bufs[c_lower]);
+	bufs[c_lower] = buf;
+	lnmode[c_lower] = ln;
 }
 
 void reg_put(int c, char *s, int ln)

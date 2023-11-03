@@ -132,8 +132,11 @@ char *uc_sub(char *s, int beg, int end)
 
 char *uc_dup(char *s)
 {
-	char *r = malloc(strlen(s) + 1);
-	return r ? strcpy(r, s) : NULL;
+	size_t s_size = strlen(s) + 1;
+	char *r = malloc(s_size);
+	if (r)
+		memcpy(r, s, s_size);
+	return r;
 }
 
 int uc_isspace(char *s)

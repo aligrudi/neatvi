@@ -332,8 +332,10 @@ static int vi_nextcol(struct lbuf *lb, int dir, int *row, int *off)
 
 static int vi_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *row, int *off)
 {
-	if (cs != vi_charlast)
-		strcpy(vi_charlast, cs);
+	if (cs != vi_charlast) {
+		strncpy(vi_charlast, cs, sizeof(vi_charlast) - 1);
+		vi_charlast[sizeof(vi_charlast) - 1] = '\0';
+	}
 	vi_charcmd = cmd;
 	return lbuf_findchar(lb, cs, cmd, n, row, off);
 }

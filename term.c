@@ -109,11 +109,11 @@ void term_kill(void)
 
 void term_room(int n)
 {
-	char cmd[16];
+	char cmd[16] = { 0 };
 	if (n < 0)
-		sprintf(cmd, "\33[%dM", -n);
+		snprintf(cmd, sizeof(cmd) - 1, "\33[%dM", -n);
 	if (n > 0)
-		sprintf(cmd, "\33[%dL", n);
+		snprintf(cmd, sizeof(cmd) - 1, "\33[%dL", n);
 	if (n)
 		term_out(cmd);
 }
@@ -126,9 +126,10 @@ void term_pos(int r, int c)
 	if (c >= term_cols())
 		c = cols - 1;
 	if (r < 0)
-		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
+		snprintf(buf, sizeof(buf) - 1, "\r\33[%d%c", abs(c),
+			 c > 0 ? 'C' : 'D');
 	else
-		sprintf(buf, "\33[%d;%dH", r + 1, c + 1);
+		snprintf(buf, sizeof(buf) - 1, "\33[%d;%dH", r + 1, c + 1);
 	term_out(buf);
 }
 
@@ -198,25 +199,29 @@ char *term_att(int att, int old)
 	int bg = SYN_BG(att);
 	if (att == old)
 		return "";
-	s += sprintf(s, "\33[");
+	s += snprintf(s, sizeof(buf) - 1 - (s - buf), "\33[");
 	if (att & SYN_BD)
-		s += sprintf(s, ";1");
+		s += snprintf(s, sizeof(buf) - 1 - (s - buf), ";1");
 	if (att & SYN_IT)
-		s += sprintf(s, ";3");
+		s += snprintf(s, sizeof(buf) - 1 - (s - buf), ";3");
 	else if (att & SYN_RV)
-		s += sprintf(s, ";7");
+		s += snprintf(s, sizeof(buf) - 1 - (s - buf), ";7");
 	if (SYN_FGSET(att)) {
 		if ((fg & 0xff) < 8)
-			s += sprintf(s, ";%d", 30 + (fg & 0xff));
+			s += snprintf(s, sizeof(buf) - 1 - (s - buf), ";%d",
+				      30 + (fg & 0xff));
 		else
-			s += sprintf(s, ";38;5;%d", (fg & 0xff));
+			s += snprintf(s, sizeof(buf) - 1 - (s - buf),
+				      ";38;5;%d", (fg & 0xff));
 	}
 	if (SYN_BGSET(att)) {
 		if ((bg & 0xff) < 8)
-			s += sprintf(s, ";%d", 40 + (bg & 0xff));
+			s += snprintf(s, sizeof(buf) - 1 - (s - buf), ";%d",
+				      40 + (bg & 0xff));
 		else
-			s += sprintf(s, ";48;5;%d", (bg & 0xff));
+			s += snprintf(s, sizeof(buf) - 1 - (s - buf),
+				      ";48;5;%d", (bg & 0xff));
 	}
-	s += sprintf(s, "m");
+	s += snprintf(s, sizeof(buf) - 1 - (s - buf), "m");
 	return buf;
 }

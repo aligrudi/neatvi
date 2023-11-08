@@ -90,11 +90,16 @@ int lbuf_paragraphbeg(struct lbuf *lb, int dir, int *row, int *off)
 	return 0;
 }
 
-int lbuf_sectionbeg(struct lbuf *lb, int dir, int *row, int *off)
+int lbuf_sectionbeg(struct lbuf *lb, int dir, char *sec, int *row, int *off)
 {
+	struct rstr *re = rstr_make(sec, 0);
 	*row += dir;
-	while (*row >= 0 && *row < lbuf_len(lb) && lbuf_get(lb, *row)[0] != '{')
+	while (*row >= 0 && *row < lbuf_len(lb)) {
+		if (rstr_find(re, lbuf_get(lb, *row), 0, NULL, 0) >= 0)
+			break;
 		*row += dir;
+	}
+	rstr_free(re);
 	*row = MAX(0, MIN(*row, lbuf_len(lb) - 1));
 	*off = 0;
 	return 0;

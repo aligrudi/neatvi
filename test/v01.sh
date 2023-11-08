@@ -2,9 +2,9 @@
 
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "hhA def"
-echo -n "Ighi "
+printf	"iabc"
+printf	"hhA def"
+printf	"Ighi "
 echo    ":w"
 echo    ":q"
 

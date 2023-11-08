@@ -1,9 +1,9 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc def"
-echo -n "oghi jkl"
-echo -n 'F yeP'
-echo -n 'k$p'
+printf	"iabc def"
+printf	"oghi jkl"
+printf	"F yeP"
+printf	'k$p'
 echo    ":w"
 echo    ":q"
 

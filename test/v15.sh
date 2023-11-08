@@ -1,8 +1,8 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "odef"
-echo -n "oabc"
+printf	"iabc"
+printf	"odef"
+printf	"oabc"
 echo    ":%s/abc/ghi/"
 echo    ":w"
 echo    ":q"

@@ -2,7 +2,7 @@
 
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
+printf	"iabc"
 echo    ":w"
 echo    ":q"
 

@@ -1,8 +1,8 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc"
-echo -n "odef"
-echo -n "oghi"
+printf	"iabc"
+printf	"odef"
+printf	"oghi"
 echo    "!krev"
 sleep .1
 echo    ""

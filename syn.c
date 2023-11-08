@@ -3,7 +3,7 @@
 #include <string.h>
 #include "vi.h"
 
-#define NFTS		16
+#define NFTS		32
 
 /* mapping filetypes to regular expression sets */
 static struct ftmap {
@@ -20,6 +20,28 @@ static struct rset *syn_find(char *ft)
 	for (i = 0; i < LEN(ftmap); i++)
 		if (!strcmp(ft, ftmap[i].ft))
 			return ftmap[i].rs;
+	return NULL;
+}
+
+static struct rset *syn_make(char *name)
+{
+	char *pats[256] = {NULL};
+	char *ft, *pat;
+	int i;
+	int n = 0;
+	if (name == NULL || !name[0])
+		return NULL;
+	for (i = 0; !conf_highlight(i, &ft, NULL, &pat, NULL) && i < LEN(pats); i++)
+		if (!strcmp(ft, name))
+			pats[i] = pat;
+	n = i;
+	for (i = 0; i < LEN(ftmap); i++) {
+		if (!ftmap[i].ft[0]) {
+			strcpy(ftmap[i].ft, name);
+			ftmap[i].rs = rset_make(n, pats, 0);
+			return ftmap[i].rs;
+		}
+	}
 	return NULL;
 }
 
@@ -45,6 +67,8 @@ int *syn_highlight(char *ft, char *s)
 	int flg = 0;
 	int hl, j, i;
 	memset(att, 0, n * sizeof(att[0]));
+	if (rs == NULL)
+		rs = syn_make(ft);
 	if (!rs)
 		return att;
 	while ((hl = rset_find(rs, s + sidx, LEN(subs) / 2, subs, flg)) >= 0) {
@@ -70,24 +94,6 @@ int *syn_highlight(char *ft, char *s)
 	return att;
 }
 
-static void syn_initft(char *name)
-{
-	char *pats[128] = {NULL};
-	char *ft, *pat;
-	int i, n;
-	for (i = 0; !conf_highlight(i, &ft, NULL, &pat, NULL) && i < LEN(pats); i++)
-		if (!strcmp(ft, name))
-			pats[i] = pat;
-	n = i;
-	for (i = 0; i < LEN(ftmap); i++) {
-		if (!ftmap[i].ft[0]) {
-			strcpy(ftmap[i].ft, name);
-			ftmap[i].rs = rset_make(n, pats, 0);
-			return;
-		}
-	}
-}
-
 char *syn_filetype(char *path)
 {
 	int hl = rset_find(syn_ftrs, path, 0, NULL, 0);
@@ -100,11 +106,8 @@ char *syn_filetype(char *path)
 void syn_init(void)
 {
 	char *pats[128] = {NULL};
-	char *pat, *ft;
+	char *pat;
 	int i;
-	for (i = 0; !conf_highlight(i, &ft, NULL, NULL, NULL); i++)
-		if (!syn_find(ft))
-			syn_initft(ft);
 	for (i = 0; !conf_filetype(i, NULL, &pat) && i < LEN(pats); i++)
 		pats[i] = pat;
 	syn_ftrs = rset_make(i, pats, 0);

@@ -1,15 +1,21 @@
 #!/bin/sh
 
-for x in test/e??.sh; do
+# testcase vi_options test.sh
+testcase() {
 	rm -f /tmp/.neatvi[12]
-	sh $x /tmp/.neatvi2 2>/tmp/.neatvi1 | ./vi -s -e >/dev/null
-	cmp -s /tmp/.neatvi[12] || echo "Failed: $x"
-	cmp -s /tmp/.neatvi[12] || diff -u /tmp/.neatvi[12]
-done
+	printf "$x: "
+	sh $2 /tmp/.neatvi2 2>/tmp/.neatvi1 | ./vi $1 >/dev/null
+	if ! cmp -s /tmp/.neatvi[12]; then
+		printf "Failed\n"
+		diff -u /tmp/.neatvi[12]
+		exit 1
+	fi
+	printf "OK\n"
+}
 
+for x in test/e??.sh; do
+	testcase "-s -e" "$x"
+done
 for x in test/v??.sh; do
-	rm -f /tmp/.neatvi[12]
-	sh $x /tmp/.neatvi2 2>/tmp/.neatvi1 | ./vi -v >/dev/null
-	cmp -s /tmp/.neatvi[12] || echo "Failed: $x"
-	cmp -s /tmp/.neatvi[12] || diff -u /tmp/.neatvi[12]
+	testcase "-v" "$x"
 done

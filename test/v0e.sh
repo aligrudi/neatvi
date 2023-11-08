@@ -1,11 +1,11 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc def"
-echo -n "oghi jkl"
-echo -n "omno pqr"
-echo -n "1Gr1"
-echo -n "2Gfh2r2"
-echo -n "3Gfp4r3"
+printf	"iabc def"
+printf	"oghi jkl"
+printf	"omno pqr"
+printf	"1Gr1"
+printf	"2Gfh2r2"
+printf	"3Gfp4r3"
 echo    ":w"
 echo    ":q"
 

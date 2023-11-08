@@ -1,8 +1,8 @@
 # vi commands
 echo    ":e $1"
-echo -n "iabc abc abc"
-echo -n "oabc abc abc"
-echo -n "oabc abc abc"
+printf	"iabc abc abc"
+printf	"oabc abc abc"
+printf	"oabc abc abc"
 echo    ":2,3s/abc/111/"
 echo    ":%s/abc/222/g"
 echo    ":w"

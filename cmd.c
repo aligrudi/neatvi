@@ -24,8 +24,10 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 			close(pipefds0[1]);
 			close(pipefds0[0]);
 		}
-		if (ofd) {		/* setting up stdout */
+		if (ofd) {		/* setting up stdout and stderr */
 			close(1);
+			dup(pipefds1[1]);
+			close(2);
 			dup(pipefds1[1]);
 			close(pipefds1[0]);
 			close(pipefds1[1]);
@@ -51,22 +53,31 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 	return pid;
 }
 
-/* execute a command; process input if iproc and process output if oproc */
-char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
+/*
+ * Execute a shell command.
+ *
+ * If ibuf is given, it is passed as standard input to the process.
+ * Otherwise, the process reads from the terminal.
+ *
+ * If oproc is 0, the process writes directly to the terminal.  If it
+ * is 1, process' output is saved and returned.  If it is 2, in addition
+ * to returning the output, it is written to the terminal.
+ */
+char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 {
 	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
 	struct pollfd fds[3];
 	struct sbuf *sb = NULL;
 	char buf[512];
 	int ifd = -1, ofd = -1;
-	int slen = iproc ? strlen(ibuf) : 0;
+	int slen = ibuf != NULL ? strlen(ibuf) : 0;
 	int nw = 0;
-	int pid = cmd_make(argv, iproc ? &ifd : NULL, oproc ? &ofd : NULL);
+	int pid = cmd_make(argv, ibuf != NULL ? &ifd : NULL, oproc ? &ofd : NULL);
 	if (pid <= 0)
 		return NULL;
 	if (oproc)
 		sb = sbuf_make();
-	if (!iproc) {
+	if (ibuf == NULL) {
 		signal(SIGINT, SIG_IGN);
 		term_done();
 	}
@@ -75,18 +86,22 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;
 	fds[1].events = POLLOUT;
-	fds[2].fd = iproc ? 0 : -1;
+	fds[2].fd = ibuf != NULL ? 0 : -1;
 	fds[2].events = POLLIN;
 	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 3, 200) >= 0) {
 		if (fds[0].revents & POLLIN) {
 			int ret = read(fds[0].fd, buf, sizeof(buf));
+			if (ret > 0 && oproc == 2)
+				write(1, buf, ret);
 			if (ret > 0)
 				sbuf_mem(sb, buf, ret);
 			if (ret <= 0) {
 				close(fds[0].fd);
 				fds[0].fd = -1;
 			}
-			continue;
+		} else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			close(fds[0].fd);
+			fds[0].fd = -1;
 		}
 		if (fds[1].revents & POLLOUT) {
 			int ret = write(fds[1].fd, ibuf + nw, slen - nw);
@@ -96,7 +111,9 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 				close(fds[1].fd);
 				fds[1].fd = -1;
 			}
-			continue;
+		} else if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			close(fds[1].fd);
+			fds[1].fd = -1;
 		}
 		if (fds[2].revents & POLLIN) {
 			int ret = read(fds[2].fd, buf, sizeof(buf));
@@ -104,22 +121,14 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 			for (i = 0; i < ret; i++)
 				if ((unsigned char) buf[i] == TK_CTL('c'))
 					kill(pid, SIGINT);
-		}
-		if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-			close(fds[0].fd);
-			fds[0].fd = -1;
-		}
-		if (fds[1].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-			close(fds[1].fd);
-			fds[1].fd = -1;
-		}
-		if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL))
+		} else if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			fds[2].fd = -1;
+		}
 	}
 	close(fds[0].fd);
 	close(fds[1].fd);
 	waitpid(pid, NULL, 0);
-	if (!iproc) {
+	if (ibuf == NULL) {
 		term_init();
 		signal(SIGINT, SIG_DFL);
 	}
@@ -130,6 +139,6 @@ char *cmd_pipe(char *cmd, char *ibuf, int iproc, int oproc)
 
 int cmd_exec(char *cmd)
 {
-	cmd_pipe(cmd, NULL, 0, 0);
+	cmd_pipe(cmd, NULL, 0);
 	return 0;
 }

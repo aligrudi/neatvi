@@ -7,17 +7,21 @@
 static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
+	char *def;		/* pattern for gd */
+	char *sec;		/* section start pattern */
 } filetypes[] = {
-	{"c", "\\.[hc]$"},				/* C */
-	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$"},	/* troff */
-	{"tex", "\\.tex$"},				/* tex */
-	{"msg", "letter$|mbox$|mail$"},			/* email */
-	{"mk", "Makefile$|makefile$|\\.mk$"},		/* makefile */
-	{"sh", "\\.sh$"},				/* shell script */
-	{"py", "\\.py$"},				/* python */
-	{"bib", "bib$"},				/* refer */
-	{"nm", "\\.nm$"},				/* neatmail */
-	{"diff", "\\.(patch|diff)$"}			/* diff */
+	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
+	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
+	{"tex", "\\.tex$"},
+	{"msg", "letter$|mbox$|mail$"},
+	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
+	{"sh", "\\.sh$", "^(function +)%s *\\{"},
+	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>", "^(func|type)\\>.*\\{$"},
+	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
+	{"bib", "bib$"},
+	{"nm", "\\.nm$"},
+	{"diff", "\\.(patch|diff)$"},
+	{"ls", "ls$"},
 };
 
 /* syntax highlighting patterns */
@@ -27,6 +31,13 @@ static struct highlight {
 	char *pat;		/* regular expression */
 	int end;		/* the group ending this pattern */
 } highlights[] = {
+	/* status bar */
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 4}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(6) | 8 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(7) | 8 | SYN_BD}, "^.*$"},
+
+	/* C */
 	{"c", {5}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
 	{"c", {5}, "\\<(static|extern|register)\\>"},
 	{"c", {4}, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
@@ -38,6 +49,7 @@ static struct highlight {
 	{"c", {4}, "'([^\\]|\\\\.)'"},
 	{"c", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
 
+	/* troff */
 	{"roff", {4, 0, 5 | SYN_BD, 4 | SYN_BD, 5 | SYN_BD, 4 | SYN_BD},
 		"^[.'][ \t]*((SH.*)|(de) (.*)|([^ \t\\]{2,}))?.*$", 1},
 	{"roff", {2 | SYN_IT}, "\\\\\".*$"},
@@ -45,6 +57,7 @@ static struct highlight {
 	{"roff", {3}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
 	{"roff", {3}, "\\$[^$]+\\$"},
 
+	/* tex */
 	{"tex", {4 | SYN_BD, 0, 3, 0, 5},
 		"\\\\[^[{ \t]+(\\[([^]]+)\\])?(\\{([^}]*)\\})?"},
 	{"tex", {3}, "\\$[^$]+\\$"},
@@ -75,6 +88,24 @@ static struct highlight {
 	{"sh", {SYN_BD}, "^\\. .*$"},
 	{"sh", {2 | SYN_IT}, "#.*$"},
 
+	/* go */
+	{"go", {0, 3 | SYN_BD, 0, 29 | SYN_BD}, "^\\<(func) (\\([^()]+\\) )?([a-zA-Z0-9_]+)\\>"},
+	{"go", {3 | SYN_BD}, "^\\<(func|type|var|const|package)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(func|type|var|const|package)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(import|interface|struct)\\>"},
+	{"go", {3 | SYN_BD}, "\\<(break|case|chan|continue|default|defer|else|fallthrough|for|go|goto|if|map|range|return|select|switch)\\>"},
+	{"go", {0, 8 | SYN_BD}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
+	{"go", {8 | SYN_BD}, "\\<(true|false|iota|nil|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>"},
+	{"go", {6 | SYN_IT}, "//.*$"},
+	{"go", {6 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
+	{"go", {0, SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]*)\\(", 1},
+	{"go", {8}, "[a-zA-Z][a-zA-Z0-9_]*"},
+	{"go", {4}, "\"([^\"]|\\\\\")*\""},
+	{"go", {4}, "'([^']|\\\\')*'"},
+	{"go", {4}, "`([^`]|\\\\`)*`"},
+	{"go", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
+
+	/* refer */
 	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 12 | SYN_BD}, "^(%A) (.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%T) (.*)$", 1},
@@ -94,9 +125,9 @@ static struct highlight {
 	{"py", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
 	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
 
-	/* neatmail */
-	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 5, 8 | SYN_BD},
-		"^([ROU])([0-9]+)\t([^\t]*)\t([^\t]*)"},
+	/* neatmail listing */
+	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},
+		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[A-Z][HT].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[A-Z][MI].*$"},
@@ -111,23 +142,22 @@ static struct highlight {
 	{"diff", {6}, "^@.*$"},
 	{"diff", {SYN_BD}, "^diff .*$"},
 
-	/* status bar */
-	{"---", {8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
-	{"---", {8 | SYN_BD, 4, 4}, "^(\".*\").*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {8 | SYN_BD}, "^.*$"},
+	/* directory listing */
+	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 8}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
+	{"ls", {12}, "^#.*$"},
 };
 
-/* how to hightlight current line (hll option) */
+/* how to highlight current line (hll option) */
 #define SYN_LINE	(SYN_BGMK(11))
 
-/* how to hightlight text in the reverse direction */
+/* how to highlight text in the reverse direction */
 #define SYN_REVDIR	(SYN_BGMK(7))
 
 /* define it as "\33[8l" to disable BiDi in vte-based terminals */
 #define LNPREF		""
 
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
-#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْ"
+#define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْٔ"
 /* neutral characters (used only in dircontexts[] and dirmarks[]) */
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
@@ -163,4 +193,19 @@ static struct placeholder {
 } placeholders[] = {
 	{"‌", "-", 1},
 	{"‍", "-", 1},
+	{"ً", "ـً", 1},
+	{"ٌ", "ـٌ", 1},
+	{"ٍ", "ـٍ", 1},
+	{"َ", "ـَ", 1},
+	{"ُ", "ـُ", 1},
+	{"ِ", "ـِ", 1},
+	{"ّ", "ـّ", 1},
+	{"ْ", "ـْ", 1},
+	{"ٓ", "ـٓ", 1},
+	{"ٔ", "ـٔ", 1},
+	{"ٕ", "ـٕ", 1},
+	{"ٰ", "ـٰ", 1},
 };
+
+/* external commands */
+#define ECMD	"neatvi.sh"

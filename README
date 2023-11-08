@@ -11,8 +11,13 @@ patterns.  To define a new keymap, create a new array in kmap.h, like
 kmap_fa, and add it to kmaps array in the same header (the first entry
 of the new array specifies its name).  The current keymap may be
 changed with :cm ex command.  When in input mode, ^e activates the
-English kaymap and ^f switches to the alternate keymap (the last
+English keymap and ^f switches to the alternate keymap (the last
 keymap specified with :cm).
+
+Sadly, VTE-based terminals such as GNOME's implement a
+backward-incompatible extension of virtual terminal escape codes to
+render bidirectional text by default.  When using these terminal, the
+value of LNPREF macro in conf.h needs to be edited.
 
 COMMANDS
 --------
@@ -27,24 +32,49 @@ Commands not available in ex(1):
   Without filetype, prints the current file type.
   When filetype is specified, sets the file type of the
   current ex buffer.
+:ta[g] tag
+  Jumps to tag (tags file: TAGPATH environment variable or ./tags).
+:tn[ext]
+  Jumps to the next matching tag.
+:tp[rev]
+  Jumps to the previous matching tag.
+:po[p]
+  Pops tag stack.
+:b[uffer] [buf]
+  Switch to buffer buf (buffer number or alias); lists buffers
+  if buf is missing.
 
 New key mappings:
-^a in normal mode: searches for the word under the cursor.
-^p in insert mode: inserts the contents of the default yank buffer.
-zL, zl, zr, and zR in normal mode: change the value of td option.
-^e and ^f in insert mode: switch to the English and alternate keymap.
-ze and zf in normal mode: switch to the English and alternate keymap.
-gu, gU, and g~ in normal mode: switch character case.
-^l in normal mode: updates terminal dimensions (after resizing it).
+- ^a in normal mode: searches for the word under the cursor.
+- ^p in insert mode: inserts the contents of the default yank buffer.
+- zL, zl, zr, and zR in normal mode: change the value of td option.
+- ^e and ^f in insert mode: switches to the English and alternate keymap.
+- ze and zf in normal mode: switches to the English and alternate keymap.
+- gu, gU, and g~ in normal mode: switches character case.
+- ^l in normal mode: updates terminal dimensions (after resizing it).
+- ^] and ^t in normal mode: jumps to tag and pops tag stack.
+- gf in normal mode: edits the file whose address is under the cursor.
+- gl in normal mode: like gf, but it reads line and column numbers too.
+- ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
+- ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
+- qX in normal mode: see q-commands section (X can be any letter).
+
+Other noteworthy differences with vi(1):
+- Neatvi assumes POSIX extended regular expressions (ERE) in search
+  patterns, conf.h variables, and even tags files.
+- If paths start with =, they are assumed to be relative to the
+  directory of the current file.
+- Neatvi highlights files whose names ends with ls as directory
+  listings; the gl command can be used to edit its files.
 
 OPTIONS
 -------
 
-To improve neatvi's performance, shaping, character reordering, and
+To improve Neatvi's performance, shaping, character reordering, and
 syntax highlighting can be disabled by defining the EXINIT environment
 variable as "set noshape | set noorder | set nohl | set td=+2".
 
-Options supported in neatvi:
+Options supported in Neatvi:
 
 td, textdirection
   Current direction context.  The following values are meaningful:
@@ -62,6 +92,8 @@ hl, highlight
   highlighting rules in conf.h.
 hll, highlightline
   If set, highlight current line.
+lim, linelimit
+  Lines longer than this value are not reordered or highlighted.
 ai, autoindent
   As in vi(1).
 aw, autowrite
@@ -73,10 +105,45 @@ MARKS AND BUFFERS
 -----------------
 
 Special marks:
-* the position of the previous change
-[ the first line of the previous change
-] the last line of the previous change
+- * the position of the previous change
+- [ the first line of the previous change
+- ] the last line of the previous change
 
 Special yank buffers:
-/ the previous search keyword
-: the previous ex command
+- / the previous search keyword
+- : the previous ex command
+
+Q-COMMANDS
+----------
+
+For qX command in normal mode, Neatvi executes ECMD (defined in conf.h)
+with the following parameters:
+- X (the key following q)
+- current file
+- current line number
+- current line offset
+
+ECMD must print a line of ex commands and Neatvi executes this line.
+Q-commands can be used to add interesting features to Neatvi, such as
+language-dependent IDE features, for instance by connecting to an LSP
+(language server protocol) server.  As an example, the following
+script shows how to use gopls to implement goto defintion and find
+references for Go.
+
+  # Compile.
+  if test "$1" = "c"; then
+    go build >.make.ls 2>&1
+    echo ":e +1 .make.ls | :e"
+  fi
+  # Goto definition; uses gopls (not very efficient without using LSP).
+  if test "$1" = "d"; then
+    loc=`gopls definition $2:$3:$4`
+    if test -n "$loc"; then
+      echo $loc | sed -E 's/^([^:]+):([^:]+):([^:]+).*$/:e +\2 \1/'
+    fi
+  fi
+  # Find references.  Use gl command on each line.
+  if test "$1" = "f"; then
+    gopls references $2:$3:$4 >$OUT/.out.ls
+    echo ":e +1 $OUT/.out.ls | :e"
+  fi

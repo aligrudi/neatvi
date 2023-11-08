@@ -28,7 +28,7 @@ int lbuf_globget(struct lbuf *lb, int pos, int dep);
 int lbuf_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *r, int *o);
 int lbuf_search(struct lbuf *lb, char *kw, int dir, int *r, int *o, int *len);
 int lbuf_paragraphbeg(struct lbuf *lb, int dir, int *row, int *off);
-int lbuf_sectionbeg(struct lbuf *lb, int dir, int *row, int *off);
+int lbuf_sectionbeg(struct lbuf *lb, int dir, char *sec, int *row, int *off);
 int lbuf_wordbeg(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_pair(struct lbuf *lb, int *row, int *off);
@@ -120,8 +120,10 @@ void term_pos(int r, int c);
 void term_clear(void);
 void term_kill(void);
 void term_room(int n);
+void term_window(int row, int cnt);
 int term_rows(void);
 int term_cols(void);
+int term_rowx(void);
 int term_read(void);
 void term_record(void);
 void term_commit(void);
@@ -143,7 +145,7 @@ int led_pos(char *s, int pos);
 
 /* ex commands */
 void ex(void);
-void ex_command(char *cmd);
+int ex_command(char *cmd);
 char *ex_read(char *msg);
 void ex_print(char *line);
 void ex_show(char *msg);
@@ -159,7 +161,7 @@ void ex_kwdset(char *kwd, int dir);
 #define xb 	ex_lbuf()
 
 /* process management */
-char *cmd_pipe(char *cmd, char *s, int iproc, int oproc);
+char *cmd_pipe(char *cmd, char *s, int oproc);
 int cmd_exec(char *cmd);
 
 /* syntax highlighting */
@@ -190,11 +192,16 @@ int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_hlrev(void);
 int conf_hlline(void);
+int conf_hlmode(void);
+int conf_hlback(void);
 int conf_mode(void);
 char **conf_kmap(int id);
 int conf_kmapfind(char *name);
 char *conf_digraph(int c1, int c2);
 char *conf_lnpref(void);
+char *conf_definition(char *ft);
+char *conf_section(char *ft);
+char *conf_ecmd(void);
 
 /* global variables */
 extern int xrow;
@@ -213,3 +220,10 @@ extern int xhl;
 extern int xhll;
 extern int xkmap;
 extern int xkmap_alt;
+extern int xlim;
+
+/* tag file handling */
+int tag_init(char *path);
+int tag_set(void);
+int tag_find(char *name, int *pos, int dir, char *path, int pathlen, char *cmd, int cmdlen);
+void tag_done(void);

@@ -255,7 +255,7 @@ static char *led_line(char *pref, char *post, char *ai,
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
-	int c, lnmode;
+	int c, y, lnmode;
 	char *cs;
 	sb = sbuf_make();
 	if (!pref)
@@ -307,6 +307,11 @@ static char *led_line(char *pref, char *post, char *ai,
 		case TK_CTL('p'):
 			if (reg_get(0, &lnmode))
 				sbuf_str(sb, reg_get(0, &lnmode));
+			break;
+		case TK_CTL('r'):
+			y = term_read();
+			if (y > 0 && reg_get(y, &lnmode))
+				sbuf_str(sb, reg_get(y, &lnmode));
 			break;
 		default:
 			if (c == '\n' || TK_INT(c))

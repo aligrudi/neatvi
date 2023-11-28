@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "vi.h"
@@ -6,10 +7,26 @@
 static char *bufs[256];
 static int lnmode[256];
 
-char *reg_get(int c, int *ln)
+static char *reg_getraw(int c, int *ln)
 {
 	*ln = lnmode[c];
 	return bufs[c];
+}
+
+char *reg_get(int c, int *lnmode)
+{
+	static char ln[1024];
+	if (c == '"')
+		c = 0;
+	if (c == ';') {
+		char *s = lbuf_get(xb, xrow);
+		snprintf(ln, sizeof(ln), "%s", s ? s : "");
+		if (strchr(ln, '\n') != NULL)
+			*strchr(ln, '\n') = '\0';
+		*lnmode = 1;
+		return ln;
+	}
+	return reg_getraw(c, lnmode);
 }
 
 static void reg_putraw(int c, char *s, int ln)

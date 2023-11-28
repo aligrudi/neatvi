@@ -1210,7 +1210,7 @@ static void vc_repeat(void)
 
 static void vc_execute(void)
 {
-	static int exec_buf = -1;
+	static int reg = -1;
 	int lnmode;
 	int c = vi_read();
 	char *buf = NULL;
@@ -1218,13 +1218,16 @@ static void vc_execute(void)
 	if (TK_INT(c))
 		return;
 	if (c == '@')
-		c = exec_buf;
-	exec_buf = c;
-	if (exec_buf >= 0)
-		buf = reg_get(exec_buf, &lnmode);
-	if (buf)
-		for (i = 0; i < MAX(1, vi_arg1); i++)
+		c = reg;
+	reg = c;
+	if (reg >= 0)
+		buf = reg_get(reg, &lnmode);
+	if (buf != NULL) {
+		for (i = 0; i < MAX(1, vi_arg1); i++) {
 			term_push(buf, strlen(buf));
+			term_push("\n", lnmode);
+		}
+	}
 }
 
 static int vc_ecmd(int c, int newwin)
@@ -1582,9 +1585,11 @@ static void vi(void)
 			cmd = term_cmd(&n);
 			if (strchr("!<>ACDIJOPRSXYacdioprsxy~", c) ||
 					(c == 'g' && strchr("uU~", k))) {
-				if (n < sizeof(rep_cmd)) {
+				if (n + 1 < sizeof(rep_cmd)) {
 					memcpy(rep_cmd, cmd, n);
 					rep_len = n;
+					rep_cmd[n] = '\0';
+					reg_put('.', rep_cmd, 0);
 				}
 			}
 		}

@@ -47,6 +47,7 @@ Commands not available in ex(1):
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
 - ^p in insert mode: inserts the contents of the default yank buffer.
+- ^rX in insert mode: inserts the contents of yank buffer X.
 - zL, zl, zr, and zR in normal mode: change the value of td option.
 - ^e and ^f in insert mode: switches to the English and alternate keymap.
 - ze and zf in normal mode: switches to the English and alternate keymap.
@@ -112,6 +113,9 @@ Special marks:
 Special yank buffers:
 - / the previous search keyword
 - : the previous ex command
+- " the default yank buffer
+- ; the current line
+- . the last vi command
 
 Q-COMMANDS
 ----------

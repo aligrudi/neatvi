@@ -101,6 +101,7 @@ static void bufs_switch(int idx)
 	xtop = bufs[0].top;
 	xleft = bufs[0].left;
 	xtd = bufs[0].td;
+	reg_put('%', bufs[0].path ? bufs[0].path : "", 0);
 }
 
 char *ex_path(void)
@@ -491,6 +492,7 @@ static int ec_write(char *loc, char *cmd, char *arg)
 	if (!ex_path()[0]) {
 		free(bufs[0].path);
 		bufs[0].path = uc_dup(path);
+		reg_put('%', path, 0);
 	}
 	if (!strcmp(ex_path(), path))
 		lbuf_saved(xb, 0);

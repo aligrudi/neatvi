@@ -14,6 +14,7 @@ int xvis;			/* visual mode */
 int xai = 1;			/* autoindent option */
 int xic = 1;			/* ignorecase option */
 int xaw;			/* autowrite option */
+int xwa;			/* writeany option */
 int xhl = 1;			/* syntax highlight option */
 int xhll;			/* highlight current line */
 int xled = 1;			/* use the line editor */
@@ -363,7 +364,7 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 	char *path;
 	int fd;
 	if (!strchr(cmd, '!'))
-		if (xb && ex_modifiedbuffer("buffer modified"))
+		if (xb && !xwa && ex_modifiedbuffer("buffer modified"))
 			return 1;
 	arg = ex_plus(arg, pls);
 	if (!(path = ex_pathexpand(arg, 0)))
@@ -709,7 +710,8 @@ static int ec_exec(char *loc, char *cmd, char *arg)
 	char *text;
 	char *rep;
 	char *ecmd;
-	ex_modifiedbuffer(NULL);
+	if (!xwa)
+		ex_modifiedbuffer(NULL);
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {
@@ -731,7 +733,8 @@ static int ec_make(char *loc, char *cmd, char *arg)
 {
 	char make[EXLEN];
 	char *target;
-	ex_modifiedbuffer(NULL);
+	if (!xwa)
+		ex_modifiedbuffer(NULL);
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
 	sprintf(make, "make %s", target);
@@ -902,6 +905,7 @@ static struct option {
 } options[] = {
 	{"ai", "autoindent", &xai},
 	{"aw", "autowrite", &xaw},
+	{"wa", "writeany", &xwa},
 	{"ic", "ignorecase", &xic},
 	{"td", "textdirection", &xtd},
 	{"shape", "shape", &xshape},

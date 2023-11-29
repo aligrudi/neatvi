@@ -1436,6 +1436,7 @@ static void vi(void)
 				if (ln && ln[0]) {
 					if (!ex_command(ln))
 						mod = 5;
+					reg_put(':', ln, 1);
 				}
 				free(ln);
 				if (xquit)

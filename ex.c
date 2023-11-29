@@ -1167,7 +1167,6 @@ int ex_command(char *ln)
 {
 	int ret = ex_exec(ln);
 	lbuf_modified(xb);
-	reg_put(':', ln, 0);
 	return ret;
 }
 
@@ -1176,8 +1175,10 @@ void ex(void)
 {
 	while (!xquit) {
 		char *ln = ex_read(":");
-		if (ln)
+		if (ln) {
 			ex_command(ln);
+			reg_put(':', ln, 1);
+		}
 		free(ln);
 	}
 }

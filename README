@@ -101,6 +101,8 @@ aw, autowrite
   As in vi(1).
 ic, ignorecase
   As in vi(1).
+wa, writeany
+  As in vi(1).
 
 MARKS AND BUFFERS
 -----------------
@@ -113,6 +115,7 @@ Special marks:
 Special yank buffers:
 - / the previous search keyword
 - : the previous ex command
+- % the name of the current file
 - " the default yank buffer
 - ; the current line
 - . the last vi command

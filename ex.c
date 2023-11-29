@@ -40,15 +40,6 @@ static struct buf {
 
 static int bufs_cnt = 0;	/* number of allocated buffers */
 
-static int bufs_find(char *path)
-{
-	int i;
-	for (i = 0; i < LEN(bufs); i++)
-		if (bufs[i].lb && !strcmp(bufs[i].path, path))
-			return i;
-	return -1;
-}
-
 static void bufs_free(int idx)
 {
 	if (bufs[idx].lb) {
@@ -58,32 +49,51 @@ static void bufs_free(int idx)
 	}
 }
 
-static long mtime(char *path)
+static void bufs_shift(void)
 {
-	struct stat st;
-	if (!stat(path, &st))
-		return st.st_mtime;
+	bufs_free(0);
+	memmove(&bufs[0], &bufs[1], sizeof(bufs) - sizeof(bufs[0]));
+	memset(&bufs[LEN(bufs) - 1], 0, sizeof(bufs[0]));
+}
+
+static int bufs_find(char *path)
+{
+	int i;
+	for (i = 0; i < LEN(bufs); i++)
+		if (bufs[i].path && !strcmp(bufs[i].path, path))
+			return i;
 	return -1;
 }
 
-static int bufs_open(char *path)
+static int bufs_findroom(void)
 {
 	int i;
 	for (i = 0; i < LEN(bufs) - 1; i++)
 		if (!bufs[i].lb)
 			break;
-	bufs_free(i);
-	bufs[i].id = ++bufs_cnt;
-	bufs[i].path = uc_dup(path);
-	bufs[i].lb = lbuf_make();
-	bufs[i].row = 0;
-	bufs[i].off = 0;
-	bufs[i].top = 0;
-	bufs[i].left = 0;
-	bufs[i].td = +1;
-	bufs[i].mtime = -1;
-	strcpy(bufs[i].ft, syn_filetype(path));
 	return i;
+}
+
+static void bufs_init(int idx, char *path)
+{
+	bufs_free(idx);
+	bufs[idx].id = ++bufs_cnt;
+	bufs[idx].path = uc_dup(path);
+	bufs[idx].lb = lbuf_make();
+	bufs[idx].row = 0;
+	bufs[idx].off = 0;
+	bufs[idx].top = 0;
+	bufs[idx].left = 0;
+	bufs[idx].td = +1;
+	bufs[idx].mtime = -1;
+	strcpy(bufs[idx].ft, syn_filetype(path));
+}
+
+static int bufs_open(char *path)
+{
+	int idx = bufs_findroom();
+	bufs_init(idx, path);
+	return idx;
 }
 
 static void bufs_switch(int idx)
@@ -103,6 +113,14 @@ static void bufs_switch(int idx)
 	xleft = bufs[0].left;
 	xtd = bufs[0].td;
 	reg_put('%', bufs[0].path ? bufs[0].path : "", 0);
+}
+
+static long mtime(char *path)
+{
+	struct stat st;
+	if (!stat(path, &st))
+		return st.st_mtime;
+	return -1;
 }
 
 char *ex_path(void)
@@ -321,29 +339,51 @@ static int ec_buffer(char *loc, char *cmd, char *arg)
 {
 	char *aliases = "%#^";
 	char ln[128];
-	int i = 0;
+	int i;
 	if (!arg[0]) {
+		/* print buffer list */
 		for (i = 0; i < LEN(bufs) && bufs[i].lb; i++) {
 			char c = i < strlen(aliases) ? aliases[i] : ' ';
 			char m = lbuf_modified(bufs[i].lb) ? '*' : ' ';
-			snprintf(ln, LEN(ln), "%i %c %s %c",
+			snprintf(ln, LEN(ln), "%2i %c %s %c",
 					(int) bufs[i].id, c, bufs[i].path, m);
 			ex_print(ln);
 		}
+	} else if (arg[0] == '!') {
+		/* delete buffer */
+		bufs_shift();
+		if (bufs[0].lb == NULL)
+			bufs_init(0, "");
 	} else {
 		int id = arg[0] ? atoi(arg) : 0;
-		if (isdigit((unsigned char) arg[0])) {
-			for (i = 0; i < LEN(bufs) && bufs[i].lb; i++)
-				if (id == bufs[i].id)
+		int idx = -1;
+		/* switch to the given buffer */
+		if (isdigit((unsigned char) arg[0])) {	/* buffer id given */
+			for (idx = 0; idx < LEN(bufs); idx++)
+				if (bufs[idx].lb && id == bufs[idx].id)
 					break;
-		} else {
+		} else if (arg[0] == '-') {		/* previous buffer */
+			for (i = 0; i < LEN(bufs); i++)
+				if (bufs[i].lb && bufs[i].id < bufs[0].id)
+					if (idx < 0 || bufs[i].id > bufs[idx].id)
+						idx = i;
+		} else if (arg[0] == '+') {		/* next buffer */
+			for (i = 0; i < LEN(bufs); i++)
+				if (bufs[i].lb && bufs[i].id > bufs[0].id)
+					if (idx < 0 || bufs[i].id < bufs[idx].id)
+						idx = i;
+		} else {				/* buffer alias given */
 			char *r = strchr(aliases, (unsigned char) arg[0]);
-			i = r ? r - aliases : -1;
+			idx = r ? r - aliases : -1;
 		}
-		if (i >= 0 && i < LEN(bufs) && bufs[i].lb)
-			bufs_switch(i);
-		else
+		if (idx >= 0 && idx < LEN(bufs) && bufs[idx].lb) {
+			if (xb && !xwa && strchr(cmd, '!') == NULL)
+				if (ex_modifiedbuffer("buffer modified"))
+					return 1;
+			bufs_switch(idx);
+		} else {
 			ex_show("no such buffer");
+		}
 	}
 	return 0;
 }

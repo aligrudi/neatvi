@@ -267,7 +267,7 @@ void ex_print(char *line)
 		if (line)
 			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
 		if (line)
-			led_print(line, -1, "");
+			led_print(line, -1, "-ex");
 		term_chr('\n');
 	} else {
 		if (line)

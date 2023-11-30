@@ -34,8 +34,12 @@ static struct highlight {
 	/* status bar */
 	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
 	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 4}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(6) | 8 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD}, "^.*$"},
+	{"---", {SYN_BGMK(8) | 0 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(7) | SYN_BD}, ".*$\n?"},
+	/* ex mode */
+	{"-ex", {SYN_BGMK(7) | SYN_BD}, ":.*$\n?"},
+	{"-ex", {SYN_BGMK(7) | SYN_BD}, "\\[.*$\n?"},
+	{"-ex", {SYN_BGMK(7)}, ".*$\n?"},
 
 	/* C */
 	{"c", {5}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},

@@ -67,6 +67,11 @@ int *syn_highlight(char *ft, char *s)
 	int flg = 0;
 	int hl, j, i;
 	memset(att, 0, n * sizeof(att[0]));
+	if (!strcmp(ft, "___")) {
+		for (i = 0; i < n; i++)
+			att[i] = SYN_RV;
+		return att;
+	}
 	if (rs == NULL)
 		rs = syn_make(ft);
 	if (!rs)

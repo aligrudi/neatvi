@@ -1520,6 +1520,12 @@ static void vi(void)
 				if (k == 'f' || k == 'l')
 					if (!vc_openpath(k == 'l', 0))
 						mod = 1;
+				if (k == 'j' || k == 'k')
+					if (!ex_command(k == 'j' ? "b -" : "b +"))
+						mod = 1;
+				if (k == 'K')
+					if (!ex_command("b !"))
+						mod = 1;
 				break;
 			case 'x':
 				vi_back(' ');

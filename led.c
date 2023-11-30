@@ -79,7 +79,7 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 			for (j = 0; j < curwid; j++)
 				off[led_posctx(ctx, pos[i] + j, cbeg, cend)] = i;
 	}
-	att = syn_highlight((n <= xlim && xhl) ? syn : "", s0);
+	att = syn_highlight(n <= xlim ? syn : "", s0);
 	/* the attribute of the last character is used for blanks */
 	att_blank = n > 0 ? att[n - 1] : 0;
 	led_markrev(n, chrs, pos, att);

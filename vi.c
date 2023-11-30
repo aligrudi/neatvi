@@ -64,7 +64,7 @@ static void vi_drawrow(int row)
 	char *s = lbuf_get(xb, row);
 	if (xhll && row == xrow)
 		syn_context(conf_hlline());
-	led_print(s ? s : (row ? "~" : ""), row - xtop, ex_filetype());
+	led_print(s ? s : (row ? "~" : ""), row - xtop, xhl ? ex_filetype() : "");
 	syn_context(0);
 }
 
@@ -749,7 +749,7 @@ static int charcount(char *text, char *post)
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &xkmap, ex_filetype());
+	char *rep = led_input(pref, post, &xkmap, xhl ? ex_filetype() : "");
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;

@@ -34,7 +34,8 @@ static struct buf {
 	char *path;		/* file path */
 	struct lbuf *lb;
 	int row, off, top, left;
-	short id, td;		/* buffer id and text direction */
+	short id;		/* buffer number */
+	short td;		/* text direction */
 	long mtime;		/* modification time */
 } bufs[8];
 
@@ -47,13 +48,6 @@ static void bufs_free(int idx)
 		lbuf_free(bufs[idx].lb);
 		memset(&bufs[idx], 0, sizeof(bufs[idx]));
 	}
-}
-
-static void bufs_shift(void)
-{
-	bufs_free(0);
-	memmove(&bufs[0], &bufs[1], sizeof(bufs) - sizeof(bufs[0]));
-	memset(&bufs[LEN(bufs) - 1], 0, sizeof(bufs[0]));
 }
 
 static int bufs_find(char *path)
@@ -96,23 +90,54 @@ static int bufs_open(char *path)
 	return idx;
 }
 
-static void bufs_switch(int idx)
+static void bufs_save(void)
 {
-	struct buf tmp;
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
 	bufs[0].top = xtop;
 	bufs[0].left = xleft;
 	bufs[0].td = xtd;
-	memcpy(&tmp, &bufs[idx], sizeof(tmp));
-	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
-	memcpy(&bufs[0], &tmp, sizeof(tmp));
+}
+
+static void bufs_load(void)
+{
 	xrow = bufs[0].row;
 	xoff = bufs[0].off;
 	xtop = bufs[0].top;
 	xleft = bufs[0].left;
 	xtd = bufs[0].td;
 	reg_put('%', bufs[0].path ? bufs[0].path : "", 0);
+}
+
+static void bufs_shift(void)
+{
+	bufs_free(0);
+	memmove(&bufs[0], &bufs[1], sizeof(bufs) - sizeof(bufs[0]));
+	memset(&bufs[LEN(bufs) - 1], 0, sizeof(bufs[0]));
+	bufs_load();
+}
+
+static void bufs_switch(int idx)
+{
+	struct buf tmp;
+	bufs_save();
+	memcpy(&tmp, &bufs[idx], sizeof(tmp));
+	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
+	memcpy(&bufs[0], &tmp, sizeof(tmp));
+	bufs_load();
+}
+
+static void bufs_number(void)
+{
+	int n = 0;
+	int i;
+	for (i = 0; i < LEN(bufs); i++)
+		if (bufs[i].lb != NULL)
+			n++;
+	bufs_cnt = n;
+	for (i = 0; i < LEN(bufs); i++)
+		if (bufs[i].lb != NULL)
+			bufs[i].id = n--;
 }
 
 static long mtime(char *path)
@@ -354,6 +379,9 @@ static int ec_buffer(char *loc, char *cmd, char *arg)
 		bufs_shift();
 		if (bufs[0].lb == NULL)
 			bufs_init(0, "");
+	} else if (arg[0] == '~') {
+		/* reassign buffer ids */
+		bufs_number();
 	} else {
 		int id = arg[0] ? atoi(arg) : 0;
 		int idx = -1;

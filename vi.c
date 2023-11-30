@@ -54,7 +54,7 @@ static void vi_drawmsg(void)
 {
 	int oleft = xleft;
 	xleft = 0;
-	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, "---");
+	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, xhl ? "---" : "___");
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }
@@ -217,7 +217,7 @@ static char *vi_prompt(char *msg, int *kmap)
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap, "---");
+	s = led_prompt(msg, "", kmap, xhl ? "---" : "___");
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -231,7 +231,7 @@ char *ex_read(char *msg)
 	struct sbuf *sb;
 	int c;
 	if (xled) {
-		char *s = led_prompt(msg, "", &xkmap, "---");
+		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___");
 		if (s)
 			term_chr('\n');
 		return s;
@@ -252,7 +252,7 @@ void ex_show(char *msg)
 	if (xvis) {
 		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
 	} else if (xled) {
-		led_print(msg, -1, "---");
+		led_print(msg, -1, xhl ? "---" : "___");
 		term_chr('\n');
 	} else {
 		printf("%s", msg);
@@ -267,7 +267,7 @@ void ex_print(char *line)
 		if (line)
 			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
 		if (line)
-			led_print(line, -1, "-ex");
+			led_print(line, -1, xhl ? "-ex" : "");
 		term_chr('\n');
 	} else {
 		if (line)

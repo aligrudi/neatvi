@@ -1664,7 +1664,7 @@ int main(int argc, char *argv[])
 		if (argv[i][1] == 'v')
 			xvis = 1;
 		if (argv[i][1] == 'h') {
-			printf("usage: %s [options]\n\n", argv[0]);
+			printf("usage: %s [options] [file]\n\n", argv[0]);
 			printf("options:\n");
 			printf("  -v    start in vi mode\n");
 			printf("  -e    start in ex mode\n");

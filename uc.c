@@ -136,6 +136,17 @@ char *uc_dup(char *s)
 	return r ? strcpy(r, s) : NULL;
 }
 
+char *uc_cat(char *s, char *r)
+{
+	int slen = strlen(s);
+	int rlen = strlen(r);
+	char *o = malloc(slen + rlen + 1);
+	memcpy(o, s, slen);
+	memcpy(o + slen, r, rlen);
+	o[slen + rlen] = '\0';
+	return o;
+}
+
 int uc_isspace(char *s)
 {
 	int c = s ? (unsigned char) *s : 0;

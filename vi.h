@@ -92,6 +92,7 @@ char *uc_chr(char *s, int off);
 int uc_off(char *s, int off);
 char *uc_sub(char *s, int beg, int end);
 char *uc_dup(char *s);
+char *uc_cat(char *s, char *r);
 int uc_isspace(char *s);
 int uc_isprint(char *s);
 int uc_isdigit(char *s);

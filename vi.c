@@ -1663,6 +1663,14 @@ int main(int argc, char *argv[])
 			xvis = 0;
 		if (argv[i][1] == 'v')
 			xvis = 1;
+		if (argv[i][1] == 'h') {
+			printf("usage: %s [options]\n\n", argv[0]);
+			printf("options:\n");
+			printf("  -v    start in vi mode\n");
+			printf("  -e    start in ex mode\n");
+			printf("  -s    silent mode (for ex mode only)\n");
+			return 0;
+		}
 	}
 	dir_init();
 	syn_init();

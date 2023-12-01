@@ -710,11 +710,9 @@ static void vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 	pref = lnmode ? uc_dup("") : uc_sub(lbuf_get(xb, r1), 0, o1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), o2, -1);
 	if (!lnmode) {
-		struct sbuf *sb = sbuf_make();
-		sbuf_str(sb, pref);
-		sbuf_str(sb, post);
-		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
-		sbuf_free(sb);
+		char *line = uc_cat(pref, post);
+		lbuf_edit(xb, line, r1, r2 + 1);
+		free(line);
 	} else {
 		lbuf_edit(xb, NULL, r1, r2 + 1);
 	}
@@ -1434,6 +1432,11 @@ static void vi(void)
 			case ':':
 				ln = vi_prompt(":", &kmap);
 				if (ln && ln[0]) {
+					if (ln[0] != ':') {
+						char *ln2 = uc_cat(":", ln);
+						free(ln);
+						ln = ln2;
+					}
 					if (!ex_command(ln))
 						mod = 5;
 					reg_put(':', ln, 1);

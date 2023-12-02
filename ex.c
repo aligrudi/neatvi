@@ -411,6 +411,7 @@ static int ec_buffer(char *loc, char *cmd, char *arg)
 			bufs_switch(idx);
 		} else {
 			ex_show("no such buffer");
+			return 1;
 		}
 	}
 	return 0;

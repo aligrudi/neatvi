@@ -44,7 +44,7 @@ void reg_put(int c, char *s, int ln)
 {
 	int i, i_ln;
 	char *i_s;
-	if (ln || strchr(s, '\n')) {
+	if ((ln || strchr(s, '\n')) && (!c || isalpha(c))) {
 		for (i = 8; i > 0; i--)
 			if ((i_s = reg_get('0' + i, &i_ln)))
 				reg_putraw('0' + i + 1, i_s, i_ln);

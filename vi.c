@@ -1278,6 +1278,7 @@ static void vi(void)
 		int otop = xtop;
 		int oleft = xleft;
 		int orow = xrow;
+		char *opath = ex_path();	/* do not dereference; to detect buffer changes */
 		int mv, n;
 		term_cmd(&n);
 		vi_arg2 = 0;
@@ -1629,7 +1630,7 @@ static void vi(void)
 			if (msg[0])
 				strcpy(vi_msg, msg);
 		}
-		if (!vi_msg[0] && w_cnt > 1)
+		if (!vi_msg[0] && (w_cnt > 1 || opath != ex_path()))
 			vc_status();
 		if (mod || xleft != oleft) {
 			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);

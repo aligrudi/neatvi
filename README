@@ -41,8 +41,10 @@ Commands not available in ex(1):
 :po[p]
   Pops tag stack.
 :b[uffer] [buf]
-  Switch to buffer buf (buffer number or alias); lists buffers
-  if buf is missing.
+  Without buf, prints buffer list.  Switches to the given buffer
+  if buf is a buffer number or alias.  Also, buf can be -, +, !,
+  and ~ to switch to the previous buffer, switch to the next buffer,
+  delete the current buffer, and renumber buffers, respectively.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -58,6 +60,7 @@ New key mappings:
 - gl in normal mode: like gf, but it reads line and column numbers too.
 - ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
+- zj, zk, zK: equivalent to :b-, :b+, :b !.
 - qX in normal mode: see q-commands section (X can be any letter).
 
 Other noteworthy differences with vi(1):

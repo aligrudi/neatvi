@@ -482,11 +482,10 @@ static int ec_read(char *loc, char *cmd, char *arg)
 	if (ex_region(loc, &beg, &end) || path == NULL)
 		return 1;
 	pos = lbuf_len(xb) ? end : 0;
-	if (arg[0] == '!') {
-		char *ecmd = path;
-		if (!ecmd)
+	if (path[0] == '!') {
+		if (!path[1])
 			return 1;
-		obuf = cmd_pipe(ecmd + 1, NULL, 1);
+		obuf = cmd_pipe(path + 1, NULL, 1);
 		if (obuf)
 			lbuf_edit(xb, obuf, pos, pos);
 		free(obuf);
@@ -525,13 +524,12 @@ static int ec_write(char *loc, char *cmd, char *arg)
 		beg = 0;
 		end = lbuf_len(xb);
 	}
-	if (arg[0] == '!') {
-		char *ecmd = path;
-		if (!ecmd)
+	if (path[0] == '!') {
+		if (!path[1])
 			return 1;
 		ibuf = lbuf_cp(xb, beg, end);
 		ex_print(NULL);
-		cmd_pipe(ecmd + 1, ibuf, 0);
+		cmd_pipe(path + 1, ibuf, 0);
 		free(ibuf);
 	} else {
 		int fd;

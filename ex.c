@@ -53,6 +53,7 @@ static void bufs_free(int idx)
 static int bufs_find(char *path)
 {
 	int i;
+	path = path[0] == '/' && path[1] == '\0' ? "" : path;
 	for (i = 0; i < LEN(bufs); i++)
 		if (bufs[i].path && !strcmp(bufs[i].path, path))
 			return i;

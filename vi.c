@@ -122,7 +122,7 @@ static int vi_switch(int id)
 		return 1;
 	if (id != w_cur) {
 		char cmd[1024];
-		char *old = w_path && w_path[0] ? w_path : "unnamed";
+		char *old = w_path && w_path[0] ? w_path : "/";
 		int row = w_row, off = w_off, top = w_top, left = w_left;
 		char *ec = "ew";
 		if (w_path && strcmp(w_path, ex_path()) == 0)

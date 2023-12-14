@@ -1217,7 +1217,7 @@ int ex_init(char **files)
 	char *s = arg;
 	char *r = files[0] ? files[0] : "";
 	while (*r && s + 2 < arg + sizeof(arg)) {
-		if (*r == ' ' || *r == '%' || *r == '#')
+		if (*r == ' ' || *r == '%' || *r == '#' || *r == '=')
 			*s++ = '\\';
 		*s++ = *r++;
 	}

@@ -60,7 +60,8 @@ New key mappings:
 - gl in normal mode: like gf, but it reads line and column numbers too.
 - ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
-- zj, zk, zK: equivalent to :b-, :b+, :b !.
+- zj, zk, zD: equivalent to :b+, :b-, :b !.
+- zJ, zK: equivalent to :next, :prev.
 - qX in normal mode: see q-commands section (X can be any letter).
 
 Other noteworthy differences with vi(1):
@@ -87,15 +88,15 @@ td, textdirection
   * -1: follow conf.h's dircontexts[]; right-to-left for others.
   * -2: always right-to-left.
 shape
-  If set (default), performs Arabic/Farsi letter shaping.
+  If set (default), Arabic/Farsi letter shaping will be performed.
 order
-  If set, reorder characters based on the rules defined
+  If set, characters will be reordered based on the rules defined
   in conf.h.
 hl, highlight
   If set (default), text will be highlighted based on syntax
   highlighting rules in conf.h.
 hll, highlightline
-  If set, highlight current line.
+  If set, the current line will be highlighted.
 lim, linelimit
   Lines longer than this value are not reordered or highlighted.
 ai, autoindent

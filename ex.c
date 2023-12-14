@@ -28,6 +28,8 @@ static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
+static char **next;		/* argument list */
+static int next_pos;		/* position in argument list */
 
 static struct buf {
 	char ft[32];		/* file type */
@@ -470,6 +472,40 @@ static int ec_edit(char *loc, char *cmd, char *arg)
 	if (pls[0] == '+')
 		return ex_command(pls + 1);
 	return 0;
+}
+
+static int ex_next(char *cmd, int dis)
+{
+	char arg[EXLEN];
+	int old = next_pos;
+	int idx = next != NULL && next[old] != NULL ? next_pos + dis : -1;
+	char *path = idx >= 0 && next[idx] != NULL ? next[idx] : NULL;
+	char *s = arg;
+	char *r = path != NULL ? path : "";
+	if (dis && path == NULL) {
+		ex_show("no more files");
+		return 1;
+	}
+	while (*r && s + 2 < arg + sizeof(arg)) {
+		if (*r == ' ' || *r == '%' || *r == '#' || *r == '=')
+			*s++ = '\\';
+		*s++ = *r++;
+	}
+	*s = '\0';
+	if (ec_edit("", cmd, arg))
+		return 1;
+	next_pos = idx;
+	return 0;
+}
+
+static int ec_next(char *loc, char *cmd, char *arg)
+{
+	return ex_next(cmd, +1);
+}
+
+static int ec_prev(char *loc, char *cmd, char *arg)
+{
+	return ex_next(cmd, -1);
 }
 
 static int ec_read(char *loc, char *cmd, char *arg)
@@ -1052,6 +1088,8 @@ static struct excmd {
 	{"k", "mark", ec_mark},
 	{"po", "pop", ec_pop},
 	{"pu", "put", ec_put},
+	{"n", "next", ec_next},
+	{"prev", "prev", ec_prev},
 	{"q", "quit", ec_quit},
 	{"q!", "quit!", ec_quit},
 	{"r", "read", ec_read},
@@ -1213,19 +1251,11 @@ void ex(void)
 
 int ex_init(char **files)
 {
-	char arg[EXLEN];
-	char *s = arg;
-	char *r = files[0] ? files[0] : "";
-	while (*r && s + 2 < arg + sizeof(arg)) {
-		if (*r == ' ' || *r == '%' || *r == '#' || *r == '=')
-			*s++ = '\\';
-		*s++ = *r++;
-	}
-	*s = '\0';
-	if (ec_edit("", "e", arg))
-		return 1;
+	next = files;
 	if (getenv("EXINIT"))
 		ex_command(getenv("EXINIT"));
+	if (ex_next("e", 0))
+		return 1;
 	return 0;
 }
 

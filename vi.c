@@ -1487,22 +1487,27 @@ static void vi(void)
 				switch (k) {
 				case '\n':
 					xtop = vi_arg1 ? vi_arg1 : xrow;
+					mod = 1;
 					break;
 				case '.':
 					n = vi_arg1 ? vi_arg1 : xrow;
 					xtop = MAX(0, n - xrows / 2);
+					mod = 1;
 					break;
 				case '-':
 					n = vi_arg1 ? vi_arg1 : xrow;
 					xtop = MAX(0, n - xrows + 1);
+					mod = 1;
 					break;
 				case 'l':
 				case 'r':
 					xtd = k == 'r' ? -1 : +1;
+					mod = 1;
 					break;
 				case 'L':
 				case 'R':
 					xtd = k == 'R' ? -2 : +2;
+					mod = 1;
 					break;
 				case 'e':
 				case 'f':
@@ -1510,15 +1515,19 @@ static void vi(void)
 					break;
 				case 'j':
 				case 'k':
-					if (!ex_command(k == 'j' ? "b -" : "b +"))
+					if (!ex_command(k == 'j' ? "b +" : "b -"))
 						mod = 1;
 					break;
+				case 'J':
 				case 'K':
+					if (!ex_command(k == 'J' ? "next" : "prev"))
+						mod = 1;
+					break;
+				case 'D':
 					if (!ex_command("b !"))
 						mod = 1;
 					break;
 				}
-				mod = 1;
 				break;
 			case 'g':
 				k = vi_read();
@@ -1580,7 +1589,8 @@ static void vi(void)
 			case 'Z':
 				k = vi_read();
 				if (k == 'Z')
-					ex_command("x");
+					if (!ex_command("x"))
+						mod = 1;
 				break;
 			case '~':
 				vi_back(' ');
@@ -1665,7 +1675,7 @@ int main(int argc, char *argv[])
 		if (argv[i][1] == 'v')
 			xvis = 1;
 		if (argv[i][1] == 'h') {
-			printf("usage: %s [options] [file]\n\n", argv[0]);
+			printf("usage: %s [options] [file...]\n\n", argv[0]);
 			printf("options:\n");
 			printf("  -v    start in vi mode\n");
 			printf("  -e    start in ex mode\n");

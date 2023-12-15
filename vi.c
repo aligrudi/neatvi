@@ -1686,18 +1686,18 @@ int main(int argc, char *argv[])
 	dir_init();
 	syn_init();
 	tag_init(getenv("TAGPATH") ? getenv("TAGPATH") : "tags");
-	if (xled || xvis)
-		term_init();
 	if (!ex_init(argv + i)) {
+		if (xled || xvis)
+			term_init();
 		if (xvis)
 			vi();
 		else
 			ex();
+		if (xled || xvis)
+			term_done();
 		ex_done();
 	}
 	free(w_path);
-	if (xled || xvis)
-		term_done();
 	reg_done();
 	syn_done();
 	dir_done();

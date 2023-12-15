@@ -32,14 +32,14 @@ static struct highlight {
 	int end;		/* the group ending this pattern */
 } highlights[] = {
 	/* status bar */
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
-	{"---", {SYN_BGMK(7) | 8 | SYN_BD, 4, 4}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(8) | 0 | SYN_BD, 4, 4}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(7) | SYN_BD}, ".*$\n?"},
+	{"---", {SYN_BGMK(8) | 7 | SYN_BD, 11, 9}, "^(\".*\").*(\\[[wr]\\]).*$"},
+	{"---", {SYN_BGMK(8) | 7 | SYN_BD, 11, 13, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(7) | 15}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(8) | 11 | SYN_BD}, ".*$\n?"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(7) | SYN_BD}, ":.*$\n?"},
-	{"-ex", {SYN_BGMK(7) | SYN_BD}, "\\[.*$\n?"},
-	{"-ex", {SYN_BGMK(7)}, ".*$\n?"},
+	{"-ex", {SYN_BGMK(8) | 15 | SYN_BD}, ":.*$\n?"},
+	{"-ex", {SYN_BGMK(8) | 15 | SYN_BD}, "\\[.*$\n?"},
+	{"-ex", {SYN_BGMK(8) | 15}, ".*$\n?"},
 
 	/* C */
 	{"c", {5}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},

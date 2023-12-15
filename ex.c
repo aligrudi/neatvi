@@ -1252,10 +1252,10 @@ void ex(void)
 int ex_init(char **files)
 {
 	next = files;
-	if (getenv("EXINIT"))
-		ex_command(getenv("EXINIT"));
 	if (ex_next("e", 0))
 		return 1;
+	if (getenv("EXINIT"))
+		ex_command(getenv("EXINIT"));
 	return 0;
 }
 

@@ -15,7 +15,7 @@ static struct filetype {
 	{"tex", "\\.tex$"},
 	{"msg", "letter$|mbox$|mail$"},
 	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
-	{"sh", "\\.sh$", "^(function +)%s *\\{"},
+	{"sh", "\\.sh$", "^(function +)?%s(\\(\\))? *\\{", "^(function +)?[a-zA-Z_0-9]+(\\(\\))? *\\{"},
 	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>", "^(func|type)\\>.*\\{$"},
 	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
 	{"bib", "bib$"},
@@ -23,6 +23,21 @@ static struct filetype {
 	{"diff", "\\.(patch|diff)$"},
 	{"ls", "ls$"},
 };
+
+/* colours used in highlights[] for programming languages */
+#define CKWD	(3 | SYN_BD)	/* general keywords */
+#define CCON	(CKWD)		/* control flow keywords */
+#define CPRE	(2 | SYN_BD)	/* preprocessor directives */
+#define CIMP	(4 | SYN_BD)	/* imported packages */
+#define CTYP	(8 | SYN_BD)	/* built-in types and values */
+#define CBIN	(8 | SYN_BD)	/* built-in functions */
+#define CCMT	(12 | SYN_IT)	/* comments */
+#define CDEF	(4 | SYN_BD)	/* top-level definition */
+#define CFUN	(SYN_BD)	/* called functions */
+#define CNUM	4		/* numerical constants */
+#define CSTR	4		/* string literals */
+#define CVAR	3		/* macros */
+#define CIDN	0		/* identifiers */
 
 /* syntax highlighting patterns */
 static struct highlight {
@@ -42,31 +57,34 @@ static struct highlight {
 	{"-ex", {SYN_BGMK(8) | 15}, ".*$\n?"},
 
 	/* C */
-	{"c", {5}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
-	{"c", {5}, "\\<(static|extern|register)\\>"},
-	{"c", {4}, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
-	{"c", {2 | SYN_IT}, "//.*$"},
-	{"c", {2 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
-	{"c", {6}, "^#[ \t]*[a-zA-Z0-9_]+"},
-	{"c", {0, SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
-	{"c", {4}, "\"([^\"]|\\\\\")*\""},
-	{"c", {4}, "'([^\\]|\\\\.)'"},
-	{"c", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
-	{"c", {2 | SYN_IT}, "^\t*(/\\*.*|\t* \\*.*|\t* \\*\\//)$"},
+	{"c", {CTYP}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
+	{"c", {CKWD}, "\\<(static|extern|register)\\>"},
+	{"c", {CCON}, "\\<(return|for|while|if|else|do|sizeof|goto|switch|case|default|break|continue)\\>"},
+	{"c", {CCMT}, "//.*$"},
+	{"c", {CCMT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
+	{"c", {CIMP, CPRE}, "^#([ \t]*include).*"},
+	{"c", {CIMP, CPRE}, "^#([ \t]*[a-zA-Z0-9_]+)"},
+	{"c", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
+	{"c", {CSTR}, "\"([^\"]|\\\\\")*\""},
+	{"c", {CNUM}, "'([^\\]|\\\\.)'"},
+	{"c", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
+	{"c", {CCMT}, "^\t*(/\\*.*|\t* \\*.*|\t* \\*\\//)$"},
+	{"c", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
 
 	/* troff */
-	{"roff", {4, 0, 5 | SYN_BD, 4 | SYN_BD, 5 | SYN_BD, 4 | SYN_BD},
-		"^[.'][ \t]*((SH.*)|(de) (.*)|([^ \t\\]{2,}))?.*$", 1},
-	{"roff", {2 | SYN_IT}, "\\\\\".*$"},
-	{"roff", {3}, "\\\\{1,2}[*$fgkmns]([^[(]|\\(..|\\[[^]]*\\])"},
-	{"roff", {3}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
-	{"roff", {3}, "\\$[^$]+\\$"},
+	{"roff", {0, CKWD, CDEF}, "^[.'][ \t]*(SH)(.*)$"},
+	{"roff", {0, CKWD, CDEF}, "^[.'][ \t]*de (.*)$"},
+	{"roff", {0, CFUN, CSTR}, "^[.']([^ \t\\]{2,})?(.*)$", 1},
+	{"roff", {CCMT}, "\\\\\".*$"},
+	{"roff", {CFUN}, "\\\\{1,2}[*$fgkmns]([^[(]|\\(..|\\[[^]]*\\])"},
+	{"roff", {CVAR}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
+	{"roff", {CSTR}, "\\$[^$]+\\$"},
 
 	/* tex */
-	{"tex", {4 | SYN_BD, 0, 3, 0, 5},
-		"\\\\[^[{ \t]+(\\[([^]]+)\\])?(\\{([^}]*)\\})?"},
-	{"tex", {3}, "\\$[^$]+\\$"},
-	{"tex", {2 | SYN_IT}, "%.*$"},
+	{"tex", {0, CKWD, 0, 0, CIMP, 0, CFUN},
+		"\\\\([^[{ \t]+)((\\[([^][]+)\\])|(\\{([^}]*)\\}))*"},
+	{"tex", {CSTR}, "\\$[^$]+\\$"},
+	{"tex", {CCMT}, "%.*$"},
 
 	/* mail */
 	{"msg", {6 | SYN_BD}, "^From .*20..$"},
@@ -78,37 +96,39 @@ static struct highlight {
 	{"msg", {2 | SYN_IT}, "^> .*$"},
 
 	/* makefile */
-	{"mk", {0, 3}, "([A-Za-z_][A-Za-z0-9_]*)[ \t]*="},
-	{"mk", {3}, "\\$\\([a-zA-Z0-9_]+\\)"},
-	{"mk", {2 | SYN_IT}, "#.*$"},
-	{"mk", {0, SYN_BD}, "([A-Za-z_%.]+):"},
+	{"mk", {0, CDEF}, "([A-Za-z_][A-Za-z0-9_]*)[ \t]*="},
+	{"mk", {CVAR}, "\\$\\([a-zA-Z0-9_]+\\)"},
+	{"mk", {CCMT}, "#.*$"},
+	{"mk", {0, CFUN}, "([A-Za-z_%.]+):"},
 
 	/* shell script */
-	{"sh", {5 | SYN_BD}, "\\<(break|case|continue|do|done|elif|else|esac|fi|for|if|in|then|until|while|return)\\>"},
-	{"sh", {4}, "\"([^\"\\]|\\\\.)*\""},
-	{"sh", {4}, "'[^']*'"},
-	{"sh", {3}, "`([^`\\]|\\\\.)*`"},
-	{"sh", {1}, "\\$(\\{[^}]+\\}|[a-zA-Z_0-9]+|[!#$?*@-])"},
-	{"sh", {0, SYN_BD}, "^([a-zA-Z_][a-zA-Z_0-9]* *\\(\\)) *\\{"},
-	{"sh", {SYN_BD}, "^\\. .*$"},
-	{"sh", {2 | SYN_IT}, "#.*$"},
+	{"sh", {0, CKWD, CDEF}, "^(function +)?([a-zA-Z_0-9]+) *(\\(\\))? *\\{"},
+	{"sh", {CCON}, "\\<(break|case|continue|do|done|elif|else|esac|fi|for|if|in|then|until|while|return)\\>"},
+	{"sh", {CSTR}, "\"([^\"\\]|\\\\.)*\""},
+	{"sh", {CSTR}, "'[^']*'"},
+	{"sh", {CSTR}, "`([^`\\]|\\\\.)*`"},
+	{"sh", {CVAR}, "\\$(\\{[^}]+\\}|[a-zA-Z_0-9]+|[!#$?*@-])"},
+	{"sh", {CVAR}, "\\$\\([^()]+\\)"},
+	{"sh", {CFUN}, "^\\. .*$"},
+	{"sh", {CCMT}, "#.*$"},
 
 	/* go */
-	{"go", {0, 3 | SYN_BD, 0, 29 | SYN_BD}, "^\\<(func) (\\([^()]+\\) )?([a-zA-Z0-9_]+)\\>"},
-	{"go", {3 | SYN_BD}, "^\\<(func|type|var|const|package)\\>"},
-	{"go", {3 | SYN_BD}, "\\<(func|type|var|const|package)\\>"},
-	{"go", {3 | SYN_BD}, "\\<(import|interface|struct)\\>"},
-	{"go", {3 | SYN_BD}, "\\<(break|case|chan|continue|default|defer|else|fallthrough|for|go|goto|if|map|range|return|select|switch)\\>"},
-	{"go", {0, 8 | SYN_BD}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
-	{"go", {8 | SYN_BD}, "\\<(true|false|iota|nil|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>"},
-	{"go", {6 | SYN_IT}, "//.*$"},
-	{"go", {6 | SYN_IT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
-	{"go", {0, SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]*)\\(", 1},
-	{"go", {8}, "[a-zA-Z][a-zA-Z0-9_]*"},
-	{"go", {4}, "\"([^\"]|\\\\\")*\""},
-	{"go", {4}, "'([^']|\\\\')*'"},
-	{"go", {4}, "`([^`]|\\\\`)*`"},
-	{"go", {4}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
+	{"go", {0, CKWD, CIDN, CDEF}, "^\\<(func) (\\([^()]+\\) )?([a-zA-Z0-9_]+)\\>"},
+	{"go", {CKWD}, "^\\<(func|type|var|const|package)\\>"},
+	{"go", {CKWD}, "\\<(func|type|var|const|package)\\>"},
+	{"go", {CPRE, CIMP}, "^import[ \t]+([^ ]+)"},
+	{"go", {CKWD}, "\\<(import|interface|struct)\\>"},
+	{"go", {CCON}, "\\<(break|case|chan|continue|default|defer|else|fallthrough|for|go|goto|if|map|range|return|select|switch)\\>"},
+	{"go", {0, CBIN}, "\\<(append|copy|delete|len|cap|make|new|complex|real|imag|close|panic|recover|print|println|int|int8|int16|int32|int64|uint|uint8|uint16|uint32|uint64|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>\\("},
+	{"go", {CTYP}, "\\<(true|false|iota|nil|int8|int16|int32|int64|int|uint8|uint16|uint32|uint64|uint|uintptr|float32|float64|complex128|complex64|bool|byte|rune|string|error)\\>"},
+	{"go", {CCMT}, "//.*$"},
+	{"go", {CCMT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
+	{"go", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]*)\\(", 1},
+	{"go", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
+	{"go", {CSTR}, "\"([^\"]|\\\\\")*\""},
+	{"go", {CNUM}, "'([^']|\\\\')*'"},
+	{"go", {CSTR}, "`([^`]|\\\\`)*`"},
+	{"go", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
 
 	/* refer */
 	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},
@@ -118,17 +138,19 @@ static struct highlight {
 	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%D) (.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 7}, "^(%O) (.*)$", 1},
 	{"bib", {0, 8 | SYN_BD, 8 | SYN_BD}, "^(%[A-Z]) (.*)$", 1},
-	{"bib", {25}, "^#.*$", 1},
+	{"bib", {4}, "^#.*$", 1},
 
 	/* python */
-	{"py", {2}, "#.*$"},
-	{"py", {5}, "\\<(class|def)\\>"},
-	{"py", {5}, "\\<(and|or|not|is|in)\\>"},
-	{"py", {5}, "\\<(import|from|global|lambda|del)\\>"},
-	{"py", {5}, "\\<(for|while|if|elif|else|pass|return|break|continue)\\>"},
-	{"py", {5}, "\\<(try|except|as|raise|finally|with)\\>"},
-	{"py", {0, 0 | SYN_BD}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
-	{"py", {4}, "[\"']([^\"']|\\\\\")*[\"']"},
+	{"py", {CCMT}, "#.*$"},
+	{"py", {CKWD}, "\\<(class|def)\\>"},
+	{"py", {CKWD}, "\\<(and|or|not|is|in)\\>"},
+	{"py", {0, 0, CPRE, CIDN, CPRE, CIMP}, "((from)[ \t]+([^ ]+)[ \t]+)?(import)[ \t]+([^ ]+)"},
+	{"py", {CKWD}, "\\<(import|from|global|lambda|del)\\>"},
+	{"py", {CCON}, "\\<(for|while|if|elif|else|pass|return|break|continue)\\>"},
+	{"py", {CCON}, "\\<(try|except|as|raise|finally|with)\\>"},
+	{"py", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
+	{"py", {CSTR}, "[\"']([^\"']|\\\\\")*[\"']"},
+	{"py", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
 
 	/* neatmail listing */
 	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},

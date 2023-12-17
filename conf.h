@@ -114,7 +114,6 @@ static struct highlight {
 
 	/* go */
 	{"go", {0, CKWD, CIDN, CDEF}, "^\\<(func) (\\([^()]+\\) )?([a-zA-Z0-9_]+)\\>"},
-	{"go", {CKWD}, "^\\<(func|type|var|const|package)\\>"},
 	{"go", {CKWD}, "\\<(func|type|var|const|package)\\>"},
 	{"go", {CPRE, CIMP}, "^import[ \t]+([^ ]+)"},
 	{"go", {CKWD}, "\\<(import|interface|struct)\\>"},
@@ -128,7 +127,7 @@ static struct highlight {
 	{"go", {CSTR}, "\"([^\"]|\\\\\")*\""},
 	{"go", {CNUM}, "'([^']|\\\\')*'"},
 	{"go", {CSTR}, "`([^`]|\\\\`)*`"},
-	{"go", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
+	{"go", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9.]+)\\>"},
 
 	/* refer */
 	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},

@@ -1,0 +1,17 @@
+# libs
+*.o
+*.ko
+*.obj
+*.elf
+
+# objects
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# executables
+*.exe
+*.out
+*.hex
+vi

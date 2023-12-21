@@ -29,9 +29,9 @@ static struct filetype {
 #define CCON	(CKWD)		/* control flow keywords */
 #define CPRE	(2 | SYN_BD)	/* preprocessor directives */
 #define CIMP	(4 | SYN_BD)	/* imported packages */
-#define CTYP	(8 | SYN_BD)	/* built-in types and values */
-#define CBIN	(8 | SYN_BD)	/* built-in functions */
-#define CCMT	(12 | SYN_IT)	/* comments */
+#define CTYP	(3)		/* built-in types and values */
+#define CBIN	(3)		/* built-in functions */
+#define CCMT	(4 | SYN_IT)	/* comments */
 #define CDEF	(4 | SYN_BD)	/* top-level definition */
 #define CFUN	(SYN_BD)	/* called functions */
 #define CNUM	4		/* numerical constants */
@@ -47,14 +47,14 @@ static struct highlight {
 	int end;		/* the group ending this pattern */
 } highlights[] = {
 	/* status bar */
-	{"---", {SYN_BGMK(8) | 7 | SYN_BD, 11, 9}, "^(\".*\").*(\\[[wr]\\]).*$"},
-	{"---", {SYN_BGMK(8) | 7 | SYN_BD, 11, 13, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(7) | 15}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(8) | 11 | SYN_BD}, ".*$\n?"},
+	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 3, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
+	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 3, 5, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(7) | 6}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
+	{"---", {SYN_BGMK(0) | 3 | SYN_BD}, ".*$\n?"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(8) | 15 | SYN_BD}, ":.*$\n?"},
-	{"-ex", {SYN_BGMK(8) | 15 | SYN_BD}, "\\[.*$\n?"},
-	{"-ex", {SYN_BGMK(8) | 15}, ".*$\n?"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, ":.*$\n?"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "\\[.*$\n?"},
+	{"-ex", {SYN_BGMK(0) | 7}, ".*$\n?"},
 
 	/* C */
 	{"c", {CTYP}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
@@ -130,13 +130,13 @@ static struct highlight {
 	{"go", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9.]+)\\>"},
 
 	/* refer */
-	{"bib", {0, 8 | SYN_BD, SYN_BGMK(11) | SYN_BD}, "^(%L) +(.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 12 | SYN_BD}, "^(%A) (.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%T) (.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 2 | SYN_BD}, "^(%[JB]) (.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 5 | SYN_BD}, "^(%D) (.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 7}, "^(%O) (.*)$", 1},
-	{"bib", {0, 8 | SYN_BD, 8 | SYN_BD}, "^(%[A-Z]) (.*)$", 1},
+	{"bib", {0, SYN_BD, SYN_BGMK(3) | SYN_BD}, "^(%L) +(.*)$", 1},
+	{"bib", {0, SYN_BD, 4 | SYN_BD}, "^(%A) (.*)$", 1},
+	{"bib", {0, SYN_BD, 5 | SYN_BD}, "^(%T) (.*)$", 1},
+	{"bib", {0, SYN_BD, 2 | SYN_BD}, "^(%[JB]) (.*)$", 1},
+	{"bib", {0, SYN_BD, 5 | SYN_BD}, "^(%D) (.*)$", 1},
+	{"bib", {0, SYN_BD, 7}, "^(%O) (.*)$", 1},
+	{"bib", {0, SYN_BD, SYN_BD}, "^(%[A-Z]) (.*)$", 1},
 	{"bib", {4}, "^#.*$", 1},
 
 	/* python */
@@ -152,12 +152,12 @@ static struct highlight {
 	{"py", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
 
 	/* neatmail listing */
-	{"nm", {0 | SYN_BGMK(15), 6 | SYN_BD, 12 | SYN_BD, 3, 5, 8 | SYN_BD},
+	{"nm", {0, 6 | SYN_BD, 4 | SYN_BD, 3, 5, SYN_BD},
 		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(13)}, "^[A-Z][HT].*$"},
-	{"nm", {0 | SYN_BD | SYN_BGMK(11)}, "^[A-Z][MI].*$"},
-	{"nm", {7 | SYN_BGMK(15)}, "^[A-Z][LJ].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(5)}, "^[A-Z][HA].*$"},
+	{"nm", {0 | SYN_BD | SYN_BGMK(3)}, "^[A-Z][MB].*$"},
+	{"nm", {7}, "^[A-Z][LC].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(7)}, "^[F].*$"},
 	{"nm", {7 | SYN_IT}, "^\t.*$"},
 	{"nm", {SYN_BD}, "^:.*$"},
@@ -169,8 +169,8 @@ static struct highlight {
 	{"diff", {SYN_BD}, "^diff .*$"},
 
 	/* directory listing */
-	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 8}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
-	{"ls", {12}, "^#.*$"},
+	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 6}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
+	{"ls", {CCMT}, "^#.*$"},
 };
 
 /* how to highlight current line (hll option) */

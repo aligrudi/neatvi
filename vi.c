@@ -114,8 +114,8 @@ static void vi_drawupdate(int xcol, int otop)
 /* update the screen by removing lines r1 to r2 before an input command */
 static void vi_drawrm(int r1, int r2, int newln)
 {
-	r1 = MIN(MAX(r1, xtop), xtop + xrows);
-	r2 = MIN(MAX(r2, xtop), xtop + xrows);
+	r1 = MIN(MAX(r1, xtop), xtop + xrows - 1);
+	r2 = MIN(MAX(r2, xtop), xtop + xrows - 1);
 	term_pos(r1 - xtop, 0);
 	term_room(r1 - r2 + newln);
 }

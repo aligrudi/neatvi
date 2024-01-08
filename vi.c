@@ -1670,8 +1670,6 @@ static void vi(void)
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
 		lbuf_modified(xb);
 	}
-	term_pos(xrows, 0);
-	term_kill();
 }
 
 int main(int argc, char *argv[])

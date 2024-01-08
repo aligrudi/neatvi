@@ -33,8 +33,7 @@ void term_init(void)
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;
 	term_str("\33[m");
-	win_rows = rows;
-	win_beg = 0;
+	term_window(win_beg, win_rows > 0 ? win_rows : rows);
 }
 
 void term_window(int row, int cnt)
@@ -43,21 +42,25 @@ void term_window(int row, int cnt)
 	win_beg = row;
 	win_rows = cnt;
 	if (row == 0 && win_rows == rows) {
-		term_str("\33[r");
-		term_str("\33[?6l");
+		term_str("\33[r\33[?6l");
 	} else {
-		sprintf(cmd, "\33[%d;%dr", win_beg + 1, win_beg + win_rows);
+		sprintf(cmd, "\33[%d;%dr\33[?6h", win_beg + 1, win_beg + win_rows);
 		term_str(cmd);
-		term_str("\33[?6h");
 	}
+}
+
+void term_extend(int cnt)
+{
+	int n = win_beg + cnt <= rows ? cnt : rows - win_beg;
+	term_window(win_beg, n);
 }
 
 void term_done(void)
 {
-	term_commit();
-	term_window(0, rows);
+	term_str("\33[r\33[?6l");
 	term_pos(rows - 1, 0);
 	term_kill();
+	term_commit();
 	tcsetattr(0, 0, &termios);
 }
 

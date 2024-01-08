@@ -109,7 +109,7 @@ char *uc_shape(char *beg, char *s);
 char *uc_lastline(char *s);
 
 /* managing the terminal */
-#define xrows		(term_rows() - 1)
+#define xrows		(term_rows())
 #define xcols		(term_cols())
 
 void term_init(void);
@@ -122,6 +122,7 @@ void term_clear(void);
 void term_kill(void);
 void term_room(int n);
 void term_window(int row, int cnt);
+void term_extend(int cnt);
 int term_rows(void);
 int term_cols(void);
 int term_rowx(void);

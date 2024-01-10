@@ -142,8 +142,8 @@ static int vi_switch(int id)
 	}
 	if (w_cnt == 2) {
 		int half = cnt / 2;
-		beg = id == 1 ? 0 : half;
-		cnt = id == 1 ? half : term_rowx() - half;
+		beg = id == 0 ? 0 : half;
+		cnt = id == 0 ? half : term_rowx() - half;
 	}
 	term_window(beg, cnt - 1);
 	w_cur = id;
@@ -1145,7 +1145,6 @@ static int vc_definition(int newwin)
 	if (newwin) {
 		vi_wonly();
 		vi_wsplit();
-		vi_switch(1 - w_cur);
 	}
 	xrow = r;
 	xoff = o;
@@ -1162,10 +1161,8 @@ static int vi_openpath(char *path, int ln, int newwin)
 		snprintf(vi_msg, sizeof(vi_msg), "cannot open <%s>", path);
 		return 1;
 	}
-	if (newwin) {
+	if (newwin)
 		vi_wsplit();
-		vi_switch(1 - w_cur);
-	}
 	snprintf(ex, sizeof(ex), "e %s", path);
 	if (ex_command(ex))
 		return 1;
@@ -1201,7 +1198,6 @@ static int vc_tag(int newwin)
 		ex_command("po");
 		vi_wonly();
 		vi_wsplit();
-		vi_switch(1 - w_cur);
 		ex_command(ex);
 	}
 	return 0;
@@ -1257,7 +1253,6 @@ static int vc_ecmd(int c, int newwin)
 	if (newwin) {
 		vi_wonly();
 		vi_wsplit();
-		vi_switch(1 - w_cur);
 	}
 	ex_command(out);
 	free(out);

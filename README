@@ -99,6 +99,12 @@ hll, highlightline
   If set, the current line will be highlighted.
 lim, linelimit
   Lines longer than this value are not reordered or highlighted.
+ru, ruler
+  Indicates when to show the current line number in the status line:
+  * 0: never.
+  * 1: always.
+  * 2: when multiple windows are visible.
+  * 4: when the current file changes.
 ai, autoindent
   As in vi(1).
 aw, autowrite

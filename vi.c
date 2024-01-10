@@ -1291,7 +1291,7 @@ static void vi(void)
 		int oleft = xleft;
 		int orow = xrow;
 		char *opath = ex_path();	/* do not dereference; to detect buffer changes */
-		int mv, n;
+		int mv, n, ru;
 		term_cmd(&n);
 		vi_arg2 = 0;
 		vi_ybuf = vi_yankbuf();
@@ -1637,22 +1637,22 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
+		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
 		if (mod & 4 && w_cnt > 1) {
 			char msg[sizeof(vi_msg)];
 			int id = w_cur;
-			strcpy(msg, vi_msg);
 			w_tmp = 1;
 			vi_switch(1 - id);
 			vi_wfix();
-			vc_status();
+			strcpy(msg, vi_msg);
+			if (ru)
+				vc_status();
 			vi_drawagain(vi_off2col(xb, xrow, xoff), 0);
+			strcpy(vi_msg, msg);
 			w_tmp = 0;
 			vi_switch(id);
-			vc_status();
-			if (msg[0])
-				strcpy(vi_msg, msg);
 		}
-		if (!vi_msg[0] && (w_cnt > 1 || opath != ex_path()))
+		if (ru && !vi_msg[0])
 			vc_status();
 		if (mod || xleft != oleft) {
 			vi_drawagain(xcol, mod == 2 && xleft == oleft && xrow == orow);

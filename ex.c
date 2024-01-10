@@ -24,6 +24,7 @@ int xorder = 1;			/* change the order of characters */
 int xkmap = 0;			/* the current keymap */
 int xkmap_alt = 1;		/* the alternate keymap */
 int xlim = 256;			/* do not process lines longer than this */
+int xru = 1;			/* show line number */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
@@ -1017,6 +1018,7 @@ static struct option {
 	{"hl", "highlight", &xhl},
 	{"hll", "highlightline", &xhll},
 	{"lim", "linelimit", &xlim},
+	{"ru", "ruler", &xru},
 };
 
 static char *cutword(char *s, char *d)

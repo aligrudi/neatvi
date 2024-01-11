@@ -122,7 +122,6 @@ void term_clear(void);
 void term_kill(void);
 void term_room(int n);
 void term_window(int row, int cnt);
-void term_extend(int cnt);
 int term_rows(void);
 int term_cols(void);
 int term_rowx(void);

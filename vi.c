@@ -44,11 +44,10 @@ static void vc_status(void);
 static void vi_wait(void)
 {
 	if (vi_printed > 1 || vi_printed < 0) {
-		int orows = xrows;
-		term_extend(orows + (vi_printed > 0 ? 1 : 100));
+		if (vi_printed < 0)
+			term_window(0, term_rowx() - 1);
 		term_pos(xrows, 0);
 		free(ex_read("[enter to continue]"));
-		term_extend(orows);
 		vi_msg[0] = '\0';
 	}
 	vi_printed = 0;
@@ -58,9 +57,7 @@ static void vi_drawmsg(void)
 {
 	int oleft = xleft;
 	xleft = 0;
-	term_extend(xrows + 1);
 	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, xhl ? "---" : "___");
-	term_extend(xrows - 1);
 	vi_msg[0] = '\0';
 	xleft = oleft;
 }
@@ -221,11 +218,9 @@ static char *vi_char(void)
 static char *vi_prompt(char *msg, int *kmap)
 {
 	char *r, *s;
-	term_extend(xrows + 1);
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
 	s = led_prompt(msg, "", kmap, xhl ? "---" : "___");
-	term_extend(xrows - 1);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -274,11 +269,11 @@ void ex_print(char *line)
 		if (line && vi_printed == 0)
 			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
 		if (line && vi_printed == 1)
-			led_print(vi_msg, xrows, xhl ? "-ex" : "");
+			led_print(vi_msg, xrows - 1, xhl ? "-ex" : "");
 		if (vi_printed)
 			term_chr('\n');
 		if (line && vi_printed)
-			led_print(line, xrows, xhl ? "-ex" : "");
+			led_print(line, xrows - 1, xhl ? "-ex" : "");
 		vi_printed += line != NULL ? 1 : -1000;
 	} else {
 		if (line)

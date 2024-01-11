@@ -42,22 +42,16 @@ void term_window(int row, int cnt)
 	win_beg = row;
 	win_rows = cnt;
 	if (row == 0 && win_rows == rows) {
-		term_str("\33[r\33[?6l");
+		term_str("\33[r");
 	} else {
-		sprintf(cmd, "\33[%d;%dr\33[?6h", win_beg + 1, win_beg + win_rows);
+		sprintf(cmd, "\33[%d;%dr", win_beg + 1, win_beg + win_rows);
 		term_str(cmd);
 	}
 }
 
-void term_extend(int cnt)
-{
-	int n = win_beg + cnt <= rows ? cnt : rows - win_beg;
-	term_window(win_beg, n);
-}
-
 void term_done(void)
 {
-	term_str("\33[r\33[?6l");
+	term_str("\33[r");
 	term_pos(rows - 1, 0);
 	term_kill();
 	term_commit();
@@ -131,7 +125,7 @@ void term_pos(int r, int c)
 	if (r < 0)
 		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
 	else
-		sprintf(buf, "\33[%d;%dH", r + 1, c + 1);
+		sprintf(buf, "\33[%d;%dH", win_beg + r + 1, c + 1);
 	term_out(buf);
 }
 

@@ -7,8 +7,8 @@
 static struct filetype {
 	char *ft;		/* file type */
 	char *pat;		/* file name pattern */
-	char *def;		/* pattern for gd */
-	char *sec;		/* section start pattern */
+	char *def;		/* pattern for global definitions (for gd command) */
+	char *sec;		/* section start pattern (for [[ and ]] commands) */
 } filetypes[] = {
 	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
 	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},

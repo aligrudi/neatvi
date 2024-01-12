@@ -47,7 +47,7 @@ static void vi_wait(void)
 		if (vi_printed < 0)
 			term_window(0, term_rowx() - 1);
 		term_pos(xrows, 0);
-		free(ex_read("[enter to continue]"));
+		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___"));
 		vi_msg[0] = '\0';
 	}
 	vi_printed = 0;

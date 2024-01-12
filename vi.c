@@ -1440,8 +1440,10 @@ static void vi(void)
 						free(ln);
 						ln = ln2;
 					}
+					term_record();
 					if (!ex_command(ln))
 						mod = 5;
+					term_commit();
 					reg_put(':', ln, 1);
 				}
 				free(ln);

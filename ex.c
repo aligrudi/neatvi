@@ -1003,6 +1003,17 @@ static int ec_tprev(char *loc, char *cmd, char *arg)
 	return 1;
 }
 
+static int ec_at(char *loc, char *cmd, char *arg)
+{
+	int beg, end;
+	int lnmode;
+	char *buf = reg_get((unsigned char) arg[0], &lnmode);
+	if (!buf || ex_region(loc, &beg, &end))
+		return 1;
+	xrow = beg;
+	return ex_command(buf);
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -1109,12 +1120,13 @@ static struct excmd {
 	{"s", "substitute", ec_substitute},
 	{"x", "xit", ec_write},
 	{"x!", "xit!", ec_write},
-	{"ya", "yank", ec_yank},
+	{"y", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"make", "make", ec_make},
 	{"ft", "filetype", ec_ft},
 	{"cm", "cmap", ec_cmap},
 	{"cm!", "cmap!", ec_cmap},
+	{"@", "@", ec_at},
 	{"", "", ec_null},
 };
 
@@ -1160,7 +1172,7 @@ static char *ex_cmd(char *src, char *cmd)
 	while (isalpha((unsigned char) *src) && cmd < cmd0 + 16)
 		if ((*cmd++ = *src++) == 'k' && cmd == cmd0 + 1)
 			break;
-	if (*src == '!' || *src == '=')
+	if (*src == '!' || *src == '=' || *src == '@')
 		*cmd++ = *src++;
 	*cmd = '\0';
 	return src;

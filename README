@@ -45,6 +45,9 @@ Commands not available in ex(1):
   if buf is a buffer number or alias.  Also, buf can be -, +, !,
   and ~ to switch to the previous buffer, switch to the next buffer,
   delete the current buffer, and renumber buffers, respectively.
+:ye reg
+  Reads dot-terminated lines (similar to :a command) from ex input
+  and copies them to the given register.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -71,6 +74,15 @@ Other noteworthy differences with vi(1):
   directory of the current file.
 - Neatvi highlights files whose names ends with ls as directory
   listings; the gl command can be used to edit its files.
+
+Note that in :ye command, input lines are read from ex input stream
+(unlike :a), to make it usable in @ commands and ex scripts (files
+passed to :so).  This allows setting the value of registers in ex
+files, as the following example shows:
+
+  ye a
+  :!git add %
+  .
 
 OPTIONS
 -------

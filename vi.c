@@ -233,6 +233,8 @@ char *ex_read(char *msg)
 {
 	struct sbuf *sb;
 	int c;
+	if (xvis)
+		term_pos(xrows - 1, 0);
 	if (xled) {
 		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___");
 		if (s)

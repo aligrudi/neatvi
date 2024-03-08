@@ -156,7 +156,7 @@ ECMD must print a line of ex commands and Neatvi executes this line.
 Q-commands can be used to add interesting features to Neatvi, such as
 language-dependent IDE features, for instance by connecting to an LSP
 (language server protocol) server.  As an example, the following
-script shows how to use gopls to implement goto defintion and find
+script shows how to use gopls to implement goto definition and find
 references for Go.
 
   # Compile.

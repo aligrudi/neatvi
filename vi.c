@@ -1225,10 +1225,8 @@ static void vc_execute(void)
 	if (reg >= 0)
 		buf = reg_get(reg, &lnmode);
 	if (buf != NULL) {
-		for (i = 0; i < MAX(1, vi_arg1); i++) {
+		for (i = 0; i < MAX(1, vi_arg1); i++)
 			term_push(buf, strlen(buf));
-			term_push("\n", lnmode);
-		}
 	}
 }
 

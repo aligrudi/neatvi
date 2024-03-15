@@ -288,11 +288,11 @@ static void reg_putln(int h, char *s)
 	if (s != NULL && s[0] != '\0' && s[0] != '\n') {
 		char *pre = reg_get(h, NULL);
 		struct sbuf *sb = sbuf_make();
-		if (pre)
-			sbuf_str(sb, pre);
 		sbuf_str(sb, s);
 		if (strchr(s, '\n') == NULL)
 			sbuf_chr(sb, '\n');
+		if (pre)
+			sbuf_str(sb, pre);
 		reg_put(h, sbuf_buf(sb), 1);
 		sbuf_free(sb);
 	}

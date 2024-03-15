@@ -66,6 +66,7 @@ New key mappings:
 - zj, zk, zD: equivalent to :b+, :b-, :b !.
 - zJ, zK: equivalent to :next, :prev.
 - qX in normal mode: see q-commands section (X can be any letter).
+- ^k^k in ex, search, and pipe prompts: select from history lines.
 
 Other noteworthy differences with vi(1):
 - Neatvi assumes POSIX extended regular expressions (ERE) in search
@@ -137,6 +138,7 @@ Special marks:
 Special yank buffers:
 - / the previous search keyword
 - : the previous ex command
+- ! the previous pipe command
 - % the name of the current file
 - " the default yank buffer
 - ; the current line

@@ -47,7 +47,7 @@ static void vi_wait(void)
 		if (vi_printed < 0)
 			term_window(0, term_rowx() - 1);
 		term_pos(xrows, 0);
-		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___"));
+		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
 		vi_msg[0] = '\0';
 	}
 	vi_printed = 0;
@@ -215,12 +215,12 @@ static char *vi_char(void)
 	return led_read(&xkmap);
 }
 
-static char *vi_prompt(char *msg, int *kmap)
+static char *vi_prompt(char *msg, int *kmap, char *hist)
 {
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap, xhl ? "---" : "___");
+	s = led_prompt(msg, "", kmap, xhl ? "---" : "___", hist);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -236,7 +236,7 @@ char *ex_read(char *msg)
 	if (xvis)
 		term_pos(xrows - 1, 0);
 	if (xled) {
-		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___");
+		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___", NULL);
 		if (s)
 			term_chr('\n');
 		return s;
@@ -280,6 +280,21 @@ void ex_print(char *line)
 	} else {
 		if (line)
 			ex_show(line);
+	}
+}
+
+static void reg_putln(int h, char *s)
+{
+	if (s != NULL && s[0] != '\0' && s[0] != '\n') {
+		char *pre = reg_get(h, NULL);
+		struct sbuf *sb = sbuf_make();
+		if (pre)
+			sbuf_str(sb, pre);
+		sbuf_str(sb, s);
+		if (strchr(s, '\n') == NULL)
+			sbuf_chr(sb, '\n');
+		reg_put(h, sbuf_buf(sb), 1);
+		sbuf_free(sb);
 	}
 }
 
@@ -357,7 +372,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
 		struct sbuf *sb;
-		char *kw = vi_prompt(sign, &xkmap);
+		char *kw = vi_prompt(sign, &xkmap, reg_get('~', NULL));
 		char *re;
 		if (!kw)
 			return 1;
@@ -368,6 +383,10 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		kw = sbuf_buf(sb);
 		if ((re = re_read(&kw))) {
 			ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
+			if (re[0]) {
+				reg_putln('~', re);
+				reg_put('/', re, 0);
+			}
 			while (isspace(*kw))
 				kw++;
 			vi_soset = !!kw[0];
@@ -838,9 +857,11 @@ static void vi_pipe(int r1, int r2)
 	char *text;
 	char *rep;
 	int kmap = 0;
-	char *cmd = vi_prompt("!", &kmap);
+	char *cmd = vi_prompt("!", &kmap, reg_get('#', NULL));
 	if (!cmd)
 		return;
+	reg_put('!', cmd, 1);
+	reg_putln('#', cmd);
 	text = lbuf_cp(xb, r1, r2 + 1);
 	rep = cmd_pipe(cmd, text, 1);
 	if (rep)
@@ -1433,8 +1454,9 @@ static void vi(void)
 				}
 				break;
 			case ':':
-				ln = vi_prompt(":", &kmap);
+				ln = vi_prompt(":", &kmap, reg_get('$', NULL));
 				if (ln && ln[0]) {
+					reg_putln('$', ln);
 					if (ln[0] != ':') {
 						char *ln2 = uc_cat(":", ln);
 						free(ln);

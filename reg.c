@@ -9,7 +9,8 @@ static int lnmode[256];
 
 static char *reg_getraw(int c, int *ln)
 {
-	*ln = lnmode[c];
+	if (ln != NULL)
+		*ln = lnmode[c];
 	return bufs[c];
 }
 
@@ -23,7 +24,8 @@ char *reg_get(int c, int *lnmode)
 		snprintf(ln, sizeof(ln), "%s", s ? s : "");
 		if (strchr(ln, '\n') != NULL)
 			*strchr(ln, '\n') = '\0';
-		*lnmode = 1;
+		if (lnmode != NULL)
+			*lnmode = 1;
 		return ln;
 	}
 	return reg_getraw(c, lnmode);

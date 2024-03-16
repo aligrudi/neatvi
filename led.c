@@ -368,6 +368,8 @@ static char *led_line(char *pref, char *post, char *ai,
 				}
 			}
 		}
+		if (c == '\n')
+			led_printparts(ai, pref, sbuf_buf(sb), "", *kmap, syn);
 		if (c == '\n' || TK_INT(c))
 			break;
 	}

@@ -283,17 +283,22 @@ void ex_print(char *line)
 	}
 }
 
+static char *reg_getln(int h)
+{
+	return reg_get(0x80 | h, NULL);
+}
+
 static void reg_putln(int h, char *s)
 {
 	if (s != NULL && s[0] != '\0' && s[0] != '\n') {
-		char *pre = reg_get(h, NULL);
+		char *pre = reg_get(0x80 | h, NULL);
 		struct sbuf *sb = sbuf_make();
 		sbuf_str(sb, s);
 		if (strchr(s, '\n') == NULL)
 			sbuf_chr(sb, '\n');
 		if (pre)
 			sbuf_str(sb, pre);
-		reg_put(h, sbuf_buf(sb), 1);
+		reg_put(0x80 | h, sbuf_buf(sb), 1);
 		sbuf_free(sb);
 	}
 }
@@ -302,7 +307,7 @@ static int vi_yankbuf(void)
 {
 	int c = vi_read();
 	if (c == '"')
-		return vi_read();
+		return (c = vi_read()) == '-' ? 0x80 | vi_read() : c;
 	vi_back(c);
 	return 0;
 }
@@ -372,7 +377,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	if (cmd == '/' || cmd == '?') {
 		char sign[4] = {cmd};
 		struct sbuf *sb;
-		char *kw = vi_prompt(sign, &xkmap, reg_get('~', NULL));
+		char *kw = vi_prompt(sign, &xkmap, reg_getln('/'));
 		char *re;
 		if (!kw)
 			return 1;
@@ -384,7 +389,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		if ((re = re_read(&kw))) {
 			ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
 			if (re[0]) {
-				reg_putln('~', re);
+				reg_putln('/', re);
 				reg_put('/', re, 0);
 			}
 			while (isspace(*kw))
@@ -857,11 +862,11 @@ static void vi_pipe(int r1, int r2)
 	char *text;
 	char *rep;
 	int kmap = 0;
-	char *cmd = vi_prompt("!", &kmap, reg_get('#', NULL));
+	char *cmd = vi_prompt("!", &kmap, reg_getln('!'));
 	if (!cmd)
 		return;
 	reg_put('!', cmd, 1);
-	reg_putln('#', cmd);
+	reg_putln('!', cmd);
 	text = lbuf_cp(xb, r1, r2 + 1);
 	rep = cmd_pipe(cmd, text, 1);
 	if (rep)
@@ -1454,9 +1459,9 @@ static void vi(void)
 				}
 				break;
 			case ':':
-				ln = vi_prompt(":", &kmap, reg_get('$', NULL));
+				ln = vi_prompt(":", &kmap, reg_getln(':'));
 				if (ln && ln[0]) {
-					reg_putln('$', ln);
+					reg_putln(':', ln);
 					if (ln[0] != ':') {
 						char *ln2 = uc_cat(":", ln);
 						free(ln);

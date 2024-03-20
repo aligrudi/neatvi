@@ -307,7 +307,7 @@ static int vi_yankbuf(void)
 {
 	int c = vi_read();
 	if (c == '"')
-		return (c = vi_read()) == '-' ? 0x80 | vi_read() : c;
+		return (c = vi_read()) == '\\' ? 0x80 | vi_read() : c;
 	vi_back(c);
 	return 0;
 }

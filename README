@@ -66,7 +66,7 @@ New key mappings:
 - zj, zk, zD: equivalent to :b+, :b-, :b !.
 - zJ, zK: equivalent to :next, :prev.
 - qX in normal mode: see q-commands section (X can be any letter).
-- ^k^k in ex, search, and pipe prompts: select from history lines.
+- ^k^k in ex, search, and pipe prompts: inserts from history lines.
 
 Other noteworthy differences with vi(1):
 - Neatvi assumes POSIX extended regular expressions (ERE) in search
@@ -118,6 +118,9 @@ ru, ruler
   * 1: always.
   * 2: when multiple windows are visible.
   * 4: when the current file changes.
+hist, history
+  Indicates the number of lines remembered for ex, search, and
+  pipe prompts.  Zero disables command history.
 ai, autoindent
   As in vi(1).
 aw, autowrite

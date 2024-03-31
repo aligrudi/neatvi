@@ -220,7 +220,7 @@ static char *vi_prompt(char *msg, int *kmap, char *hist)
 	char *r, *s;
 	term_pos(xrows, led_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap, xhl ? "---" : "___", hist);
+	s = led_prompt(msg, "", kmap, xhl ? "---" : "___", xhist != 0 ? hist : NULL);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -290,17 +290,35 @@ static char *reg_getln(int h)
 
 static void reg_putln(int h, char *s)
 {
-	if (s != NULL && s[0] != '\0' && s[0] != '\n') {
-		char *pre = reg_get(0x80 | h, NULL);
-		struct sbuf *sb = sbuf_make();
-		sbuf_str(sb, s);
-		if (strchr(s, '\n') == NULL)
-			sbuf_chr(sb, '\n');
-		if (pre)
-			sbuf_str(sb, pre);
-		reg_put(0x80 | h, sbuf_buf(sb), 1);
-		sbuf_free(sb);
+	char *old = reg_get(0x80 | h, NULL);
+	struct sbuf *sb;
+	int i = 0;
+	if (xhist == 0 || s == NULL || s[0] == '\0' || s[0] == '\n')
+		return;
+	/* ignore duplicate lines */
+	if (old != NULL) {
+		while (s[i] && old[i] == s[i])
+			i++;
+		if (!s[i] && old[i] == '\n')
+			return;
 	}
+	/* omit old lines */
+	if (xhist > 0 && old != NULL) {
+		char *end = old;
+		for (i = 1; end != NULL && i < xhist; i++)
+			end = strchr(end == old ? end : end + 1, '\n');
+		if (end != NULL)
+			end[1] = '\0';
+	}
+	/* add the new line */
+	sb = sbuf_make();
+	sbuf_str(sb, s);
+	if (strchr(s, '\n') == NULL)
+		sbuf_chr(sb, '\n');
+	if (old != NULL)
+		sbuf_str(sb, old);
+	reg_put(0x80 | h, sbuf_buf(sb), 1);
+	sbuf_free(sb);
 }
 
 static int vi_yankbuf(void)

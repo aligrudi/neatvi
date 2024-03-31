@@ -27,6 +27,7 @@ int xkmap = 0;			/* the current keymap */
 int xkmap_alt = 1;		/* the alternate keymap */
 int xlim = 256;			/* do not process lines longer than this */
 int xru = 1;			/* show line number */
+int xhist = 0;			/* number of history lines */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
@@ -1040,6 +1041,7 @@ static struct option {
 	{"hll", "highlightline", &xhll},
 	{"lim", "linelimit", &xlim},
 	{"ru", "ruler", &xru},
+	{"hist", "history", &xhist},
 };
 
 static char *cutword(char *s, char *d)

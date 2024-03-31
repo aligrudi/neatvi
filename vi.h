@@ -223,6 +223,7 @@ extern int xkmap;
 extern int xkmap_alt;
 extern int xlim;
 extern int xru;
+extern int xhist;
 
 /* tag file handling */
 int tag_init(char *path);

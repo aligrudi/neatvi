@@ -251,44 +251,27 @@ char *led_read(int *kmap)
 	return NULL;
 }
 
-static char *led_select(char *msg, char *opt, char *syn)
+static int led_match(char *out, int len, char *kwd, char *opt)
 {
-	char *pos = opt;
-	char *old = pos;
-	int c;
-	if (opt == NULL || opt[0] == '\0')
-		return NULL;
-	while (1) {
-		struct sbuf *sb = sbuf_make();
-		char *end = strchr(pos, '\n');
-		sbuf_str(sb, msg);
-		sbuf_mem(sb, pos, end - pos + 1);
-		led_print(sbuf_buf(sb), -1, syn);
-		term_pos(-1, ren_pos(sbuf_buf(sb), uc_slen(msg)));
-		sbuf_free(sb);
-		old = pos;
-		switch ((c = term_read())) {
-		case 'k':
-			if (strchr(pos, '\n') != NULL)
-				pos = strchr(pos, '\n') + 1;
-			pos = pos[0] != '\0' ? pos : old;
+	while (opt != NULL) {
+		int i = 0;
+		while (kwd[i] && kwd[i] == opt[i])
+			i++;
+		if (kwd[i] == '\0')
 			break;
-		case 'j':
-			while (pos > opt && (pos == old || pos[-1] != '\n'))
-				pos--;
-			break;
-		}
-		if (c == '\n') {
-			char *end = strchr(pos, '\n');
-			char *buf = malloc(end - pos + 1);
-			memcpy(buf, pos, end - pos);
-			buf[end - pos] = '\0';
-			return buf;
-		}
-		if (TK_INT(c))
-			return NULL;
+		opt = strchr(opt, '\n') == NULL ? NULL : strchr(opt, '\n') + 1;
 	}
-	return NULL;
+	out[0] = '\0';
+	if (opt != NULL) {
+		int i = 0;
+		char *beg = opt + strlen(kwd);
+		while (beg[i] && beg[i] != '\n' && i + 8 < len)
+			i += uc_len(beg + i);
+		memcpy(out, beg, i);
+		out[i] = '\0';
+		return 0;
+	}
+	return 1;
 }
 
 /* read a line from the terminal */
@@ -298,13 +281,16 @@ static char *led_line(char *pref, char *post, char *ai,
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
 	int c, y, lnmode;
+	char cmp[64] = "";
 	char *cs;
 	sb = sbuf_make();
-	if (!pref)
+	if (pref == NULL)
 		pref = "";
-	if (!post)
-		post = "";
+	if (post == NULL || !post[0])
+		post = cmp;
 	while (1) {
+		if (hist != NULL)
+			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
 		led_printparts(ai, pref, sbuf_buf(sb), post, *kmap, syn);
 		c = term_read();
 		switch (c) {
@@ -358,15 +344,8 @@ static char *led_line(char *pref, char *post, char *ai,
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
-			if ((cs = led_readchar(c, *kmap))) {
-				sbuf_str(sb, cs);
-				if (cs[0] == '\0' && hist != NULL) {
-					char *ln = led_select(" ^^^ ", hist, syn);
-					if (ln != NULL)
-						sbuf_str(sb, ln);
-					free(ln);
-				}
-			}
+			if ((cs = led_readchar(c, *kmap)) != NULL)
+				sbuf_str(sb, cs[0] ? cs : cmp);
 		}
 		if (c == '\n')
 			led_printparts(ai, pref, sbuf_buf(sb), "", *kmap, syn);

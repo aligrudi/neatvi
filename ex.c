@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include "vi.h"
 
+#define REG(s)	((s)[0] != '\\' ? (unsigned char) (s)[0] : 0x80 | (unsigned char) (s)[1])
+
 int xrow, xoff, xtop;		/* current row, column, and top row */
 int xleft;			/* the first visible column */
 int xquit;			/* exit if set */
@@ -663,7 +665,7 @@ static void ex_yank(int reg, int beg, int end)
 
 static int ec_ye(char *loc, char *cmd, char *arg, char *txt)
 {
-	reg_put((unsigned char) arg[0], txt, 1);
+	reg_put(REG(arg), txt, 1);
 	return 0;
 }
 
@@ -672,7 +674,7 @@ static int ec_delete(char *loc, char *cmd, char *arg, char *txt)
 	int beg, end;
 	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
 		return 1;
-	ex_yank((unsigned char) arg[0], beg, end);
+	ex_yank(REG(arg), beg, end);
 	lbuf_edit(xb, NULL, beg, end);
 	xrow = beg;
 	return 0;
@@ -683,7 +685,7 @@ static int ec_yank(char *loc, char *cmd, char *arg, char *txt)
 	int beg, end;
 	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
 		return 1;
-	ex_yank((unsigned char) arg[0], beg, end);
+	ex_yank(REG(arg), beg, end);
 	return 0;
 }
 
@@ -693,7 +695,7 @@ static int ec_put(char *loc, char *cmd, char *arg, char *txt)
 	int lnmode;
 	char *buf;
 	int n = lbuf_len(xb);
-	buf = reg_get((unsigned char) arg[0], &lnmode);
+	buf = reg_get(REG(arg), &lnmode);
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	lbuf_edit(xb, buf, end, end);
@@ -998,7 +1000,7 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
 	int lnmode;
-	char *buf = reg_get((unsigned char) arg[0], &lnmode);
+	char *buf = reg_get(REG(arg), &lnmode);
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	xrow = beg;

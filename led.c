@@ -341,11 +341,14 @@ static char *led_line(char *pref, char *post, char *ai,
 			if (y > 0 && reg_get(y, &lnmode))
 				sbuf_str(sb, reg_get(y, &lnmode));
 			break;
+		case TK_CTL('a'):
+			sbuf_str(sb, cmp);
+			break;
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
 			if ((cs = led_readchar(c, *kmap)) != NULL)
-				sbuf_str(sb, cs[0] ? cs : cmp);
+				sbuf_str(sb, cs);
 		}
 		if (c == '\n')
 			led_printparts(ai, pref, sbuf_buf(sb), "", *kmap, syn);

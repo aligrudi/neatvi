@@ -285,16 +285,16 @@ static int ex_lineno(char **num)
 	int n = xrow;
 	switch ((unsigned char) **num) {
 	case '.':
-		*num += 1;
+		*num++;
 		break;
 	case '$':
 		n = lbuf_len(xb) - 1;
-		*num += 1;
+		*num++;
 		break;
 	case '\'':
 		if (lbuf_jump(xb, (unsigned char) *++(*num), &n, NULL))
 			return -1;
-		*num += 1;
+		*num++;
 		break;
 	case '/':
 	case '?':
@@ -304,7 +304,7 @@ static int ex_lineno(char **num)
 		if (isdigit((unsigned char) **num)) {
 			n = atoi(*num) - 1;
 			while (isdigit((unsigned char) **num))
-				*num += 1;
+				*num++;
 		}
 	}
 	while (**num == '-' || **num == '+') {

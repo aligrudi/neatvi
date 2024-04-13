@@ -982,7 +982,7 @@ static int vc_insert(int cmd)
 		xoff = lbuf_eol(xb, xrow);
 	xoff = ren_noeol(ln, xoff);
 	if (cmd == 'o')
-		xrow += 1;
+		xrow++;
 	if (cmd == 'i' || cmd == 'I')
 		off = xoff;
 	if (cmd == 'a' || cmd == 'A')

@@ -247,24 +247,14 @@ void ex_kwdset(char *kwd, int dir)
 
 static int ex_search(char **pat)
 {
-	struct sbuf *kw;
-	char *b = *pat;
-	char *e = b;
 	char *pat_re;
 	struct rstr *re;
 	int dir, row;
-	kw = sbuf_make();
-	while (*++e) {
-		if (*e == **pat)
-			break;
-		sbuf_chr(kw, (unsigned char) *e);
-		if (*e == '\\' && e[1])
-			e++;
-	}
-	if (sbuf_len(kw))
-		ex_kwdset(sbuf_buf(kw), **pat == '/' ? 1 : -1);
-	sbuf_free(kw);
-	*pat = *e ? e + 1 : e;
+	int delim = **pat;
+	char *kw = re_read(pat);
+	if (kw != NULL && *kw)
+		ex_kwdset(kw, delim == '/' ? 1 : -1);
+	free(kw);
 	if (ex_kwd(&pat_re, &dir))
 		return -1;
 	re = rstr_make(pat_re, xic ? RE_ICASE : 0);

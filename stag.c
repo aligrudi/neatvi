@@ -3,15 +3,14 @@
 #include "regex.h"
 
 #define LEN(a)	(sizeof(a) / sizeof((a)[0]))
-#define TAGRE	"^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>"
-#define TAGGRP	3
 
 static struct tag {
 	char *ext;	/* file extension */
+	int grp;	/* tag group in pat */
 	char *pat;	/* tag pattern */
-	int grp;	/* tag group */
+	char *loc;	/* optional tag location; may reference groups in pat */
 } tags[] = {
-	{".go", "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", 3},
+	{".go", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
 };
 
 static int tags_find(char *path)
@@ -25,9 +24,34 @@ static int tags_find(char *path)
 	return -1;
 }
 
-static int mktags(char *path, regex_t *re, int grp)
+static void replace(char *dst, char *rep, char *ln, regmatch_t *subs)
+{
+	while (rep[0]) {
+		if (rep[0] == '\\' && rep[1]) {
+			if (rep[1] >= '0' && rep[1] <= '9') {
+				int grp = rep[1] - '0';
+				int beg = subs[grp].rm_so;
+				int end = subs[grp].rm_eo;
+				int len = end - beg;
+				memcpy(dst, ln + beg, len);
+				dst += len;
+			} else {
+				*dst++ = rep[0];
+				*dst++ = rep[1];
+			}
+			rep++;
+		} else {
+			*dst++ = rep[0];
+		}
+		rep++;
+	}
+	dst[0] = '\0';
+}
+
+static int mktags(char *path, regex_t *re, int grp, char *rep)
 {
 	char ln[128];
+	char loc[256];
 	char tag[120];
 	int lnum = 0;
 	regmatch_t grps[32];
@@ -41,7 +65,11 @@ static int mktags(char *path, regex_t *re, int grp)
 				len = sizeof(tag) - 1;
 			memcpy(tag, ln + grps[grp].rm_so, len);
 			tag[len] = '\0';
-			printf("%s\t%s\t%d\n", tag, path, lnum + 1);
+			if (rep != NULL)
+				replace(loc, rep, ln, grps);
+			else
+				sprintf(loc, "%d", lnum + 1);
+			printf("%s\t%s\t%s\n", tag, path, loc);
 		}
 		lnum++;
 	}
@@ -67,7 +95,7 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "mktags: bad pattern %s\n", tags[idx].pat);
 			continue;
 		}
-		if (mktags(argv[i], &re, tags[idx].grp))
+		if (mktags(argv[i], &re, tags[idx].grp, tags[idx].loc))
 			fprintf(stderr, "mktags: failed to read %s\n", argv[i]);
 		regfree(&re);
 	}

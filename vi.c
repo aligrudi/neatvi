@@ -1732,7 +1732,7 @@ int main(int argc, char *argv[])
 	}
 	dir_init();
 	syn_init();
-	tag_init(getenv("TAGPATH") ? getenv("TAGPATH") : "tags");
+	tag_init();
 	if (!ex_init(argv + i)) {
 		if (xled || xvis)
 			term_init();

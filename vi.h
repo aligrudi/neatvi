@@ -226,7 +226,6 @@ extern int xru;
 extern int xhist;
 
 /* tag file handling */
-int tag_init(char *path);
-int tag_set(void);
+int tag_init(void);
 int tag_find(char *name, int *pos, int dir, char *path, int pathlen, char *cmd, int cmdlen);
 void tag_done(void);

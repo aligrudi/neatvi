@@ -10,18 +10,20 @@ static struct tag {
 	char *pat;	/* tag pattern */
 	char *loc;	/* optional tag location; may reference groups in pat */
 } tags[] = {
+	{".c", 1, "^[a-zA-Z_].*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\(.*[^;]$", "/^[a-zA-Z_].*\\<\\1\\>\\(.*[^;]$/"},
+	{".c", 1, "^#define +\\<([a-zA-Z_0-9]+)\\>", "/^#define +\\<(\\1)\\>/"},
 	{".go", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
+	{".sh", 2, "^(function +)?([a-zA-Z_][a-zA-Z_0-9]*)(\\(\\))? *\\{", "/^\\1\\2(\\(\\))? *\\{$/"},
+	{".py", 2, "^(def|class) +([a-zA-Z_][a-zA-Z_0-9]*)\\>", "/^\\1 +\\2\\>/"},
+	{".ex", 2, "^[ \t]*(def|defp|defmodule)[ \t]+([a-zA-Z_0-9]+\\>[?!]?)", "/^[ \\t]*\\1[ \\t]+\\2\\>[?!]?/"},
 };
 
-static int tags_find(char *path)
+static int tags_match(int idx, char *path)
 {
-	int i;
-	for (i = 0; i < LEN(tags); i++) {
-		int len = strlen(tags[i].ext);
-		if (strlen(path) > len && !strcmp(strchr(path, '\0') - len, tags[i].ext))
-			return i;
-	}
-	return -1;
+	int len = strlen(tags[idx].ext);
+	if (strlen(path) > len && !strcmp(strchr(path, '\0') - len, tags[idx].ext))
+		return 0;
+	return 1;
 }
 
 static void replace(char *dst, char *rep, char *ln, regmatch_t *subs)
@@ -79,25 +81,24 @@ static int mktags(char *path, regex_t *re, int grp, char *rep)
 
 int main(int argc, char *argv[])
 {
-	int i;
+	int i, j;
 	if (argc == 1) {
 		printf("usage: %s files >tags\n", argv[0]);
 		return 0;
 	}
 	for (i = 1; i < argc; i++) {
-		int idx = tags_find(argv[i]);
-		regex_t re;
-		if (idx < 0) {
-			fprintf(stderr, "mktags: no pattern for %s\n", argv[i]);
-			continue;
+		for (j = 0; j < LEN(tags); j++) {
+			regex_t re;
+			if (tags_match(j, argv[i]) != 0)
+				continue;
+			if (regcomp(&re, tags[j].pat, REG_EXTENDED) != 0) {
+				fprintf(stderr, "mktags: bad pattern %s\n", tags[j].pat);
+				continue;
+			}
+			if (mktags(argv[i], &re, tags[j].grp, tags[j].loc))
+				fprintf(stderr, "mktags: failed to read %s\n", argv[i]);
+			regfree(&re);
 		}
-		if (regcomp(&re, tags[idx].pat, REG_EXTENDED) != 0) {
-			fprintf(stderr, "mktags: bad pattern %s\n", tags[idx].pat);
-			continue;
-		}
-		if (mktags(argv[i], &re, tags[idx].grp, tags[idx].loc))
-			fprintf(stderr, "mktags: failed to read %s\n", argv[i]);
-		regfree(&re);
 	}
 	return 0;
 }

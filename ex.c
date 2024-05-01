@@ -247,24 +247,14 @@ void ex_kwdset(char *kwd, int dir)
 
 static int ex_search(char **pat)
 {
-	struct sbuf *kw;
-	char *b = *pat;
-	char *e = b;
 	char *pat_re;
 	struct rstr *re;
 	int dir, row;
-	kw = sbuf_make();
-	while (*++e) {
-		if (*e == **pat)
-			break;
-		sbuf_chr(kw, (unsigned char) *e);
-		if (*e == '\\' && e[1])
-			e++;
-	}
-	if (sbuf_len(kw))
-		ex_kwdset(sbuf_buf(kw), **pat == '/' ? 1 : -1);
-	sbuf_free(kw);
-	*pat = *e ? e + 1 : e;
+	int delim = **pat;
+	char *kw = re_read(pat);
+	if (kw != NULL && *kw)
+		ex_kwdset(kw, delim == '/' ? 1 : -1);
+	free(kw);
 	if (ex_kwd(&pat_re, &dir))
 		return -1;
 	re = rstr_make(pat_re, xic ? RE_ICASE : 0);
@@ -935,10 +925,6 @@ static int tag_goto(char *cw, int dir)
 	char path[120], cmd[120];
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
-	if (!tag_set()) {
-		ex_show("no tags");
-		return 1;
-	}
 	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
 		ex_show("not found");
 		return 1;
@@ -966,6 +952,12 @@ static int tag_goto(char *cw, int dir)
 static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 {
 	return tag_goto(arg, 0);
+}
+
+static int ec_tfree(char *loc, char *cmd, char *arg, char *txt)
+{
+	tag_done();
+	return 0;
 }
 
 static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
@@ -1121,6 +1113,7 @@ static struct excmd {
 	{"ta", "tag", ec_tag},
 	{"tn", "tnext", ec_tnext},
 	{"tp", "tprev", ec_tprev},
+	{"tf", "tfree", ec_tfree},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
 	{"w!", "write!", ec_write},

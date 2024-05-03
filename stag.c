@@ -10,20 +10,24 @@ static struct tag {
 	char *pat;	/* tag pattern */
 	char *loc;	/* optional tag location; may reference groups in pat */
 } tags[] = {
-	{".c", 1, "^[a-zA-Z_].*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\(.*[^;]$", "/^[a-zA-Z_].*\\<\\1\\>\\(.*[^;]$/"},
-	{".c", 1, "^#define +\\<([a-zA-Z_0-9]+)\\>", "/^#define +\\<(\\1)\\>/"},
-	{".go", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
-	{".sh", 2, "^(function +)?([a-zA-Z_][a-zA-Z_0-9]*)(\\(\\))? *\\{", "/^\\1\\2(\\(\\))? *\\{$/"},
-	{".py", 2, "^(def|class) +([a-zA-Z_][a-zA-Z_0-9]*)\\>", "/^\\1 +\\2\\>/"},
-	{".ex", 2, "^[ \t]*(def|defp|defmodule)[ \t]+([a-zA-Z_0-9]+\\>[?!]?)", "/^[ \\t]*\\1[ \\t]+\\2\\>[?!]?/"},
+	{"\\.[hc]$", 1, "^[a-zA-Z_].*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\(.*[^;]$", "/^[a-zA-Z_].*\\<\\1\\>\\(.*[^;]$/"},
+	{"\\.[hc]$", 1, "^#define +([a-zA-Z_0-9]+)\\>", "/^#define +\\1\\>/"},
+	{"\\.[hc]$", 1, "^struct +([a-zA-Z_0-9]+) *\\{", "/^struct +\\1 *\\{/"},
+	{"\\.go$", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
+	{"\\.sh$", 2, "^(function +)?([a-zA-Z_][a-zA-Z_0-9]*)(\\(\\))? *\\{", "/^\\1\\2(\\(\\))? *\\{$/"},
+	{"\\.py$", 2, "^(def|class) +([a-zA-Z_][a-zA-Z_0-9]*)\\>", "/^\\1 +\\2\\>/"},
+	{"\\.ex$", 2, "^[ \t]*(def|defp|defmodule)[ \t]+([a-zA-Z_0-9]+\\>[?!]?)", "/^[ \\t]*\\1[ \\t]+\\2\\>[?!]?/"},
 };
 
 static int tags_match(int idx, char *path)
 {
-	int len = strlen(tags[idx].ext);
-	if (strlen(path) > len && !strcmp(strchr(path, '\0') - len, tags[idx].ext))
-		return 0;
-	return 1;
+	regex_t re;
+	int ret;
+	if (regcomp(&re, tags[idx].ext, REG_EXTENDED) != 0)
+		return 1;
+	ret = regexec(&re, path, 0, NULL, 0);
+	regfree(&re);
+	return ret;
 }
 
 static void replace(char *dst, char *rep, char *ln, regmatch_t *subs)
@@ -95,6 +99,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "mktags: bad pattern %s\n", tags[j].pat);
 				continue;
 			}
+			fprintf(stderr, "%s\n", argv[i]);
 			if (mktags(argv[i], &re, tags[j].grp, tags[j].loc))
 				fprintf(stderr, "mktags: failed to read %s\n", argv[i]);
 			regfree(&re);

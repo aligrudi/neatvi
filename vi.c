@@ -1675,6 +1675,8 @@ static void vi(void)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
 		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
+		if (mod & 4 && w_cnt == 1)
+			vi_switch(w_cur);
 		if (mod & 4 && w_cnt > 1) {
 			char msg[sizeof(vi_msg)];
 			int id = w_cur;

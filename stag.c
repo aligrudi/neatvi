@@ -65,7 +65,7 @@ static int mktags(char *path, regex_t *re, int grp, char *rep)
 	if (fp == NULL)
 		return 1;
 	while (fgets(ln, sizeof(ln), fp) != NULL) {
-		if (regexec(re, ln, LEN(grps), grps, 0) == 0) {
+		if (regexec(re, ln, LEN(grps), grps, REG_NEWLINE) == 0) {
 			int len = grps[grp].rm_eo - grps[grp].rm_so;
 			if (len + 1 > sizeof(tag))
 				len = sizeof(tag) - 1;

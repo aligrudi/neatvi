@@ -17,7 +17,7 @@ keymap specified with :cm).
 Sadly, VTE-based terminals such as GNOME's implement a
 backward-incompatible extension of virtual terminal escape codes to
 render bidirectional text by default.  When using these terminal, the
-value of LNPREF macro in conf.h needs to be edited.
+value of LNPREF macro in conf.h needs to be changed to "\33[8l".
 
 COMMANDS
 --------
@@ -73,8 +73,9 @@ Other noteworthy differences with vi(1):
   patterns, conf.h variables, and even tags files.
 - If paths start with =, they are assumed to be relative to the
   directory of the current file.
-- Neatvi highlights files whose names ends with ls as directory
-  listings; the gl command can be used to edit its files.
+- Neatvi highlights files whose names end with ls as directory
+  listings; the gl command edits the file under the cursor.  For
+  instance, git ls-files >ls && neatvi ls.
 
 Note that in :ye command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files

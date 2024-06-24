@@ -47,7 +47,11 @@ Commands not available in ex(1):
   delete the current buffer, and renumber buffers, respectively.
 :ye reg
   Reads dot-terminated lines (similar to :a command) from ex input
-  and copies them to the given register.
+  and copies them to the given yank buffer.
+:rx reg cmd
+  Like :! command, executes cmd.  However, the contents of the
+  specified yank buffer is given to the command as input, and the
+  output of the command is written to that yank buffer.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -76,10 +80,11 @@ Other noteworthy differences with vi(1):
 - Neatvi highlights files whose names end with ls as directory
   listings; the gl command edits the file under the cursor.  For
   instance, git ls-files >ls && neatvi ls.
+- Neatvi supports extended yank buffers, like \x.
 
 Note that in :ye command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
-passed to :so).  This allows setting the value of registers in ex
+passed to :so).  This allows setting the value of yank buffers in ex
 files, as the following example shows:
 
   ye a
@@ -147,23 +152,32 @@ Special yank buffers:
 - " the default yank buffer
 - ; the current line
 - . the last vi command
+- # cursor line number
+- ^ cursor line offset
+- \/ search history
+- \: ex command history
+- \! pipe command history
 
-Q-COMMANDS
-----------
+QUICK ACCESS
+------------
 
-For qX command in normal mode, Neatvi executes ECMD (defined in conf.h)
-with the following parameters:
+When q is pressed in normal mode, Neatvi prints the list of buffers at
+the bottom of the screen and waits for a key.  If the key is a digit,
+it switches to the corresponding buffer.  If it is a letter and an
+extended buffer with that name is defined, the contents of that buffer
+is executed.  Otherwise, Neatvi executes ECMD (defined in conf.h) with
+the following parameters:
 - X (the key following q)
 - current file
 - current line number
 - current line offset
 
-ECMD must print a line of ex commands and Neatvi executes this line.
-Q-commands can be used to add interesting features to Neatvi, such as
-language-dependent IDE features, for instance by connecting to an LSP
-(language server protocol) server.  As an example, the following
-script shows how to use gopls to implement goto definition and find
-references for Go.
+What ECMD writes to its standard output, Neatvi executes as ex
+commands.  Q-commands can be used to add interesting features to
+Neatvi, such as language-dependent IDE features, for instance by
+connecting to an LSP (language server protocol) server.  As an
+example, the following script shows how to use gopls to implement goto
+definition and find references for Go.
 
   # Compile.
   if test "$1" = "c"; then

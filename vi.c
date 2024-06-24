@@ -62,6 +62,14 @@ static void vi_drawmsg(void)
 	xleft = oleft;
 }
 
+static void vi_drawquick(char *s, int row)
+{
+	int oleft = xleft;
+	xleft = 0;
+	led_printmsg(s, row, xhl ? "---" : "___");
+	xleft = oleft;
+}
+
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
@@ -194,6 +202,12 @@ static void vi_wfix(void)
 		xtop = xtop + xrows + xrows / 2 <= xrow ?
 				xrow - xrows / 2 : xrow - xrows + 1;
 	xoff = ren_noeol(lbuf_get(xb, xrow), xoff);
+}
+
+static int vi_wmirror(void)
+{
+	vi_wonly();
+	return vi_wsplit();
 }
 
 static int vi_buf[128];
@@ -1183,10 +1197,8 @@ static int vc_definition(int newwin)
 	if ((s = strstr(ln, cw)) != NULL)
 		o = s - ln;
 	vi_marksave();
-	if (newwin) {
-		vi_wonly();
-		vi_wsplit();
-	}
+	if (newwin)
+		vi_wmirror();
 	xrow = r;
 	xoff = o;
 	return 0;
@@ -1203,7 +1215,7 @@ static int vi_openpath(char *path, int ln, int newwin)
 		return 1;
 	}
 	if (newwin)
-		vi_wsplit();
+		vi_wmirror();
 	snprintf(ex, sizeof(ex), "e %s", path);
 	if (ex_command(ex))
 		return 1;
@@ -1237,8 +1249,7 @@ static int vc_tag(int newwin)
 		return 1;
 	if (newwin) {
 		ex_command("po");
-		vi_wonly();
-		vi_wsplit();
+		vi_wmirror();
 		ex_command(ex);
 	}
 	return 0;
@@ -1258,7 +1269,7 @@ static void vc_execute(void)
 {
 	static int reg = -1;
 	int lnmode;
-	int c = vi_read();
+	int c = (c = vi_read()) == '\\' ? 0x80 | vi_read() : c;
 	char *buf = NULL;
 	int i;
 	if (TK_INT(c))
@@ -1289,13 +1300,46 @@ static int vc_ecmd(int c, int newwin)
 		free(out);
 		return 1;
 	}
-	if (newwin) {
-		vi_wonly();
-		vi_wsplit();
-	}
+	if (newwin)
+		vi_wmirror();
 	ex_command(out);
 	free(out);
 	return 0;
+}
+
+static int vc_quick(int newwin)
+{
+	char *ls[16] = {NULL};
+	char cmd[256];
+	int c, i;
+	int n = ex_list(ls, MIN(10, xrows - 1));
+	for (i = 1; i < n; i++) {
+		snprintf(cmd, sizeof(cmd), "[%d] %s", i, ls[i]);
+		vi_drawquick(cmd, xrows - n + i);
+	}
+	vi_drawquick("QUICK LEAP", xrows - i);
+	c = vi_read();
+	if (TK_INT(c))
+		return 1;
+	if (isdigit(c)) {
+		i = c - '0';
+		if (ls[i] == NULL)
+			return 1;
+		if (newwin)
+			vi_wmirror();
+		snprintf(cmd, sizeof(cmd), "e %s", ls[i]);
+		return ex_command(cmd);
+	}
+	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
+		char *reg = reg_get(0x80 | c, NULL);
+		if (newwin)
+			vi_wmirror();
+		term_push(reg, strlen(reg));
+		return 0;
+	}
+	if (isalpha(c))
+		return vc_ecmd(c, newwin);
+	return 1;
 }
 
 static void sigwinch(int signo)
@@ -1471,9 +1515,8 @@ static void vi(void)
 							mod = 5;
 				}
 				if (k == 'q') {
-					int j = vi_read();
-					if (isalpha(j) && !vc_ecmd(j, 1))
-						mod = 5;
+					vc_quick(1);
+					mod = 5;
 				}
 				break;
 			case ':':
@@ -1613,9 +1656,8 @@ static void vi(void)
 					mod = 2;
 				break;
 			case 'q':
-				k = vi_read();
-				if (isalpha(k) && !vc_ecmd(k, 0))
-					mod = 5;
+				vc_quick(0);
+				mod = 5;
 				break;
 			case 'r':
 				if (!vc_replace())

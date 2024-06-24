@@ -423,6 +423,14 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 	return 0;
 }
 
+int ex_list(char **ls, int size)
+{
+	int i;
+	for (i = 0; i < LEN(bufs) && bufs[i].lb && i < size; i++)
+		ls[i] = bufs[i].path;
+	return i;
+}
+
 static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (!strchr(cmd, '!'))

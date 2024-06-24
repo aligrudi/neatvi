@@ -1,7 +1,7 @@
 /*
  * NEATVI Editor
  *
- * Copyright (C) 2015-2023 Ali Gholami Rudi <ali at rudi dot ir>
+ * Copyright (C) 2015-2024 Ali Gholami Rudi <ali at rudi dot ir>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1166,8 +1166,12 @@ static int vc_replace(void)
 		sbuf_str(sb, cs);
 	sbuf_str(sb, post);
 	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
-	off += cnt - 1;
-	xoff = off;
+	if (cs[0] == '\n') {
+		xrow += cnt;
+		xoff = 0;
+	} else {
+		xoff = off + cnt - 1;
+	}
 	sbuf_free(sb);
 	free(pref);
 	free(post);

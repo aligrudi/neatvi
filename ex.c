@@ -227,6 +227,17 @@ static char *ex_plus(char *src, char *dst)
 	return src;
 }
 
+/* read register name */
+static char *ex_reg(char *src, int *reg)
+{
+	while (*src == ' ')
+		src++;
+	*reg = REG(src);
+	while (*src && *src != ' ' && *src != '\t')
+		src++;
+	return src;
+}
+
 /* the previous search keyword */
 int ex_kwd(char **kwd, int *dir)
 {
@@ -410,6 +421,14 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 		}
 	}
 	return 0;
+}
+
+int ex_list(char **ls, int size)
+{
+	int i;
+	for (i = 0; i < LEN(bufs) && bufs[i].lb && i < size; i++)
+		ls[i] = bufs[i].path;
+	return i;
 }
 
 static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
@@ -818,6 +837,23 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	return 0;
 }
 
+static int ec_rexec(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *rep, *ecmd;
+	int reg = 0;
+	if (!xwa)
+		ex_modifiedbuffer(NULL);
+	arg = ex_reg(arg, &reg);
+	if (reg <= 0)
+		return 1;
+	if (!(ecmd = ex_pathexpand(arg, 1)))
+		return 1;
+	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
+	reg_put(reg, rep != NULL ? rep : "", 1);
+	free(rep);
+	return 0;
+}
+
 static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
@@ -1129,6 +1165,7 @@ static struct excmd {
 	{"ye", "yankex", ec_ye},
 	{"so", "source", ec_source},
 	{"!", "!", ec_exec},
+	{"rx", "rx", ec_rexec},
 	{"make", "make", ec_make},
 	{"ft", "filetype", ec_ft},
 	{"cm", "cmap", ec_cmap},

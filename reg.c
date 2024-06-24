@@ -17,6 +17,8 @@ static char *reg_getraw(int c, int *ln)
 char *reg_get(int c, int *lnmode)
 {
 	static char ln[1024];
+	static char linno[16];
+	static char colno[16];
 	if (c == '"')
 		c = 0;
 	if (c == ';') {
@@ -27,6 +29,14 @@ char *reg_get(int c, int *lnmode)
 		if (lnmode != NULL)
 			*lnmode = 1;
 		return ln;
+	}
+	if (c == '#') {
+		snprintf(linno, sizeof(linno), "%d", xrow + 1);
+		return linno;
+	}
+	if (c == '^') {
+		snprintf(colno, sizeof(colno), "%d", xoff + 1);
+		return colno;
 	}
 	return reg_getraw(c, lnmode);
 }

@@ -1331,11 +1331,10 @@ static int vc_quick(int newwin)
 		return ex_command(cmd);
 	}
 	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
-		char *reg = reg_get(0x80 | c, NULL);
+		char cmd[8] = {'@', '\\', c};
 		if (newwin)
 			vi_wmirror();
-		term_push(reg, strlen(reg));
-		return 0;
+		return ex_command(cmd);
 	}
 	if (isalpha(c))
 		return vc_ecmd(c, newwin);

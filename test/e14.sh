@@ -1,6 +1,6 @@
 # ex commands
 echo    ":e $1"
-echo    ":ye x"
+echo    ":rs x"
 echo    "a"
 echo    "b"
 echo    "c"

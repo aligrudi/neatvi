@@ -69,7 +69,7 @@ New key mappings:
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
 - zj, zk, zD: equivalent to :b+, :b-, :b !.
 - zJ, zK: equivalent to :next, :prev.
-- qX in normal mode: see q-commands section (X can be any letter).
+- q in normal mode: see quick access section.
 - ^a in ex, search, and pipe prompts: inserts from history lines.
 
 Other noteworthy differences with vi(1):
@@ -176,8 +176,8 @@ What ECMD writes to its standard output, Neatvi executes as ex
 commands.  Q-commands can be used to add interesting features to
 Neatvi, such as language-dependent IDE features, for instance by
 connecting to an LSP (language server protocol) server.  As an
-example, the following script shows how to use gopls to implement goto
-definition and find references for Go.
+example, the following script shows how to use gopls to implement go
+to definition and find references for Go.
 
   # Compile.
   if test "$1" = "c"; then

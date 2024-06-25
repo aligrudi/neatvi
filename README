@@ -1,7 +1,9 @@
 NEATVI
 ======
 
-Neatvi is a vi/ex editor.  It can edit bidirectional UTF-8 text.
+Neatvi is a small vi/ex editor for editing UTF-8 text.  It supports
+syntax highlighting, multiple windows, right-to-left languages, and
+keymaps.
 
 CONFIGURATION
 -------------

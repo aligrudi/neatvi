@@ -165,11 +165,11 @@ QUICK ACCESS
 
 When q is pressed in normal mode, Neatvi prints the list of buffers at
 the bottom of the screen and waits for a key.  If the key is a digit,
-it switches to the corresponding buffer.  If it is a letter and an
-extended buffer with that name is defined, the contents of that buffer
+it switches to the corresponding buffer.  If it is a letter and the
+extended buffer with that letter is defined, the contents of that buffer
 is executed.  Otherwise, Neatvi executes ECMD (defined in conf.h) with
 the following parameters:
-- X (the key following q)
+- the letter
 - current file
 - current line number
 - current line offset

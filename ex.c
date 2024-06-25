@@ -673,7 +673,7 @@ static void ex_yank(int reg, int beg, int end)
 	free(buf);
 }
 
-static int ec_ye(char *loc, char *cmd, char *arg, char *txt)
+static int ec_rs(char *loc, char *cmd, char *arg, char *txt)
 {
 	reg_put(REG(arg), txt, 1);
 	return 0;
@@ -837,7 +837,7 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	return 0;
 }
 
-static int ec_rexec(char *loc, char *cmd, char *arg, char *txt)
+static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *rep, *ecmd;
 	int reg = 0;
@@ -1162,10 +1162,10 @@ static struct excmd {
 	{"x", "xit", ec_write},
 	{"x!", "xit!", ec_write},
 	{"y", "yank", ec_yank},
-	{"ye", "yankex", ec_ye},
 	{"so", "source", ec_source},
 	{"!", "!", ec_exec},
-	{"rx", "rx", ec_rexec},
+	{"rs", "rs", ec_rs},
+	{"rx", "rx", ec_rx},
 	{"make", "make", ec_make},
 	{"ft", "filetype", ec_ft},
 	{"cm", "cmap", ec_cmap},
@@ -1269,7 +1269,7 @@ static char *ex_txt(char *src, char **dst, char *excmd)
 	int c0 = excmd[0];
 	int c1 = c0 ? excmd[1] : 0;
 	*dst = NULL;
-	if (c0 == 'y' && c1 == 'e' && src[0]) {
+	if (c0 == 'r' && c1 == 's' && src[0]) {
 		char *beg = src;
 		char *res;
 		while (src[0] && (src[0] != '\n' || src[1] != '.' || src[2] != '\n'))
@@ -1281,7 +1281,7 @@ static char *ex_txt(char *src, char **dst, char *excmd)
 		*dst = res;
 		return src[0] ? src + 3 : src;
 	}
-	if ((c0 == 'y' && c1 == 'e') || (c1 == 0 && (c0 == 'i' || c0 == 'a' || c0 == 'c'))) {
+	if ((c0 == 'r' && c1 == 's') || (c1 == 0 && (c0 == 'i' || c0 == 'a' || c0 == 'c'))) {
 		struct sbuf *sb = sbuf_make();
 		char *s;
 		while ((s = ex_read(""))) {

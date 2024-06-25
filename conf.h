@@ -17,7 +17,7 @@ static struct filetype {
 	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
 	{"sh", "\\.sh$", "^(function +)?%s(\\(\\))? *\\{", "^(function +)?[a-zA-Z_0-9]+(\\(\\))? *\\{"},
 	{"go", "\\.go$", "^(func|var|const|type)( +\\(.*\\))? +%s\\>", "^(func|type)\\>.*\\{$"},
-	{"py", "\\.py$", "^(def|class) +\\<%s\\>"},
+	{"py", "\\.py$", "^(def|class) +\\<%s\\>", "^(def|class) "},
 	{"bib", "bib$"},
 	{"nm", "\\.nm$"},
 	{"diff", "\\.(patch|diff)$"},

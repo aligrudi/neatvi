@@ -1301,18 +1301,18 @@ static int vc_ecmd(int c, int newwin)
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
 	if ((out = cmd_pipe(cmd, NULL, 2)) == NULL) {
 		snprintf(vi_msg, sizeof(vi_msg), "command failed");
-		return 1;
+		return 0;
 	}
 	if (!strchr(out, '\n')) {
 		snprintf(vi_msg, sizeof(vi_msg), "no output");
 		free(out);
-		return 1;
+		return 0;
 	}
 	if (newwin)
 		vi_wmirror();
 	ex_command(out);
 	free(out);
-	return 0;
+	return VC_ALL;
 }
 
 static int vc_quick(int newwin)
@@ -1332,7 +1332,7 @@ static int vc_quick(int newwin)
 	if (isdigit(c)) {
 		i = c - '0';
 		if (ls[i] == NULL)
-			return 0;
+			return VC_WIN;
 		if (newwin)
 			vi_wmirror();
 		snprintf(cmd, sizeof(cmd), "e %s", ls[i]);
@@ -1347,7 +1347,7 @@ static int vc_quick(int newwin)
 		return newwin ? VC_ALL : VC_WIN;
 	}
 	if (isalpha(c))
-		return vc_ecmd(c, newwin);
+		return vc_ecmd(c, newwin) != 0 ? VC_ALL : VC_WIN;
 	return VC_WIN;
 }
 

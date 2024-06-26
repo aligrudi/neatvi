@@ -1328,7 +1328,7 @@ static int vc_quick(int newwin)
 	vi_drawquick("QUICK LEAP", xrows - i);
 	c = vi_read();
 	if (TK_INT(c))
-		return 0;
+		return VC_WIN;
 	if (isdigit(c)) {
 		i = c - '0';
 		if (ls[i] == NULL)

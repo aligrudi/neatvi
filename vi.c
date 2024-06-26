@@ -898,7 +898,7 @@ static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 	free(region);
 	free(pref);
 	free(post);
-	return VC_WIN;
+	return r1 == r2 ? VC_ROW : VC_WIN;
 }
 
 static int vi_pipe(int r1, int r2)

@@ -760,7 +760,7 @@ static char *lbuf_region(struct lbuf *lb, int r1, int o1, int r2, int o2)
 	return sbuf_done(sb);
 }
 
-static void vi_yank(int r1, int o1, int r2, int o2, int lnmode)
+static int vi_yank(int r1, int o1, int r2, int o2, int lnmode)
 {
 	char *region;
 	region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
@@ -768,9 +768,10 @@ static void vi_yank(int r1, int o1, int r2, int o2, int lnmode)
 	free(region);
 	xrow = r1;
 	xoff = lnmode ? xoff : o1;
+	return 0;
 }
 
-static void vi_delete(int r1, int o1, int r2, int o2, int lnmode)
+static int vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 {
 	char *pref, *post;
 	char *region;
@@ -790,6 +791,7 @@ static void vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 	xoff = lnmode ? lbuf_indents(xb, xrow) : o1;
 	free(pref);
 	free(post);
+	return !lnmode && r1 == r2 ? VC_ROW : VC_WIN;
 }
 
 static int linecount(char *s)
@@ -835,7 +837,7 @@ static char *vi_indents(char *ln)
 	return sbuf_done(sb);
 }
 
-static void vi_change(int r1, int o1, int r2, int o2, int lnmode)
+static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 {
 	char *region;
 	int row, off;
@@ -856,9 +858,12 @@ static void vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	}
 	free(pref);
 	free(post);
+	if (rep == NULL)
+		return 0;
+	return r1 == r2 && row == 1 ? VC_ROW : VC_WIN;
 }
 
-static void vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
+static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 {
 	char *pref, *post;
 	char *region, *s;
@@ -893,16 +898,17 @@ static void vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 	free(region);
 	free(pref);
 	free(post);
+	return VC_WIN;
 }
 
-static void vi_pipe(int r1, int r2)
+static int vi_pipe(int r1, int r2)
 {
 	char *text;
 	char *rep;
 	int kmap = 0;
 	char *cmd = vi_prompt("!", &kmap, reg_getln('!'));
 	if (!cmd)
-		return;
+		return 0;
 	reg_put('!', cmd, 1);
 	reg_putln('!', cmd);
 	text = lbuf_cp(xb, r1, r2 + 1);
@@ -912,9 +918,10 @@ static void vi_pipe(int r1, int r2)
 	free(cmd);
 	free(text);
 	free(rep);
+	return VC_WIN;
 }
 
-static void vi_shift(int r1, int r2, int dir)
+static int vi_shift(int r1, int r2, int dir)
 {
 	struct sbuf *sb;
 	char *ln;
@@ -935,6 +942,7 @@ static void vi_shift(int r1, int r2, int dir)
 	}
 	xrow = r1;
 	xoff = lbuf_indents(xb, xrow);
+	return r1 == r2 ? VC_ROW : VC_WIN;
 }
 
 static int vc_motion(int cmd)
@@ -972,24 +980,22 @@ static int vc_motion(int cmd)
 		if (o2 < lbuf_eol(xb, r2))
 			o2 = ren_noeol(lbuf_get(xb, r2), o2) + 1;
 	if (cmd == 'y')
-		vi_yank(r1, o1, r2, o2, lnmode);
+		return vi_yank(r1, o1, r2, o2, lnmode);
 	if (cmd == 'd')
-		vi_delete(r1, o1, r2, o2, lnmode);
+		return vi_delete(r1, o1, r2, o2, lnmode);
 	if (cmd == 'c')
-		vi_change(r1, o1, r2, o2, lnmode);
+		return vi_change(r1, o1, r2, o2, lnmode);
 	if (cmd == '~' || cmd == 'u' || cmd == 'U')
-		vi_case(r1, o1, r2, o2, lnmode, cmd);
+		return vi_case(r1, o1, r2, o2, lnmode, cmd);
 	if (cmd == '>' || cmd == '<')
-		vi_shift(r1, r2, cmd == '>' ? +1 : -1);
+		return vi_shift(r1, r2, cmd == '>' ? +1 : -1);
 	if (cmd == '!') {
 		if (mv == '{' || mv == '}')
 			if (lbuf_get(xb, r2) && lbuf_get(xb, r2)[0] == '\n' && r1 < r2)
 				r2--;
-		vi_pipe(r1, r2);
+		return vi_pipe(r1, r2);
 	}
-	if (strchr("~uUxXD", cmd))
-		return VC_ROW;
-	return cmd == 'y' ? 0 : VC_WIN;
+	return 0;
 }
 
 static int vc_insert(int cmd)
@@ -1025,7 +1031,9 @@ static int vc_insert(int cmd)
 	}
 	free(pref);
 	free(post);
-	return rep ? VC_WIN : 0;
+	if (rep == NULL)
+		return 0;
+	return strchr("iaIA", cmd) != NULL && row == 1 ? VC_ROW : VC_WIN;
 }
 
 static int vc_put(int cmd)

@@ -1307,7 +1307,7 @@ static int vc_ecmd(int c, int newwin)
 	char *out;
 	snprintf(cmd, sizeof(cmd), "%s %c %s %d %d",
 		conf_ecmd(), c, ex_path(), xrow + 1, xoff + 1);
-	if ((out = cmd_pipe(cmd, NULL, 2)) == NULL) {
+	if ((out = cmd_pipe(cmd, NULL, 1)) == NULL) {
 		snprintf(vi_msg, sizeof(vi_msg), "command failed");
 		return 0;
 	}

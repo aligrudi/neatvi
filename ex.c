@@ -93,6 +93,7 @@ static void bufs_init(int idx, char *path)
 static int bufs_open(char *path)
 {
 	int idx = bufs_findroom();
+	path = path[0] == '/' && path[1] == '\0' ? "" : path;
 	bufs_init(idx, path);
 	return idx;
 }

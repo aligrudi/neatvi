@@ -1343,7 +1343,7 @@ static int vc_quick(int newwin)
 			return VC_WIN;
 		if (newwin)
 			vi_wmirror();
-		snprintf(cmd, sizeof(cmd), "e %s", ls[i]);
+		snprintf(cmd, sizeof(cmd), "e %s", ls[i][0] ? ls[i] : "/");
 		ex_command(cmd);
 		return newwin ? VC_ALL : VC_WIN;
 	}

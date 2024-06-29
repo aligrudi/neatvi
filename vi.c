@@ -37,7 +37,7 @@ static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
 static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
-static int vi_scroll;		/* scroll amount for ^f and ^d*/
+static int vi_scroll;		/* scroll amount for ^f and ^d */
 static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
 static int w_cnt = 1;		/* window count */
 static int w_cur;		/* active window identifier */
@@ -85,21 +85,20 @@ static void vi_drawrow(int row)
 	syn_context(0);
 }
 
-/* redraw the screen */
-static void vi_drawagain(int xcol, int lineonly)
+/* redraw the given row; if row is -1 redraws all rows */
+static void vi_drawagain(int xcol, int row)
 {
 	int i;
 	term_record();
 	for (i = xtop; i < xtop + xrows; i++)
-		if (!lineonly || i == xrow)
+		if (row < 0 || i == row)
 			vi_drawrow(i);
 	vi_drawmsg();
-	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 	term_commit();
 }
 
 /* update the screen */
-static void vi_drawupdate(int xcol, int otop)
+static void vi_drawupdate(int otop)
 {
 	int i = 0;
 	if (otop != xtop) {
@@ -115,11 +114,9 @@ static void vi_drawupdate(int xcol, int otop)
 			for (i = 0; i < n; i++)
 				vi_drawrow(xtop + i);
 		}
-		term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 		term_commit();
 	}
 	vi_drawmsg();
-	term_pos(xrow, led_pos(lbuf_get(xb, i), xcol));
 }
 
 /* update the screen by removing lines r1 to r2 before an input command */
@@ -1193,7 +1190,7 @@ static int vc_replace(void)
 	sbuf_free(sb);
 	free(pref);
 	free(post);
-	return VC_WIN;
+	return cs[0] != '\n' ? VC_ROW : VC_WIN;
 }
 
 static void vi_marksave(void)
@@ -1223,7 +1220,7 @@ static int vc_definition(int newwin)
 		vi_wmirror();
 	xrow = r;
 	xoff = o;
-	return VC_WIN;
+	return VC_ROW;
 }
 
 static int vc_openpath(int ln, int newwin)
@@ -1376,7 +1373,7 @@ static void vi(void)
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
-	vi_drawagain(xcol, 0);
+	vi_drawagain(xcol, -1);
 	term_pos(xrow - xtop, led_pos(lbuf_get(xb, xrow), xcol));
 	while (!xquit) {
 		int mod = 0;
@@ -1723,7 +1720,7 @@ static void vi(void)
 			strcpy(msg, vi_msg);
 			if (ru)
 				vc_status();
-			vi_drawagain(vi_off2col(xb, xrow, xoff), 0);
+			vi_drawagain(vi_off2col(xb, xrow, xoff), -1);
 			strcpy(vi_msg, msg);
 			w_tmp = 0;
 			vi_switch(id);
@@ -1731,10 +1728,13 @@ static void vi(void)
 		if (ru && !vi_msg[0])
 			vc_status();
 		if (mod || xleft != oleft) {
-			vi_drawagain(xcol, mod == VC_ROW && xleft == oleft && xrow == orow);
+			int lineonly = mod == VC_ROW && xleft == oleft && xtop == otop;
+			vi_drawagain(xcol, lineonly ? xrow : -1);
+			if (lineonly && xrow != orow)
+				vi_drawagain(xcol, orow);
 		} else {
 			if (xtop != otop)
-				vi_drawupdate(xcol, otop);
+				vi_drawupdate(otop);
 			if (xhll && xrow != orow && orow >= xtop && orow < xtop + xrows)
 				vi_drawrow(orow);
 			if (xhll && xrow != orow)

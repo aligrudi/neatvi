@@ -1538,7 +1538,7 @@ static void vi(void)
 					}
 					term_record();
 					if (!ex_command(ln))
-						mod = 5;
+						mod = VC_ALL;
 					term_commit();
 					reg_put(':', ln, 1);
 				}

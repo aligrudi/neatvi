@@ -1033,7 +1033,7 @@ static int vc_insert(int cmd)
 	free(post);
 	if (rep == NULL)
 		return 0;
-	return strchr("iaIA", cmd) != NULL && row == 1 ? VC_ROW : VC_WIN;
+	return row == 1 ? VC_ROW : VC_WIN;
 }
 
 static int vc_put(int cmd)
@@ -1073,7 +1073,7 @@ static int vc_put(int cmd)
 		xoff = off + uc_slen(buf) * cnt - 1;
 		sbuf_free(sb);
 	}
-	return VC_WIN;
+	return !lnmode && strchr(buf, '\n') == NULL ? VC_ROW : VC_WIN;
 }
 
 static int join_spaces(char *prev, char *next)

@@ -1583,17 +1583,14 @@ static void vi(void)
 				switch (k) {
 				case '\n':
 					xtop = vi_arg1 ? vi_arg1 : xrow;
-					mod = VC_WIN;
 					break;
 				case '.':
 					n = vi_arg1 ? vi_arg1 : xrow;
 					xtop = MAX(0, n - xrows / 2);
-					mod = VC_WIN;
 					break;
 				case '-':
 					n = vi_arg1 ? vi_arg1 : xrow;
 					xtop = MAX(0, n - xrows + 1);
-					mod = VC_WIN;
 					break;
 				case 'l':
 				case 'r':

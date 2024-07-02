@@ -131,7 +131,7 @@ static void vi_drawfix(int r1, int r2, int n, int preview)
 	term_pos(r1 - xtop, 0);
 	term_room(r1 - r2 - 1 + n);
 	/* new lines are visible */
-	if (r2 - r1 + 1 > n && r1 + n + 1 < xrows) {
+	if (r2 - r1 + 1 > n && r1 + n < xtop + xrows) {
 		xtop -= dis;
 		for (i = r1 + n - dis; i < xtop + xrows; i++)
 			vi_drawrow(i);

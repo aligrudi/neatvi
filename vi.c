@@ -25,10 +25,11 @@
 #include "vi.h"
 
 /* parts of the screen to update; returned from vc_* functions */
+#define VC_COL	1	/* only obtain cursor column from xoff */
 #define VC_ROW	2	/* only the current line was updated */
-#define VC_WIN	1	/* only the current window was updated */
-#define VC_ALT	4	/* only the other window was updated */
-#define VC_ALL	5	/* all windows were updated */
+#define VC_WIN	4	/* only the current window was updated */
+#define VC_ALT	8	/* only the other window was updated */
+#define VC_ALL	12	/* all windows were updated */
 
 static char vi_msg[EXLEN];	/* current message */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
@@ -119,13 +120,28 @@ static void vi_drawupdate(int otop)
 	vi_drawmsg();
 }
 
-/* update the screen by removing lines r1 to r2 before an input command */
-static void vi_drawrm(int r1, int r2, int newln)
+/* update the screen by replacing lines r1 to r2 with n lines */
+static void vi_drawfix(int r1, int r2, int n, int preview)
 {
+	int dis = preview ? r1 - r2 - 1 + n : 0;
+	int i;
 	r1 = MIN(MAX(r1, xtop), xtop + xrows - 1);
 	r2 = MIN(MAX(r2, xtop), xtop + xrows - 1);
+	term_record();
 	term_pos(r1 - xtop, 0);
-	term_room(r1 - r2 + newln);
+	term_room(r1 - r2 - 1 + n);
+	/* new lines are visible */
+	if (r2 - r1 + 1 > n && r1 + n + 1 < xrows) {
+		xtop -= dis;
+		for (i = r1 + n - dis; i < xtop + xrows; i++)
+			vi_drawrow(i);
+		xtop += dis;
+	}
+	/* draw replaced lines */
+	for (i = r1; i < xtop + xrows; i++)
+		if (i < r1 + n)
+			vi_drawrow(i);
+	term_commit();
 }
 
 static int vi_switch(int id)
@@ -788,7 +804,8 @@ static int vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 	xoff = lnmode ? lbuf_indents(xb, xrow) : o1;
 	free(pref);
 	free(post);
-	return !lnmode && r1 == r2 ? VC_ROW : VC_WIN;
+	vi_drawfix(r1, r2, !lnmode, 0);
+	return VC_COL;
 }
 
 static int linecount(char *s)
@@ -845,7 +862,7 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	free(region);
 	pref = lnmode ? vi_indents(lbuf_get(xb, r1)) : uc_sub(lbuf_get(xb, r1), 0, o1);
 	post = lnmode ? uc_dup("\n") : uc_sub(lbuf_get(xb, r2), o2, -1);
-	vi_drawrm(r1, r2, 0);
+	vi_drawfix(r1, r2, 1, 1);
 	rep = vi_input(pref, post, &row, &off);
 	if (rep) {
 		lbuf_edit(xb, rep, r1, r2 + 1);
@@ -857,7 +874,8 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	free(post);
 	if (rep == NULL)
 		return 0;
-	return r1 == r2 && row == 1 ? VC_ROW : VC_WIN;
+	vi_drawfix(r1, r1 + row - 1, row, 0);
+	return VC_COL;
 }
 
 static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
@@ -895,7 +913,8 @@ static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 	free(region);
 	free(pref);
 	free(post);
-	return r1 == r2 ? VC_ROW : VC_WIN;
+	vi_drawfix(r1, r2, r2 - r1 + 1, 0);
+	return VC_COL;
 }
 
 static int vi_pipe(int r1, int r2)
@@ -939,7 +958,8 @@ static int vi_shift(int r1, int r2, int dir)
 	}
 	xrow = r1;
 	xoff = lbuf_indents(xb, xrow);
-	return r1 == r2 ? VC_ROW : VC_WIN;
+	vi_drawfix(r1, r2, r2 - r1 + 1, 0);
+	return VC_COL;
 }
 
 static int vc_motion(int cmd)
@@ -1007,7 +1027,7 @@ static int vc_insert(int cmd)
 		xoff = lbuf_eol(xb, xrow);
 	xoff = ren_noeol(ln, xoff);
 	if (cmd == 'o')
-		++xrow;
+		term_pos(++xrow - xtop, 0);
 	if (cmd == 'i' || cmd == 'I')
 		off = xoff;
 	if (cmd == 'a' || cmd == 'A')
@@ -1016,7 +1036,8 @@ static int vc_insert(int cmd)
 		off = 0;
 	pref = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, 0, off) : vi_indents(ln);
 	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
-	vi_drawrm(xrow, xrow, cmd == 'o' || cmd == 'O');
+	if (cmd == 'o' || cmd == 'O')
+		term_room(1);
 	rep = vi_input(pref, post, &row, &off);
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
 		lbuf_edit(xb, "\n", 0, 0);
@@ -1030,7 +1051,8 @@ static int vc_insert(int cmd)
 	free(post);
 	if (rep == NULL)
 		return 0;
-	return row == 1 ? VC_ROW : VC_WIN;
+	vi_drawfix(xrow - row + 1, xrow, row, 0);
+	return VC_COL;
 }
 
 static int vc_put(int cmd)
@@ -1038,6 +1060,7 @@ static int vc_put(int cmd)
 	int cnt = MAX(1, vi_arg1);
 	int lnmode;
 	char *buf = reg_get(vi_ybuf, &lnmode);
+	int lncnt = 0;
 	int i;
 	if (!buf)
 		snprintf(vi_msg, sizeof(vi_msg), "yank buffer empty");
@@ -1052,6 +1075,7 @@ static int vc_put(int cmd)
 		if (cmd == 'p')
 			xrow++;
 		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow);
+		lncnt = linecount(sbuf_buf(sb));
 		xoff = lbuf_indents(xb, xrow);
 		sbuf_free(sb);
 	} else {
@@ -1067,10 +1091,12 @@ static int vc_put(int cmd)
 		sbuf_str(sb, s);
 		free(s);
 		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
+		lncnt = linecount(sbuf_buf(sb)) - 1;
 		xoff = off + uc_slen(buf) * cnt - 1;
 		sbuf_free(sb);
 	}
-	return !lnmode && strchr(buf, '\n') == NULL ? VC_ROW : VC_WIN;
+	vi_drawfix(xrow, xrow, lncnt, 0);
+	return VC_COL;
 }
 
 static int join_spaces(char *prev, char *next)
@@ -1111,7 +1137,8 @@ static int vc_join(void)
 	lbuf_edit(xb, sbuf_buf(sb), beg, end);
 	xoff = off;
 	sbuf_free(sb);
-	return VC_WIN;
+	vi_drawfix(xrow, xrow + end - beg - 1, 1, 0);
+	return VC_COL;
 }
 
 static int vi_scrollforward(int cnt)
@@ -1182,15 +1209,17 @@ static int vc_replace(void)
 	sbuf_str(sb, post);
 	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
 	if (cs[0] == '\n') {
+		vi_drawfix(xrow, xrow, cnt + 1, 0);
 		xrow += cnt;
 		xoff = 0;
 	} else {
+		vi_drawfix(xrow, xrow, 1, 0);
 		xoff = off + cnt - 1;
 	}
 	sbuf_free(sb);
 	free(pref);
 	free(post);
-	return cs[0] != '\n' ? VC_ROW : VC_WIN;
+	return VC_COL;
 }
 
 static void vi_marksave(void)
@@ -1220,7 +1249,7 @@ static int vc_definition(int newwin)
 		vi_wmirror();
 	xrow = r;
 	xoff = o;
-	return VC_ROW;
+	return VC_COL;
 }
 
 static int vc_openpath(int ln, int newwin)
@@ -1416,13 +1445,13 @@ static void vi(void)
 				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
-				mod = VC_WIN;
+				mod = VC_COL;
 				break;
 			case TK_CTL('f'):
 				if (vi_scrollforward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
-				mod = VC_WIN;
+				mod = VC_COL;
 				break;
 			case TK_CTL('e'):
 				if (vi_scrollforward(MAX(1, vi_arg1)))
@@ -1444,7 +1473,7 @@ static void vi(void)
 				if (xtop > 0)
 					xtop = MAX(0, xtop - n);
 				xoff = lbuf_indents(xb, xrow);
-				mod = VC_WIN;
+				mod = VC_COL;
 				break;
 			case TK_CTL('d'):
 				if (xrow == lbuf_len(xb) - 1)
@@ -1456,7 +1485,7 @@ static void vi(void)
 				if (xtop < lbuf_len(xb) - xrows)
 					xtop = MIN(lbuf_len(xb) - xrows, xtop + n);
 				xoff = lbuf_indents(xb, xrow);
-				mod = VC_WIN;
+				mod = VC_COL;
 				break;
 			case TK_CTL('z'):
 				term_pos(xrows, 0);
@@ -1724,8 +1753,8 @@ static void vi(void)
 		}
 		if (ru && !vi_msg[0])
 			vc_status();
-		if (mod || xleft != oleft) {
-			int lineonly = mod == VC_ROW && xleft == oleft && xtop == otop;
+		if ((mod & ~VC_COL) || xleft != oleft) {
+			int lineonly = mod & VC_ROW && xleft == oleft && xtop == otop;
 			vi_drawagain(xcol, lineonly ? xrow : -1);
 			if (lineonly && xrow != orow)
 				vi_drawagain(xcol, orow);

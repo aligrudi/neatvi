@@ -86,7 +86,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;
 	fds[1].events = POLLOUT;
-	fds[2].fd = ibuf != NULL ? 0 : -1;
+	fds[2].fd = isatty(0) && ibuf != NULL ? 0 : -1;
 	fds[2].events = POLLIN;
 	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 3, 200) >= 0) {
 		if (fds[0].revents & POLLIN) {

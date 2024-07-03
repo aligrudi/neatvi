@@ -4,7 +4,6 @@ printf	"iabc"
 printf	"odef"
 printf	"oghi"
 echo    "!krev"
-sleep .1
 echo    ""
 echo    ":w"
 echo    ":q"

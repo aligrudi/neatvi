@@ -8,7 +8,6 @@ echo    ""
 echo    "a"
 echo    "."
 echo    "1G!}sort"
-sleep .1
 echo    ""
 echo    ":wq"
 

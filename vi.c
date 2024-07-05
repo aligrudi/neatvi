@@ -1355,11 +1355,13 @@ static int vc_quick(int newwin)
 	char cmd[256];
 	int c, i;
 	int n = ex_list(ls, MIN(10, xrows - 1));
+	term_record();
 	for (i = 1; i < n; i++) {
 		snprintf(cmd, sizeof(cmd), "[%d] %s", i, ls[i]);
 		vi_drawquick(cmd, xrows - n + i);
 	}
 	vi_drawquick("QUICK LEAP", xrows - i);
+	term_commit();
 	c = vi_read();
 	if (TK_INT(c))
 		return VC_WIN;
@@ -1378,7 +1380,7 @@ static int vc_quick(int newwin)
 		if (newwin)
 			vi_wmirror();
 		ex_command(cmd);
-		return newwin ? VC_ALL : VC_WIN;
+		return VC_ALL;
 	}
 	if (isalpha(c))
 		return vc_ecmd(c, newwin) != 0 ? VC_ALL : VC_WIN;
@@ -1565,10 +1567,8 @@ static void vi(void)
 						free(ln);
 						ln = ln2;
 					}
-					term_record();
 					if (!ex_command(ln))
 						mod = VC_ALL;
-					term_commit();
 					reg_put(':', ln, 1);
 				}
 				free(ln);

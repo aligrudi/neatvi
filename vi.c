@@ -1567,7 +1567,7 @@ static void vi(void)
 						free(ln);
 						ln = ln2;
 					}
-					if (!ex_command(ln))
+					if (ex_command(ln) == 0 && strcmp(ln, ":w") != 0)
 						mod = VC_ALL;
 					reg_put(':', ln, 1);
 				}

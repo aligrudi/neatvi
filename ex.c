@@ -1054,6 +1054,12 @@ static int ec_source(char *loc, char *cmd, char *arg, char *txt)
 	return 0;
 }
 
+static int ec_echo(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_print(arg);
+	return 0;
+}
+
 static struct option {
 	char *abbr;
 	char *name;
@@ -1061,16 +1067,16 @@ static struct option {
 } options[] = {
 	{"ai", "autoindent", &xai},
 	{"aw", "autowrite", &xaw},
-	{"wa", "writeany", &xwa},
-	{"ic", "ignorecase", &xic},
-	{"td", "textdirection", &xtd},
-	{"shape", "shape", &xshape},
-	{"order", "xorder", &xorder},
+	{"hist", "history", &xhist},
 	{"hl", "highlight", &xhl},
 	{"hll", "highlightline", &xhll},
+	{"ic", "ignorecase", &xic},
 	{"lim", "linelimit", &xlim},
+	{"order", "xorder", &xorder},
 	{"ru", "ruler", &xru},
-	{"hist", "history", &xhist},
+	{"shape", "shape", &xshape},
+	{"td", "textdirection", &xtd},
+	{"wa", "writeany", &xwa},
 };
 
 static char *cutword(char *s, char *d)
@@ -1126,52 +1132,53 @@ static struct excmd {
 	char *name;
 	int (*ec)(char *loc, char *cmd, char *arg, char *txt);
 } excmds[] = {
-	{"b", "buffer", ec_buffer},
-	{"p", "print", ec_print},
 	{"a", "append", ec_insert},
-	{"i", "insert", ec_insert},
+	{"b", "buffer", ec_buffer},
 	{"d", "delete", ec_delete},
 	{"c", "change", ec_insert},
+	{"cm", "cmap", ec_cmap},
+	{"cm!", "cmap!", ec_cmap},
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
+	{"ec", "echo", ec_echo},
 	{"ew", "ew", ec_edit},
 	{"ew!", "ew!", ec_edit},
+	{"ft", "filetype", ec_ft},
 	{"g", "global", ec_glob},
 	{"g!", "global!", ec_glob},
-	{"=", "=", ec_lnum},
+	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
+	{"make", "make", ec_make},
+	{"n", "next", ec_next},
+	{"p", "print", ec_print},
 	{"po", "pop", ec_pop},
 	{"pu", "put", ec_put},
-	{"n", "next", ec_next},
 	{"prev", "prev", ec_prev},
 	{"q", "quit", ec_quit},
 	{"q!", "quit!", ec_quit},
 	{"r", "read", ec_read},
+	{"redo", "redo", ec_redo},
+	{"rs", "rs", ec_rs},
+	{"rx", "rx", ec_rx},
+	{"se", "set", ec_set},
+	{"s", "substitute", ec_substitute},
+	{"so", "source", ec_source},
 	{"ta", "tag", ec_tag},
 	{"tn", "tnext", ec_tnext},
 	{"tp", "tprev", ec_tprev},
 	{"tf", "tfree", ec_tfree},
+	{"u", "undo", ec_undo},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
 	{"w!", "write!", ec_write},
 	{"wq", "wq", ec_write},
 	{"wq!", "wq!", ec_write},
-	{"u", "undo", ec_undo},
-	{"redo", "redo", ec_redo},
-	{"se", "set", ec_set},
-	{"s", "substitute", ec_substitute},
 	{"x", "xit", ec_write},
 	{"x!", "xit!", ec_write},
 	{"y", "yank", ec_yank},
-	{"so", "source", ec_source},
 	{"!", "!", ec_exec},
-	{"rs", "rs", ec_rs},
-	{"rx", "rx", ec_rx},
-	{"make", "make", ec_make},
-	{"ft", "filetype", ec_ft},
-	{"cm", "cmap", ec_cmap},
-	{"cm!", "cmap!", ec_cmap},
 	{"@", "@", ec_at},
+	{"=", "=", ec_lnum},
 	{"", "", ec_null},
 };
 

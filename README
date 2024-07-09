@@ -54,6 +54,8 @@ Commands not available in ex(1):
   Like :! command, executes cmd.  However, the contents of the
   specified yank buffer is given to the command as input, and the
   output of the command is written to that yank buffer.
+:ec[ho] msg
+  Prints the given message (useful in ex scripts or q-commands).
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.

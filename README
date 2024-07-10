@@ -167,36 +167,14 @@ QUICK ACCESS
 
 When q is pressed in normal mode, Neatvi prints the list of buffers at
 the bottom of the screen and waits for a key.  If the key is a digit,
-it switches to the corresponding buffer.  If it is a letter and the
-extended buffer with that letter is defined, the contents of that buffer
-is executed.  Otherwise, Neatvi executes ECMD (defined in conf.h) with
-the following parameters:
-- the letter
-- current file
-- current line number
-- current line offset
+it switches to its corresponding buffer.  If it is a letter and the
+extended buffer with that letter is defined, the contents of that
+buffer is executed.  Otherwise, Neatvi executes ECMD (defined in
+conf.h) with the following parameters: i) the letter, ii) the current
+file, iii) the current line number, and iv) the current line offset.
 
 What ECMD writes to its standard output, Neatvi executes as ex
 commands.  Q-commands can be used to add interesting features to
 Neatvi, such as language-dependent IDE features, for instance by
-connecting to an LSP (language server protocol) server.  As an
-example, the following script shows how to use gopls to implement go
-to definition and find references for Go.
-
-  # Compile.
-  if test "$1" = "c"; then
-    go build >.make.ls 2>&1
-    echo ":e +1 .make.ls | :e"
-  fi
-  # Goto definition; uses gopls (not very efficient without using LSP).
-  if test "$1" = "d"; then
-    loc=`gopls definition $2:$3:$4`
-    if test -n "$loc"; then
-      echo $loc | sed -E 's/^([^:]+):([^:]+):([^:]+).*$/:e +\2 \1/'
-    fi
-  fi
-  # Find references.  Use gl command on each line.
-  if test "$1" = "f"; then
-    gopls references $2:$3:$4 >$OUT/.out.ls
-    echo ":e +1 $OUT/.out.ls | :e"
-  fi
+connecting to an LSP (language server protocol) server.  ecmd.sh is an
+example ECMD shell script.

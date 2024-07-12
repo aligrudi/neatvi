@@ -51,10 +51,10 @@ static struct highlight {
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 5, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
 	{"---", {SYN_BGMK(0) | 7}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "^\\[([0-9])\\](.*/)*([^/]*)$"},
-	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$"},
+	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$\n?"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^:.*$"},
-	{"-ex", {SYN_BGMK(0) | 7}, "^.*$"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^[:/!].*$"},
+	{"-ex", {SYN_BGMK(0) | 7}, "^.*$\n?"},
 
 	/* C */
 	{"c", {CTYP}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},

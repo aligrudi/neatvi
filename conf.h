@@ -50,12 +50,11 @@ static struct highlight {
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 5, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
 	{"---", {SYN_BGMK(0) | 7}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "\\[([0-9])\\](.*/)*([^/]*)$"},
-	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$\n?"},
+	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "^\\[([0-9])\\](.*/)*([^/]*)$"},
+	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, ":.*$"},
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "\\[.*$"},
-	{"-ex", {SYN_BGMK(0) | 7}, ".*$\n?"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^:.*$"},
+	{"-ex", {SYN_BGMK(0) | 7}, "^.*$"},
 
 	/* C */
 	{"c", {CTYP}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},

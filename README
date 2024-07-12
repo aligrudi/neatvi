@@ -61,7 +61,7 @@ New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
 - ^p in insert mode: inserts the contents of the default yank buffer.
 - ^rX in insert mode: inserts the contents of yank buffer X.
-- zL, zl, zr, and zR in normal mode: change the value of td option.
+- zL, zl, zr, and zR in normal mode: changes the value of td option.
 - ^e and ^f in insert mode: switches to the English and alternate keymap.
 - ze and zf in normal mode: switches to the English and alternate keymap.
 - gu, gU, and g~ in normal mode: switches character case.

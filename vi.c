@@ -256,7 +256,7 @@ static char *vi_prompt(char *msg, int *kmap, char *hist)
 	char *r, *s;
 	term_pos(xrows, vi_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap, xhl ? "---" : "___", xhist != 0 ? hist : NULL);
+	s = led_prompt(msg, "", kmap, xhl ? "-ex" : "___", xhist != 0 ? hist : NULL);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -272,7 +272,7 @@ char *ex_read(char *msg)
 	if (xvis)
 		term_pos(xrows - 1, 0);
 	if (xled) {
-		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___", NULL);
+		char *s = led_prompt(msg, "", &xkmap, xhl ? "-ex" : "___", NULL);
 		if (s)
 			term_chr('\n');
 		return s;
@@ -293,7 +293,7 @@ void ex_show(char *msg)
 	if (xvis) {
 		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
 	} else if (xled) {
-		led_print(msg, -1, 0, xhl ? "---" : "___");
+		led_print(msg, -1, 0, xhl ? "-ex" : "___");
 		term_chr('\n');
 	} else {
 		printf("%s", msg);

@@ -114,7 +114,7 @@ static void vi_drawupdate(int otop)
 /* update the screen by replacing lines r1 to r2 with n lines */
 static void vi_drawfix(int r1, int r2, int n, int preview)
 {
-	int dis = preview ? r1 - r2 - 1 + n : 0;
+	int dis = n - (r2 - r1 + 1);
 	int i;
 	if (preview && r1 < xtop)
 		xtop = r1;
@@ -124,11 +124,11 @@ static void vi_drawfix(int r1, int r2, int n, int preview)
 	term_pos(r1 - xtop, 0);
 	term_room(r1 - r2 - 1 + n);
 	/* new lines are visible */
-	if (r2 - r1 + 1 > n && r1 + n < xtop + xrows) {
-		xtop -= dis;
-		for (i = r1 + n - dis; i < xtop + xrows; i++)
+	if (dis < 0 && r1 + n < xtop + xrows) {
+		xtop += preview ? -dis : 0;
+		for (i = xtop + xrows + dis; i < xtop + xrows; i++)
 			vi_drawrow(i);
-		xtop += dis;
+		xtop -= preview ? -dis : 0;
 	}
 	/* draw replaced lines */
 	for (i = r1; i < xtop + xrows; i++)
@@ -1415,8 +1415,10 @@ static void vi(void)
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
+	term_record();
 	vi_drawagain(xcol, -1);
 	term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow), xcol));
+	term_commit();
 	while (!xquit) {
 		int mod = 0;
 		int nrow = xrow;

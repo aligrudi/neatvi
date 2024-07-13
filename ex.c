@@ -181,11 +181,12 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 			(spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%' || *src == '#') {
 			int idx = *src == '#';
-			if (!bufs[idx].path || !bufs[idx].path[0]) {
+			if (!bufs[idx].path) {
 				ex_show("pathname \"%\" or \"#\" is not set");
 				return NULL;
 			}
-			dst += snprintf(dst, end - dst, "%s", bufs[idx].path);
+			dst += snprintf(dst, end - dst, "%s",
+				bufs[idx].path[0] ? bufs[idx].path : "/");
 			src++;
 		} else if (dst == buf && *src == '=') {
 			char *cur = bufs[0].path;

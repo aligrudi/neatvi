@@ -114,7 +114,9 @@ shape
   If set (default), Arabic/Farsi letter shaping will be performed.
 order
   If set, characters will be reordered based on the rules defined
-  in conf.h.
+  in conf.h.  If the value is +1, only lines with at least one
+  multi-byte UTF-8 character are reordered.  If it is -1, all lines
+  are reordered.
 hl, highlight
   If set (default), text will be highlighted based on syntax
   highlighting rules in conf.h.

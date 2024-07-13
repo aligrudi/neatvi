@@ -15,29 +15,29 @@
 # git add %
 ecmd_a() {
 	# We can also invoke it directly here: git add $1
-	echo "!git add %"
+	echo '!git add %'
 }
 
 # Open ./ls as directory listing.
 ecmd_l() {
-	# We define \\l here; ql executes \\l register if it is
+	# We define \l here; ql executes \l register if it is
 	# defined; so we do not have the overhead of executing ECMD
 	# the second time.
-	echo "rs \\l"
-	echo "e ls"
-	echo "."
-	# Now we can ask Neatvi to execute \\l.
-	echo "@\\l"
+	echo 'rs \l'
+	echo 'e ls'
+	echo '.'
+	# Now we can ask Neatvi to execute \l.
+	echo '@\l'
 }
 
 # Make qq equivalent to <control>-^.
 ecmd_q() {
-	# Again we define \\q here, while we could have simply
+	# Again we define \q here, while we could have simply
 	# written: echo ":e %"
-	echo ":rs \\q"
-	echo ":e %"
-	echo "."
-	echo ":@\\q"
+	echo ':rs \q'
+	echo ':e %'
+	echo '.'
+	echo ':@\q'
 }
 
 # Open an email in a neatmail listing file.

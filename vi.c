@@ -85,12 +85,10 @@ static void vi_drawrow(int row)
 static void vi_drawagain(int xcol, int row)
 {
 	int i;
-	term_record();
 	for (i = xtop; i < xtop + xrows; i++)
 		if (row < 0 || i == row)
 			vi_drawrow(i);
 	vi_drawmsg();
-	term_commit();
 }
 
 /* update the screen */
@@ -98,7 +96,6 @@ static void vi_drawupdate(int otop)
 {
 	int i = 0;
 	if (otop != xtop) {
-		term_record();
 		term_pos(0, 0);
 		term_room(otop - xtop);
 		if (xtop > otop) {
@@ -110,7 +107,6 @@ static void vi_drawupdate(int otop)
 			for (i = 0; i < n; i++)
 				vi_drawrow(xtop + i);
 		}
-		term_commit();
 	}
 	vi_drawmsg();
 }
@@ -1751,6 +1747,7 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
+		term_record();
 		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
 		if (mod & VC_ALT && w_cnt == 1)
 			vi_switch(w_cur);
@@ -1787,6 +1784,7 @@ static void vi(void)
 		}
 		term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
+		term_commit();
 		lbuf_modified(xb);
 	}
 }

@@ -244,7 +244,7 @@ static char *vi_char(void)
 /* map cursor horizontal position to terminal column number */
 static int vi_pos(char *s, int pos)
 {
-	return dir_context(s) >= 0 ? pos - xleft : xleft + xcols - pos - 1;
+	return dir_context(s ? s : "") >= 0 ? pos - xleft : xleft + xcols - pos - 1;
 }
 
 static char *vi_prompt(char *msg, int *kmap, char *hist)

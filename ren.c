@@ -145,11 +145,18 @@ int ren_next(char *s, int p, int dir)
 
 static char *ren_placeholder(char *s, int *wid)
 {
+	static int bits = 0xffff;	/* common bits in placeholders */
 	char *src, *dst;
 	int i;
-	for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
-		if (src[0] == s[0] && uc_code(src) == uc_code(s))
-			return dst;
+	if (bits == 0xffff) {
+		for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
+			bits &= (unsigned char) *src;
+	}
+	if ((((unsigned char) *s) & bits) == bits) {
+		for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
+			if (src[0] == s[0] && uc_code(src) == uc_code(s))
+				return dst;
+	}
 	if (wid)
 		*wid = 1;
 	if (uc_isbell(s))

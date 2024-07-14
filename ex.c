@@ -20,7 +20,7 @@ int xwa;			/* writeany option */
 int xhl = 1;			/* syntax highlight option */
 int xhll;			/* highlight current line */
 int xled = 1;			/* use the line editor */
-int xtd = +1;			/* current text direction */
+int xtd = 0;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
 int xkmap = 0;			/* the current keymap */
@@ -1073,7 +1073,7 @@ static struct option {
 	{"hll", "highlightline", &xhll},
 	{"ic", "ignorecase", &xic},
 	{"lim", "linelimit", &xlim},
-	{"order", "xorder", &xorder},
+	{"order", "order", &xorder},
 	{"ru", "ruler", &xru},
 	{"shape", "shape", &xshape},
 	{"td", "textdirection", &xtd},

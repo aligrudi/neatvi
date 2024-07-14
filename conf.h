@@ -177,7 +177,7 @@ static struct highlight {
 #define SYN_LINE	(SYN_BGMK(11))
 
 /* how to highlight text in the reverse direction */
-#define SYN_REVDIR	(SYN_BGMK(7))
+#define SYN_REVDIR	(SYN_RV)
 
 /* define it as "\33[8l" to disable BiDi in vte-based terminals */
 #define LNPREF		""
@@ -187,7 +187,7 @@ static struct highlight {
 /* neutral characters (used only in dircontexts[] and dirmarks[]) */
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
-/* direction context patterns; specifies the direction of a whole line */
+/* direction context; specifies the base direction of lines */
 static struct dircontext {
 	int dir;
 	char *pat;
@@ -196,7 +196,7 @@ static struct dircontext {
 	{+1, "^[a-zA-Z_0-9]"},
 };
 
-/* direction marks; the direction of a few words in a line */
+/* direction marks; the direction of contiguous characters in a line */
 static struct dirmark {
 	int ctx;	/* the direction context for this mark; 0 means any */
 	int dir;	/* the direction of the matched text */

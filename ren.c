@@ -37,7 +37,7 @@ int *ren_position(char *s)
 	int *pos;
 	int i;
 	int n = uc_slen(s);
-	if (n <= xlim && (xorder == -1 || (xorder == 1 && n < strlen(s))))
+	if (n <= xlim && (xorder == 2 || (xorder == 1 && n < strlen(s))))
 		return ren_position_reorder(s);
 	pos = malloc((n + 1) * sizeof(pos[0]));
 	for (i = 0; i < n; i++, s += uc_len(s)) {

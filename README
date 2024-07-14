@@ -110,16 +110,19 @@ td, textdirection
   * +1: follow conf.h's dircontexts[]; left-to-right for others.
   * -1: follow conf.h's dircontexts[]; right-to-left for others.
   * -2: always right-to-left.
+  The default value is 0, which assumes left-to-right if the first
+  character of the line is single-byte; otherwise, it follows
+  dircontexts[].
 shape
-  If set (default), Arabic/Farsi letter shaping will be performed.
+  If set, Arabic/Farsi letter shaping will be performed.
 order
   If set, characters will be reordered based on the rules defined
-  in conf.h.  If the value is +1, only lines with at least one
-  multi-byte UTF-8 character are reordered.  If it is -1, all lines
+  in conf.h.  If the value is 1, only lines with at least one
+  multi-byte UTF-8 character are reordered.  If it is 2, all lines
   are reordered.
 hl, highlight
-  If set (default), text will be highlighted based on syntax
-  highlighting rules in conf.h.
+  If set, text will be highlighted based on syntax highlighting
+  rules in conf.h.
 hll, highlightline
   If set, the current line will be highlighted.
 lim, linelimit

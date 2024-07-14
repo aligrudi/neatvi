@@ -126,7 +126,7 @@ static void vi_drawfix(int r1, int r2, int n, int preview)
 	/* new lines are visible */
 	if (dis < 0 && r1 + n < xtop + xrows) {
 		xtop += preview ? -dis : 0;
-		for (i = xtop + xrows + dis; i < xtop + xrows; i++)
+		for (i = r1 + n + (preview ? -dis : 0); i < xtop + xrows; i++)
 			vi_drawrow(i);
 		xtop -= preview ? -dis : 0;
 	}
@@ -1030,7 +1030,7 @@ static int vc_insert(int cmd)
 {
 	char *pref, *post;
 	char *ln = lbuf_get(xb, xrow);
-	int row, off = 0;
+	int row, ohll, off = 0;
 	char *rep;
 	if (cmd == 'I')
 		xoff = lbuf_indents(xb, xrow);
@@ -1062,7 +1062,8 @@ static int vc_insert(int cmd)
 	free(post);
 	if (rep == NULL)
 		return 0;
-	vi_drawfix(xrow - row + 1, xrow, row, 0);
+	ohll = cmd == 'O' && xhll;
+	vi_drawfix(xrow - row + 1, xrow + ohll, row + ohll, 0);
 	return VC_OK;
 }
 

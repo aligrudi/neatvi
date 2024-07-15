@@ -22,7 +22,7 @@ static struct filetype {
 	{"nm", "\\.nm$"},
 	{"diff", "\\.(patch|diff)$"},
 	{"ls", "ls$"},
-	{"txt", ""},		/* matches everything; must be the last pattern */
+	{"txt", "$"},		/* matches everything; must be the last pattern */
 };
 
 /* colours used in highlights[] for programming languages */

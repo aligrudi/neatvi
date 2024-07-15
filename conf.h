@@ -11,7 +11,7 @@ static struct filetype {
 	char *sec;		/* section start pattern (for [[ and ]] commands) */
 } filetypes[] = {
 	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
-	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
+	{"roff", "\\.(ms|me|mom|tr|roff|tmac|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
 	{"tex", "\\.tex$"},
 	{"msg", "letter$|mbox$|mail$"},
 	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
@@ -22,6 +22,7 @@ static struct filetype {
 	{"nm", "\\.nm$"},
 	{"diff", "\\.(patch|diff)$"},
 	{"ls", "ls$"},
+	{"txt", ""},		/* matches everything; must be the last pattern */
 };
 
 /* colours used in highlights[] for programming languages */

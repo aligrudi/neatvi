@@ -630,11 +630,12 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 {
 	struct regex *re = *preg;
 	struct rstate rs;
+	char *o = s;
 	memset(&rs, 0, sizeof(rs));
 	rs.flg = re->flg | flg;
 	rs.o = s;
-	while (*s) {
-		rs.s = s;
+	while (*o) {
+		rs.s = o = s;
 		s += uc_len(s);
 		if (!re_recmatch(re, &rs, flg & REG_NOSUB ? 0 : nsub, psub))
 			return 0;

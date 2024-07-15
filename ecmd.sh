@@ -20,7 +20,7 @@ ecmd_a() {
 # Open ./ls as directory listing.
 ecmd_l() {
 	# We define \l here; ql executes \l register if it is
-	# defined; so we do not have the overhead of executing ECMD
+	# defined, so we do not have the overhead of executing ECMD
 	# the second time.
 	echo 'rs \l'
 	echo 'e ls'
@@ -32,11 +32,11 @@ ecmd_l() {
 # Make qq equivalent to <control>-^.
 ecmd_q() {
 	# Again we define \q here, while we could have simply
-	# written: echo ":e #"
-	echo ':rs \q'
-	echo ':e #'
+	# written: echo "e #"
+	echo 'rs \q'
+	echo 'e #'
 	echo '.'
-	echo ':@\q'
+	echo '@\q'
 }
 
 # Open an email in a neatmail listing file.
@@ -67,7 +67,7 @@ ecmd_d() {
 # Find references for Go.  Use gl command on each line.
 ecmd_f() {
 	if gopls references $1:$2:$3 >.list.ls; then
-		echo ":e +1 .list.ls | :e"
+		echo "e +1 .list.ls | :e"
 	else
 		echo "ec gopls failed"
 	fi

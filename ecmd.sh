@@ -6,11 +6,10 @@
 # corresponding buffer.  If it is a letter and the extended buffer
 # with that letter is defined, the contents of that buffer is executed.
 # Otherwise, Neatvi executes ECMD with the following parameters:
+# i) the letter, ii) the current file, iii) the current line number,
+# and iv) the current line offset.
 #
-# + the letter
-# + current file
-# + current line number
-# + current line offset
+# This files demonstrates how to implement such q-commands.
 
 # git add %
 ecmd_a() {
@@ -33,9 +32,9 @@ ecmd_l() {
 # Make qq equivalent to <control>-^.
 ecmd_q() {
 	# Again we define \q here, while we could have simply
-	# written: echo ":e %"
+	# written: echo ":e #"
 	echo ':rs \q'
-	echo ':e %'
+	echo ':e #'
 	echo '.'
 	echo ':@\q'
 }

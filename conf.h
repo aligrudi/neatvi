@@ -11,7 +11,7 @@ static struct filetype {
 	char *sec;		/* section start pattern (for [[ and ]] commands) */
 } filetypes[] = {
 	{"c", "\\.[hc]$", "^([a-zA-Z_].*)?\\<%s\\>"},
-	{"roff", "\\.(ms|me|mom|tr|roff|tmac|txt|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
+	{"roff", "\\.(ms|me|mom|tr|roff|tmac|[1-9])$", "^\\.(de|nr|ds) +%s\\>"},
 	{"tex", "\\.tex$"},
 	{"msg", "letter$|mbox$|mail$"},
 	{"mk", "Makefile$|makefile$|\\.mk$", "^%s:"},
@@ -22,6 +22,7 @@ static struct filetype {
 	{"nm", "\\.nm$"},
 	{"diff", "\\.(patch|diff)$"},
 	{"ls", "ls$"},
+	{"txt", "$"},		/* matches everything; must be the last pattern */
 };
 
 /* colours used in highlights[] for programming languages */
@@ -50,12 +51,11 @@ static struct highlight {
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 5, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
 	{"---", {SYN_BGMK(0) | 7}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "\\[([0-9])\\](.*/)*([^/]*)$"},
+	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "^\\[([0-9])\\](.*/)*([^/]*)$"},
 	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$\n?"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, ":.*$"},
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "\\[.*$"},
-	{"-ex", {SYN_BGMK(0) | 7}, ".*$\n?"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^[:/!].*$"},
+	{"-ex", {SYN_BGMK(0) | 7}, "^.*$\n?"},
 
 	/* C */
 	{"c", {CTYP}, "\\<(signed|unsigned|char|short|int|long|float|double|void|struct|enum|union|typedef)\\>"},
@@ -178,7 +178,7 @@ static struct highlight {
 #define SYN_LINE	(SYN_BGMK(11))
 
 /* how to highlight text in the reverse direction */
-#define SYN_REVDIR	(SYN_BGMK(7))
+#define SYN_REVDIR	(SYN_RV)
 
 /* define it as "\33[8l" to disable BiDi in vte-based terminals */
 #define LNPREF		""
@@ -188,7 +188,7 @@ static struct highlight {
 /* neutral characters (used only in dircontexts[] and dirmarks[]) */
 #define CNEUT		"-!\"#$%&'()*+,./:;<=>?@^_`{|}~ "
 
-/* direction context patterns; specifies the direction of a whole line */
+/* direction context; specifies the base direction of lines */
 static struct dircontext {
 	int dir;
 	char *pat;
@@ -197,7 +197,7 @@ static struct dircontext {
 	{+1, "^[a-zA-Z_0-9]"},
 };
 
-/* direction marks; the direction of a few words in a line */
+/* direction marks; the direction of contiguous characters in a line */
 static struct dirmark {
 	int ctx;	/* the direction context for this mark; 0 means any */
 	int dir;	/* the direction of the matched text */

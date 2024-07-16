@@ -6,38 +6,37 @@
 # corresponding buffer.  If it is a letter and the extended buffer
 # with that letter is defined, the contents of that buffer is executed.
 # Otherwise, Neatvi executes ECMD with the following parameters:
+# i) the letter, ii) the current file, iii) the current line number,
+# and iv) the current line offset.
 #
-# + the letter
-# + current file
-# + current line number
-# + current line offset
+# This files demonstrates how to implement such q-commands.
 
 # git add %
 ecmd_a() {
 	# We can also invoke it directly here: git add $1
-	echo "!git add %"
+	echo '!git add %'
 }
 
 # Open ./ls as directory listing.
 ecmd_l() {
-	# We define \\l here; ql executes \\l register if it is
-	# defined; so we do not have the overhead of executing ECMD
+	# We define \l here; ql executes \l register if it is
+	# defined, so we do not have the overhead of executing ECMD
 	# the second time.
-	echo "rs \\l"
-	echo "e ls"
-	echo "."
-	# Now we can ask Neatvi to execute \\l.
-	echo "@\\l"
+	echo 'rs \l'
+	echo 'e ls'
+	echo '.'
+	# Now we can ask Neatvi to execute \l.
+	echo '@\l'
 }
 
 # Make qq equivalent to <control>-^.
 ecmd_q() {
-	# Again we define \\q here, while we could have simply
-	# written: echo ":e %"
-	echo ":rs \\q"
-	echo ":e %"
-	echo "."
-	echo ":@\\q"
+	# Again we define \q here, while we could have simply
+	# written: echo "e #"
+	echo 'rs \q'
+	echo 'e #'
+	echo '.'
+	echo '@\q'
 }
 
 # Open an email in a neatmail listing file.
@@ -68,7 +67,7 @@ ecmd_d() {
 # Find references for Go.  Use gl command on each line.
 ecmd_f() {
 	if gopls references $1:$2:$3 >.list.ls; then
-		echo ":e +1 .list.ls | :e"
+		echo "e +1 .list.ls | :e"
 	else
 		echo "ec gopls failed"
 	fi

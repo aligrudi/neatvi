@@ -85,12 +85,10 @@ static void vi_drawrow(int row)
 static void vi_drawagain(int xcol, int row)
 {
 	int i;
-	term_record();
 	for (i = xtop; i < xtop + xrows; i++)
 		if (row < 0 || i == row)
 			vi_drawrow(i);
 	vi_drawmsg();
-	term_commit();
 }
 
 /* update the screen */
@@ -98,7 +96,6 @@ static void vi_drawupdate(int otop)
 {
 	int i = 0;
 	if (otop != xtop) {
-		term_record();
 		term_pos(0, 0);
 		term_room(otop - xtop);
 		if (xtop > otop) {
@@ -110,7 +107,6 @@ static void vi_drawupdate(int otop)
 			for (i = 0; i < n; i++)
 				vi_drawrow(xtop + i);
 		}
-		term_commit();
 	}
 	vi_drawmsg();
 }
@@ -118,7 +114,7 @@ static void vi_drawupdate(int otop)
 /* update the screen by replacing lines r1 to r2 with n lines */
 static void vi_drawfix(int r1, int r2, int n, int preview)
 {
-	int dis = preview ? r1 - r2 - 1 + n : 0;
+	int dis = n - (r2 - r1 + 1);
 	int i;
 	if (preview && r1 < xtop)
 		xtop = r1;
@@ -128,11 +124,11 @@ static void vi_drawfix(int r1, int r2, int n, int preview)
 	term_pos(r1 - xtop, 0);
 	term_room(r1 - r2 - 1 + n);
 	/* new lines are visible */
-	if (r2 - r1 + 1 > n && r1 + n < xtop + xrows) {
-		xtop -= dis;
-		for (i = r1 + n - dis; i < xtop + xrows; i++)
+	if (dis < 0 && r1 + n < xtop + xrows) {
+		xtop += preview ? -dis : 0;
+		for (i = r1 + n + (preview ? -dis : 0); i < xtop + xrows; i++)
 			vi_drawrow(i);
-		xtop += dis;
+		xtop -= preview ? -dis : 0;
 	}
 	/* draw replaced lines */
 	for (i = r1; i < xtop + xrows; i++)
@@ -248,7 +244,7 @@ static char *vi_char(void)
 /* map cursor horizontal position to terminal column number */
 static int vi_pos(char *s, int pos)
 {
-	return dir_context(s) >= 0 ? pos - xleft : xleft + xcols - pos - 1;
+	return dir_context(s ? s : "") >= 0 ? pos - xleft : xleft + xcols - pos - 1;
 }
 
 static char *vi_prompt(char *msg, int *kmap, char *hist)
@@ -256,7 +252,7 @@ static char *vi_prompt(char *msg, int *kmap, char *hist)
 	char *r, *s;
 	term_pos(xrows, vi_pos(msg, 0));
 	term_kill();
-	s = led_prompt(msg, "", kmap, xhl ? "---" : "___", xhist != 0 ? hist : NULL);
+	s = led_prompt(msg, "", kmap, xhl ? "-ex" : "___", xhist != 0 ? hist : NULL);
 	if (!s)
 		return NULL;
 	r = uc_dup(strlen(s) >= strlen(msg) ? s + strlen(msg) : s);
@@ -272,7 +268,7 @@ char *ex_read(char *msg)
 	if (xvis)
 		term_pos(xrows - 1, 0);
 	if (xled) {
-		char *s = led_prompt(msg, "", &xkmap, xhl ? "---" : "___", NULL);
+		char *s = led_prompt(msg, "", &xkmap, xhl ? "-ex" : "___", NULL);
 		if (s)
 			term_chr('\n');
 		return s;
@@ -293,7 +289,7 @@ void ex_show(char *msg)
 	if (xvis) {
 		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
 	} else if (xled) {
-		led_print(msg, -1, 0, xhl ? "---" : "___");
+		led_print(msg, -1, 0, xhl ? "-ex" : "___");
 		term_chr('\n');
 	} else {
 		printf("%s", msg);
@@ -1034,7 +1030,7 @@ static int vc_insert(int cmd)
 {
 	char *pref, *post;
 	char *ln = lbuf_get(xb, xrow);
-	int row, off = 0;
+	int row, ohll, off = 0;
 	char *rep;
 	if (cmd == 'I')
 		xoff = lbuf_indents(xb, xrow);
@@ -1066,7 +1062,8 @@ static int vc_insert(int cmd)
 	free(post);
 	if (rep == NULL)
 		return 0;
-	vi_drawfix(xrow - row + 1, xrow, row, 0);
+	ohll = cmd == 'O' && xhll;
+	vi_drawfix(xrow - row + 1, xrow + ohll, row + ohll, 0);
 	return VC_OK;
 }
 
@@ -1419,8 +1416,10 @@ static void vi(void)
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
+	term_record();
 	vi_drawagain(xcol, -1);
 	term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow), xcol));
+	term_commit();
 	while (!xquit) {
 		int mod = 0;
 		int nrow = xrow;
@@ -1751,6 +1750,7 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
+		term_record();
 		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
 		if (mod & VC_ALT && w_cnt == 1)
 			vi_switch(w_cur);
@@ -1787,6 +1787,7 @@ static void vi(void)
 		}
 		term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow),
 				ren_cursor(lbuf_get(xb, xrow), xcol)));
+		term_commit();
 		lbuf_modified(xb);
 	}
 }

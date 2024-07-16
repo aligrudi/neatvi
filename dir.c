@@ -74,6 +74,8 @@ int dir_context(char *s)
 		return +1;
 	if (xtd < -1)
 		return -1;
+	if (xtd == 0 && ~((unsigned char) *s) & 0x80)
+		return +1;
 	if (dir_rsctx)
 		found = rset_find(dir_rsctx, s ? s : "", 0, NULL, 0);
 	if (!conf_dircontext(found, NULL, &dir))

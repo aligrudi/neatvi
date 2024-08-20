@@ -228,6 +228,7 @@ int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 
 int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 {
+	long sz = 0;
 	int i;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf->ln[i];
@@ -239,7 +240,9 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 				return 1;
 			nw += nc;
 		}
+		sz += nw;
 	}
+	ftruncate(fd, sz);
 	return 0;
 }
 

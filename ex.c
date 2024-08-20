@@ -28,6 +28,7 @@ int xkmap_alt = 1;		/* the alternate keymap */
 int xlim = 256;			/* do not process lines longer than this */
 int xru = 1;			/* show line number */
 int xhist = 0;			/* number of history lines */
+int xwtmp = 0;			/* write file contents to a temporary file first */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
@@ -582,6 +583,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		cmd_pipe(path + 1, ibuf, 0);
 		free(ibuf);
 	} else {
+		char tmp[1024];
 		int fd;
 		if (!strchr(cmd, '!') && bufs[0].path &&
 				!strcmp(bufs[0].path, path) &&
@@ -593,7 +595,14 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 			ex_show("write failed: file exists");
 			return 1;
 		}
-		fd = open(path, O_WRONLY | O_CREAT, conf_mode());
+		tmp[0] = '\0';
+		if (xwtmp)
+			snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+		if (tmp[0] && access(tmp, F_OK) == 0) {
+			ex_show("write failed: wtmp is set but .tmp exists");
+			return 1;
+		}
+		fd = open(tmp[0] ? tmp : path, O_WRONLY | O_CREAT, conf_mode());
 		if (fd < 0) {
 			ex_show("write failed: cannot create file");
 			return 1;
@@ -604,6 +613,11 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 			return 1;
 		}
 		close(fd);
+		if (tmp[0] && rename(tmp, path) != 0) {
+			ex_show("write failed: cannot rename .tmp");
+			unlink(tmp);
+			return 1;
+		}
 	}
 	snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [w]", path, end - beg);
 	ex_show(msg);
@@ -1078,6 +1092,7 @@ static struct option {
 	{"shape", "shape", &xshape},
 	{"td", "textdirection", &xtd},
 	{"wa", "writeany", &xwa},
+	{"wtmp", "writetmp", &xwtmp},
 };
 
 static char *cutword(char *s, char *d)

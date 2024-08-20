@@ -593,7 +593,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 			ex_show("write failed: file exists");
 			return 1;
 		}
-		fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, conf_mode());
+		fd = open(path, O_WRONLY | O_CREAT, conf_mode());
 		if (fd < 0) {
 			ex_show("write failed: cannot create file");
 			return 1;

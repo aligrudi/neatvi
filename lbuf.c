@@ -226,22 +226,38 @@ int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 	return nr != 0;
 }
 
+static long write_fully(int fd, void *buf, long sz)
+{
+	long nw = 0, nc = 0;
+	while (nw < sz && (nc = write(fd, buf + nw, sz - nw)) >= 0)
+		nw += nc;
+	return nc >= 0 ? nw : -1;
+}
+
 int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 {
-	long sz = 0;
+	char buf[4096];
+	long buf_len = 0, sz = 0;
 	int i;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf->ln[i];
-		long nw = 0;
 		long nl = strlen(ln);
-		while (nw < nl) {
-			long nc = write(fd, ln + nw, nl - nw);
-			if (nc < 0)
+		if (buf_len > 0 && buf_len + nl > sizeof(buf)) {
+			if (write_fully(fd, buf, buf_len) < 0)
 				return 1;
-			nw += nc;
+			buf_len = 0;
 		}
-		sz += nw;
+		if (nl >= sizeof(buf)) {
+			if (write_fully(fd, ln, nl) < 0)
+				return 1;
+		} else {
+			memcpy(buf + buf_len, ln, nl);
+			buf_len += nl;
+		}
+		sz += nl;
 	}
+	if (buf_len > 0 && write_fully(fd, buf, buf_len) < 0)
+		return 1;
 	ftruncate(fd, sz);
 	return 0;
 }

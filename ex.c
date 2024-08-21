@@ -583,39 +583,29 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		cmd_pipe(path + 1, ibuf, 0);
 		free(ibuf);
 	} else {
-		char tmp[1024];
-		int fd;
-		if (!strchr(cmd, '!') && bufs[0].path &&
-				!strcmp(bufs[0].path, path) &&
-				mtime(bufs[0].path) > bufs[0].mtime) {
-			ex_show("write failed: file changed");
-			return 1;
-		}
-		if (!strchr(cmd, '!') && arg[0] && mtime(arg) >= 0) {
-			ex_show("write failed: file exists");
-			return 1;
-		}
-		tmp[0] = '\0';
-		if (xwtmp)
-			snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-		if (tmp[0] && access(tmp, F_OK) == 0) {
-			ex_show("write failed: wtmp is set but .tmp exists");
-			return 1;
-		}
-		fd = open(tmp[0] ? tmp : path, O_WRONLY | O_CREAT, conf_mode());
-		if (fd < 0) {
-			ex_show("write failed: cannot create file");
-			return 1;
-		}
-		if (lbuf_wr(xb, fd, beg, end)) {
-			ex_show("write failed");
+		char *err = NULL;
+		int fd = -1;
+		char *tmp = xwtmp ? uc_cat(path, ".tmp") : NULL;
+		if (!strchr(cmd, '!') && !strcmp(ex_path(), path) &&
+				mtime(ex_path()) > bufs[0].mtime) {
+			err = "write failed: file changed";
+		} else if (!strchr(cmd, '!') && arg[0] && mtime(arg) >= 0) {
+			err = "write failed: file exists";
+		} else if (tmp != NULL && mtime(tmp) >= 0) {
+			err = "write failed: wtmp is set but .tmp exists";
+		} else if ((fd = open(tmp != NULL ? tmp : path,
+				O_WRONLY | O_CREAT, conf_mode())) < 0) {
+			err = "write failed: cannot create file";
+		} else if (lbuf_wr(xb, fd, beg, end) != 0 || close(fd) != 0) {
 			close(fd);
-			return 1;
-		}
-		close(fd);
-		if (tmp[0] && rename(tmp, path) != 0) {
-			ex_show("write failed: cannot rename .tmp");
+			err = "write failed";
+		} else if (tmp != NULL && rename(tmp, path) != 0) {
 			unlink(tmp);
+			err = "write failed: cannot rename .tmp";
+		}
+		free(tmp);
+		if (err != NULL) {
+			ex_show(err);
 			return 1;
 		}
 	}

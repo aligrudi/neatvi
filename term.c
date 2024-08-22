@@ -187,7 +187,7 @@ int term_read(void)
 }
 
 /* return a static string that changes text attributes from old to att */
-char *term_att(int att, int old)
+char *term_seqattr(int att, int old)
 {
 	static char buf[128];
 	char *s = buf;
@@ -216,4 +216,9 @@ char *term_att(int att, int old)
 	}
 	s += sprintf(s, "m");
 	return buf;
+}
+
+char *term_seqkill(void)
+{
+	return "\33[K";
 }

@@ -54,6 +54,7 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	int *off;	/* off[i]: the character at screen position i */
 	int *att;	/* att[i]: the attributes of i-th character */
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
+	int clast = 0;
 	int att_old = 0;
 	struct sbuf *out;
 	int i, j;
@@ -69,11 +70,16 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 		int curbeg = led_pos(ctx, pos[i], cbeg, cend);
 		int curend = led_pos(ctx, pos[i] + curwid - 1, cbeg, cend);
 		if (curbeg >= 0 && curbeg < (cend - cbeg) &&
-				curend >= 0 && curend < (cend - cbeg))
+				curend >= 0 && curend < (cend - cbeg)) {
 			for (j = 0; j < curwid; j++)
 				off[led_pos(ctx, pos[i] + j, cbeg, cend)] = i;
+		}
 	}
 	att = syn_highlight(n <= xlim ? syn : "", s0);
+	/* find the last non-empty column */
+	for (i = cbeg; i < cend; i++)
+		if (off[i - cbeg] >= 0)
+			clast = i;
 	/* the attribute of the last character is used for blanks */
 	att_blank = n > 0 ? att[n - 1] : 0;
 	led_markrev(n, chrs, pos, att);
@@ -81,19 +87,20 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	out = sbuf_make();
 	sbuf_str(out, conf_lnpref());
 	i = cbeg;
-	while (i < cend) {
+	while (i < cend && i <= clast) {
 		int o = off[i - cbeg];
 		int att_new = o >= 0 ? att[o] : att_blank;
-		sbuf_str(out, term_att(att_new, att_old));
+		sbuf_str(out, term_seqattr(att_new, att_old));
 		att_old = att_new;
 		if (o >= 0) {
-			if (ren_translate(chrs[o], s0))
+			if (ren_translate(chrs[o], s0)) {
 				sbuf_str(out, ren_translate(chrs[o], s0));
-			else if (uc_isprint(chrs[o]))
+			} else if (uc_isprint(chrs[o])) {
 				sbuf_mem(out, chrs[o], uc_len(chrs[o]));
-			else
+			} else {
 				for (j = i; j < cend && off[j - cbeg] == o; j++)
 					sbuf_chr(out, ' ');
+			}
 			while (i < cend && off[i - cbeg] == o)
 				i++;
 		} else {
@@ -101,7 +108,9 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 			i++;
 		}
 	}
-	sbuf_str(out, term_att(0, att_old));
+	if (clast < cend - 1)
+		sbuf_str(out, term_seqkill());
+	sbuf_str(out, term_seqattr(0, att_old));
 	free(att);
 	free(pos);
 	free(off);

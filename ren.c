@@ -6,7 +6,7 @@
 #include "vi.h"
 
 /* specify the screen position of the characters in s; reordering version */
-int *ren_position_reorder(char *s)
+static int *ren_position_reorder(char *s)
 {
 	int i, n;
 	char **chrs = uc_chop(s, &n);

@@ -10,9 +10,9 @@ static struct tag {
 	char *pat;	/* tag pattern */
 	char *loc;	/* optional tag location; may reference groups in pat */
 } tags[] = {
-	{"\\.[hc]$", 1, "^[a-zA-Z_].*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\(.*[^;]$", "/^[a-zA-Z_].*\\<\\1\\>\\(.*[^;]$/"},
 	{"\\.[hc]$", 1, "^#define +([a-zA-Z_0-9]+)\\>", "/^#define +\\1\\>/"},
 	{"\\.[hc]$", 1, "^struct +([a-zA-Z_0-9]+) *\\{", "/^struct +\\1 *\\{/"},
+	{"\\.[hc]$", 1, "^[a-zA-Z_][^{;]*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\([^;]+(//.*|/\\*.*)?$", "/^[a-zA-Z_][^{;]*\\<\\1\\([^;]+(\\/\\/.*|\\/\\*.*)?$/"},
 	{"\\.go$", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
 	{"\\.sh$", 2, "^(function +)?([a-zA-Z_][a-zA-Z_0-9]*)(\\(\\))? *\\{", "/^\\1\\2(\\(\\))? *\\{$/"},
 	{"\\.py$", 2, "^(def|class) +([a-zA-Z_][a-zA-Z_0-9]*)\\>", "/^\\1 +\\2\\>/"},
@@ -54,7 +54,7 @@ static void replace(char *dst, char *rep, char *ln, regmatch_t *subs)
 	dst[0] = '\0';
 }
 
-static int mktags(char *path, regex_t *re, int grp, char *rep)
+static int mktags(char *path, regex_t *re, int grp, char *rep, int alt)
 {
 	char ln[128];
 	char loc[256];
@@ -71,11 +71,15 @@ static int mktags(char *path, regex_t *re, int grp, char *rep)
 				len = sizeof(tag) - 1;
 			memcpy(tag, ln + grps[grp].rm_so, len);
 			tag[len] = '\0';
-			if (rep != NULL)
-				replace(loc, rep, ln, grps);
-			else
-				sprintf(loc, "%d", lnum + 1);
-			printf("%s\t%s\t%s\n", tag, path, loc);
+			if (alt) {
+				printf("%s:%04d: %s", path, lnum + 1, ln);
+			} else {
+				if (rep != NULL)
+					replace(loc, rep, ln, grps);
+				else
+					sprintf(loc, "%d", lnum + 1);
+				printf("%s\t%s\t%s\n", tag, path, loc);
+			}
 		}
 		lnum++;
 	}
@@ -86,11 +90,18 @@ static int mktags(char *path, regex_t *re, int grp, char *rep)
 int main(int argc, char *argv[])
 {
 	int i, j;
+	int alt = 0;
 	if (argc == 1) {
-		printf("usage: %s files >tags\n", argv[0]);
+		printf("usage: %s [options] files >tags\n\n", argv[0]);
+		printf("options:\n");
+		printf("  -a    use file listing output format (path:lnum: line)\n");
 		return 0;
 	}
-	for (i = 1; i < argc; i++) {
+	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
+		if (argv[i][1] == 'a')
+			alt = 1;
+	}
+	for (; i < argc; i++) {
 		for (j = 0; j < LEN(tags); j++) {
 			regex_t re;
 			if (tags_match(j, argv[i]) != 0)
@@ -100,7 +111,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			fprintf(stderr, "%s\n", argv[i]);
-			if (mktags(argv[i], &re, tags[j].grp, tags[j].loc))
+			if (mktags(argv[i], &re, tags[j].grp, tags[j].loc, alt))
 				fprintf(stderr, "mktags: failed to read %s\n", argv[i]);
 			regfree(&re);
 		}

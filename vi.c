@@ -841,9 +841,40 @@ static void vi_nextline(void)
 	}
 }
 
+static void vi_showinfo(char *ln)
+{
+	char cmd[512];
+	char *info = " ";
+	char *beg = NULL, *end = NULL;
+	int lastkind = 0;
+	char *s, *r;
+	for (s = ln; s && *s; s = uc_next(s)) {
+		int kind = uc_kind(s);
+		if (lastkind != 1 && kind == 1)
+			beg = s;
+		if (lastkind == 1 && kind != 1)
+			end = s;
+		lastkind = kind;
+	}
+	end = lastkind == 1 ? s : end;
+	if (beg != NULL) {
+		char tag[128];
+		int pos = 0, dir = 0;
+		if (beg != NULL && end - beg + 1 > sizeof(tag))
+			end = beg + sizeof(tag) - 1;
+		memcpy(tag, beg, end - beg);
+		tag[end - beg] = '\0';
+		if (!tag_find(tag, &pos, dir, NULL, 0, cmd, sizeof(cmd)))
+			if ((r = strrchr(cmd, '"')) != NULL)
+				info = r + 1;
+	}
+	led_printmsg(info, xrows, xhl ? "---" : "___");
+	term_pos(xrow - xtop, 0);
+}
+
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline);
+	char *rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline, vi_showinfo);
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;

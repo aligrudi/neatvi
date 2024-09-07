@@ -278,8 +278,8 @@ static int led_match(char *out, int len, char *kwd, char *opt)
 }
 
 /* read a line from the terminal */
-static char *led_line(char *pref, char *post, char *ai,
-		int ai_max, int *left, int *key, int *kmap, char *syn, char *hist)
+static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
+	int *key, int *kmap, char *syn, char *hist, void (*showinfo)(char *ln))
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
@@ -345,7 +345,13 @@ static char *led_line(char *pref, char *post, char *ai,
 				sbuf_str(sb, reg_get(y, &lnmode));
 			break;
 		case TK_CTL('a'):
-			sbuf_str(sb, cmp);
+			if (showinfo != NULL) {
+				char *ln = uc_cat(pref, sbuf_buf(sb));
+				showinfo(ln);
+				free(ln);
+			} else {
+				sbuf_str(sb, cmp);
+			}
 			break;
 		default:
 			if (c == '\n' || TK_INT(c))
@@ -368,7 +374,7 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist)
 	int key;
 	int td = td_set(+2);
 	int left = 0;
-	char *s = led_line(pref, post, "", 0, &left, &key, kmap, syn, hist);
+	char *s = led_line(pref, post, "", 0, &left, &key, kmap, syn, hist, NULL);
 	td_set(td);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
@@ -394,7 +400,7 @@ static int linecount(char *s)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void))
+char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), void (*showinfo)(char *ln))
 {
 	struct sbuf *sb = sbuf_make();
 	char ai[128];
@@ -405,7 +411,7 @@ char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*
 		ai[n++] = *pref++;
 	ai[n] = '\0';
 	while (1) {
-		char *ln = led_line(pref, post, ai, ai_max, left, &key, kmap, syn, NULL);
+		char *ln = led_line(pref, post, ai, ai_max, left, &key, kmap, syn, NULL, showinfo);
 		int ln_sp = 0;	/* number of initial spaces in ln */
 		int lncnt = linecount(ln) - 1 + (key == '\n');
 		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))

@@ -139,7 +139,7 @@ char *term_cmd(int *n);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist);
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void));
+char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), void (*showinfo)(char *ln));
 void led_print(char *msg, int row, int left, char *syn);
 void led_printmsg(char *s, int row, char *syn);
 char *led_read(int *kmap);

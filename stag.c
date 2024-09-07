@@ -10,7 +10,7 @@ static struct tag {
 	char *pat;	/* tag pattern */
 	char *loc;	/* optional tag location; may reference groups in pat */
 } tags[] = {
-	{"\\.[hc]$", 1, "^#define +([a-zA-Z_0-9]+)\\>", "/^#define +\\1\\>/"},
+	{"\\.[hc]$", 1, "^#define +([a-zA-Z_0-9]+)\\>", "/^#define +\\1\\>.*$/"},
 	{"\\.[hc]$", 1, "^struct +([a-zA-Z_0-9]+) *\\{", "/^struct +\\1 *\\{/"},
 	{"\\.[hc]$", 1, "^[a-zA-Z_][^{;]*\\<([a-zA-Z_][a-zA-Z_0-9]*)\\([^;]+(//.*|/\\*.*)?$", "/^[a-zA-Z_][^{;]*\\<\\1\\([^;]+(\\/\\/.*|\\/\\*.*)?$/"},
 	{"\\.go$", 3, "^(func|var|const|type)( +\\([^()]+\\))? +([a-zA-Z_0-9]+)\\>", "/^\\1( +\\(.*\\))? +\\3\\>/"},
@@ -78,7 +78,7 @@ static int mktags(char *path, regex_t *re, int grp, char *rep, int alt)
 					replace(loc, rep, ln, grps);
 				else
 					sprintf(loc, "%d", lnum + 1);
-				printf("%s\t%s\t%s\n", tag, path, loc);
+				printf("%s\t%s\t%s \"%s", tag, path, loc, ln);
 			}
 		}
 		lnum++;

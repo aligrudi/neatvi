@@ -50,8 +50,10 @@ static char *copypart(char *dst, int dstlen, char *src)
 		end++;
 	if (end - src < len)
 		len = end - src;
-	memcpy(dst, src, len);
-	dst[len] = '\0';
+	if (dst != NULL && dstlen > 0) {
+		memcpy(dst, src, len);
+		dst[len] = '\0';
+	}
 	return *end ? end + 1 : end;
 }
 

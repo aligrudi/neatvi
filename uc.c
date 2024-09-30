@@ -603,7 +603,7 @@ int uc_wid(char *s)
 int uc_isbell(char *s)
 {
 	int c = (unsigned char) *s;
-	if (c == ' ' || c == '\t' || c == '\n' || (c >= 0x20 && c <= 0x7f))
+	if (c == ' ' || c == '\t' || c == '\n' || (c >= 0x20 && c < 0x7f))
 		return 0;
 	c = uc_code(s);
 	return uc_iszw(c) || find(c, bchars, LEN(bchars));

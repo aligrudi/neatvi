@@ -43,7 +43,7 @@ static struct buf {
 	short id;		/* buffer number */
 	short td;		/* text direction */
 	long mtime;		/* modification time */
-} bufs[8];
+} bufs[16];
 
 static int bufs_cnt = 0;	/* number of allocated buffers */
 

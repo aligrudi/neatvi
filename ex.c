@@ -1030,6 +1030,25 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	xrow = beg;
+	if (cmd[0] == 'r' && cmd[1] == 'r') {
+		struct sbuf *r = sbuf_make();
+		char *s = buf;
+		int ret;
+		while (*s) {
+			if ((unsigned char) *s == '' && s[1]) {
+				char *reg = reg_get((unsigned char) *++s, NULL);
+				sbuf_str(r, reg ? reg : "");
+				s++;
+			} else {
+				if ((unsigned char) *s == '' && s[1])
+					s++;
+				sbuf_chr(r, (unsigned char) *s++);
+			}
+		}
+		ret = ex_command(sbuf_buf(r));
+		sbuf_free(r);
+		return ret;
+	}
 	return ex_command(buf);
 }
 
@@ -1156,6 +1175,7 @@ static struct excmd {
 	{"redo", "redo", ec_redo},
 	{"rs", "rs", ec_rs},
 	{"rx", "rx", ec_rx},
+	{"rr", "rr", ec_at},
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"so", "source", ec_source},
@@ -1234,7 +1254,7 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
-			((c0 == 'r' || c0 == 'w') && src[0] == '!')) {
+			((c0 == 'r' || c0 == 'w') && !c1 && src[0] == '!')) {
 		while (*src && *src != '\n') {
 			if (*src == '\\' && src[1])
 				*dst++ = *src++;
@@ -1243,13 +1263,15 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 	} else if ((c0 == 's' && c1 != 'e') || c0 == '&' || c0 == '~') {
 		int delim = *src;
 		int cnt = 2;
-		*dst++ = *src++;
-		while (*src && *src != '\n' && cnt > 0) {
-			if (*src == delim)
-				cnt--;
-			if (*src == '\\' && src[1])
-				*dst++ = *src++;
+		if (delim != '\n' && delim != '|' && delim != '\\' && delim != '"') {
 			*dst++ = *src++;
+			while (*src && *src != '\n' && cnt > 0) {
+				if (*src == delim)
+					cnt--;
+				if (*src == '\\' && src[1])
+					*dst++ = *src++;
+				*dst++ = *src++;
+			}
 		}
 	}
 	while (*src && *src != '\n' && *src != '|' && *src != '"') {

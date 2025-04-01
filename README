@@ -54,6 +54,10 @@ Commands not available in ex(1):
   Like :! command, executes cmd.  However, the contents of the
   specified yank buffer is given to the command as input, and the
   output of the command is written to that yank buffer.
+:rr reg
+  Similar to :@ command, executes the contents of the given buffer.
+  Before executing the buffer, however, it replaces ^rx with the
+  contents of buffer x, and ^vx with x, in which x is any character.
 :ec[ho] msg
   Prints the given message (useful in ex scripts or q-commands).
 

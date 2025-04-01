@@ -139,7 +139,7 @@ char *term_cmd(int *n);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist);
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), void (*showinfo)(char *ln));
+char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), char *(*help)(char *ln));
 void led_print(char *msg, int row, int left, char *syn);
 void led_printmsg(char *s, int row, char *syn);
 char *led_read(int *kmap);
@@ -192,10 +192,9 @@ int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_placeholder(int idx, char **s, char **d, int *wid);
 int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
+int conf_hlback(void);
 int conf_hlrev(void);
 int conf_hlline(void);
-int conf_hlmode(void);
-int conf_hlback(void);
 int conf_mode(void);
 char **conf_kmap(int id);
 int conf_kmapfind(char *name);

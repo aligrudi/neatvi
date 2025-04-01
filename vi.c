@@ -1,7 +1,7 @@
 /*
  * NEATVI Editor
  *
- * Copyright (C) 2015-2024 Ali Gholami Rudi <ali at rudi dot ir>
+ * Copyright (C) 2015-2025 Ali Gholami Rudi <ali at rudi dot ir>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -41,6 +41,7 @@ static int vi_pcol;		/* the column requested by | command */
 static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d */
 static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
+static int vi_insert;		/* insert mode */
 static int w_cnt = 1;		/* window count */
 static int w_cur;		/* active window identifier */
 static int w_tmp;		/* temporary window */
@@ -299,7 +300,10 @@ void ex_show(char *msg)
 /* print an ex output line */
 void ex_print(char *line)
 {
-	if (xvis) {
+	if (vi_insert) {
+		led_print(line, xrows, 0, xhl ? "-ex" : "");
+		term_pos(xrow - xtop, 0);
+	} else if (xvis) {
 		if (line && vi_printed == 0)
 			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
 		if (line && vi_printed == 1)
@@ -841,13 +845,26 @@ static void vi_nextline(void)
 	}
 }
 
-static void vi_showinfo(char *ln)
+static char *vi_help(char *ln)
 {
-	char cmd[512];
+	static char ac[128];
+	char cmd[128] = "rr \\~";
 	char *info = " ";
 	char *beg = NULL, *end = NULL;
 	int lastkind = 0;
 	char *s, *r;
+	/* execute \~ register, if defined */
+	if (reg_get(0x80 | '~', NULL)) {
+		reg_put('~', ln, 0);
+		if (!ex_command(cmd)) {
+			snprintf(ac, sizeof(ac), "%s", reg_get('~', NULL));
+			if (strchr(ac, '\n') != NULL)
+				*strchr(ac, '\n') = '\0';
+			return ac;
+		}
+		return NULL;
+	}
+	/* extract tag information */
 	for (s = ln; s && *s; s = uc_next(s)) {
 		int kind = uc_kind(s);
 		if (lastkind != 1 && kind == 1)
@@ -870,11 +887,12 @@ static void vi_showinfo(char *ln)
 	}
 	led_printmsg(info, xrows, xhl ? "---" : "___");
 	term_pos(xrow - xtop, 0);
+	return NULL;
 }
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline, vi_showinfo);
+	char *rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline, vi_help);
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;
@@ -1080,7 +1098,9 @@ static int vc_insert(int cmd)
 	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
 	if (cmd == 'O')
 		term_room(1);
+	vi_insert = 1;
 	rep = vi_input(pref, post, &row, &off);
+	vi_insert = 0;
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
 		lbuf_edit(xb, "\n", 0, 0);
 	if (rep) {

@@ -91,7 +91,11 @@ Other noteworthy differences with vi(1):
 - Neatvi highlights files whose names end with ls as directory
   listings; the gl command edits the file under the cursor.  For
   instance, git ls-files >ls && neatvi ls.
-- Neatvi supports extended yank buffers, like \x.
+- In addition to the standard single-letter yank buffers, Neatvi
+  supports a set of two-letter buffers whose names begin with a
+  backslash, like \x.
+- If EXINIT environment variable is defined as "so /path/to/exrc",
+  Neatvi executes the ex commands in this file at startup.
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
@@ -190,3 +194,28 @@ commands.  Q-commands can be used to add interesting features to
 Neatvi, such as language-dependent IDE features, for instance by
 connecting to an LSP (language server protocol) server.  ecmd.sh is an
 example ECMD shell script.
+
+AUTO-COMPLETION
+---------------
+
+When the hist option is nonzero, Neatvi suggests the most recent
+matching entry when reading user input for :, /, and ! prompts; ^a
+completes the input using the suggestion.
+
+On the other hand, when in insert mode, ^a changes the value of the
+buffer named ~ to the contents of the current line up to the cursor,
+and executes the contents of \~ buffer (as :ra \~).  The buffer can
+execute any ex command (for instance, :ec to print a message), and
+change the contents of ~ to suggest a completion; a second ^a inserts
+the suggestion.  The following lines define \~ to demonstrate how it
+works.
+
+  rs \~
+  ec completing '~'
+  rs ~
+  completion
+  .
+  .
+
+In a real implementation, the \~ buffer can use external commands
+(with rx or rk) to compute the completions.

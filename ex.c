@@ -237,6 +237,8 @@ static char *ex_reg(char *src, int *reg)
 	*reg = REG(src);
 	while (*src && *src != ' ' && *src != '\t')
 		src++;
+	while (*src == ' ' || *src == '\t')
+		src++;
 	return src;
 }
 
@@ -846,9 +848,26 @@ static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
-	reg_put(reg, rep != NULL ? rep : "", 1);
+	reg_put(reg, rep ? rep : "", 1);
 	free(rep);
-	return 0;
+	return !rep;
+}
+
+static int ec_rk(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *rep, *path;
+	int reg = 0;
+	if (!xwa)
+		ex_modifiedbuffer(NULL);
+	arg = ex_reg(arg, &reg);
+	if (reg <= 0)
+		return 1;
+	if (!(path = ex_pathexpand(arg, 1)))
+		return 1;
+	rep = cmd_unix(path, reg_get(reg, NULL));
+	reg_put(reg, rep ? rep : "", 1);
+	free(rep);
+	return !rep;
 }
 
 static int ec_make(char *loc, char *cmd, char *arg, char *txt)
@@ -1030,7 +1049,7 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	xrow = beg;
-	if (cmd[0] == 'r' && cmd[1] == 'r') {
+	if (cmd[0] == 'r' && cmd[1] == 'a') {
 		struct sbuf *r = sbuf_make();
 		char *s = buf;
 		int ret;
@@ -1175,7 +1194,8 @@ static struct excmd {
 	{"redo", "redo", ec_redo},
 	{"rs", "rs", ec_rs},
 	{"rx", "rx", ec_rx},
-	{"rr", "rr", ec_at},
+	{"ra", "ra", ec_at},
+	{"rk", "rk", ec_rk},
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"so", "source", ec_source},

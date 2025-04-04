@@ -53,8 +53,11 @@ Commands not available in ex(1):
 :rx reg cmd
   Like :! command, executes cmd.  However, the contents of the
   specified yank buffer is given to the command as input, and the
-  output of the command is written to that yank buffer.
-:rr reg
+  output of the command is written to the same buffer.
+:rk reg path
+  Connects to a unix socket, writes the contents of the given buffer
+  to it, and reads from the socket into the buffer.
+:ra reg
   Similar to :@ command, executes the contents of the given buffer.
   Before executing the buffer, however, it replaces ^rx with the
   contents of buffer x, and ^vx with x, in which x is any character.

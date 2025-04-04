@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include "vi.h"
 
@@ -141,4 +143,31 @@ int cmd_exec(char *cmd)
 {
 	cmd_pipe(cmd, NULL, 0);
 	return 0;
+}
+
+char *cmd_unix(char *path, char *ibuf)
+{
+	char buf[512];
+	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	struct sockaddr_un addr;
+	long nw = 0, nc = 0;
+	long len = strlen(ibuf);
+	struct sbuf *sb;
+	if (fd < 0)
+		return NULL;
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path);
+	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(fd);
+		return NULL;
+	}
+	while (nw < len && (nc = write(fd, ibuf + nw, len - nw)) >= 0)
+		nw += nc;
+	shutdown(fd, SHUT_WR);
+	sb = sbuf_make();
+	while ((nc = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(sb, buf, nc);
+	close(fd);
+	return sbuf_done(sb);
 }

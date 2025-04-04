@@ -301,7 +301,7 @@ void ex_show(char *msg)
 void ex_print(char *line)
 {
 	if (vi_insert) {
-		led_print(line, xrows, 0, xhl ? "-ex" : "");
+		led_print(line, xrows, 0, xhl ? "---" : "___");
 		term_pos(xrow - xtop, 0);
 	} else if (xvis) {
 		if (line && vi_printed == 0)
@@ -848,7 +848,7 @@ static void vi_nextline(void)
 static char *vi_help(char *ln)
 {
 	static char ac[128];
-	char cmd[128] = "rr \\~";
+	char cmd[128] = "ra \\~";
 	char *info = " ";
 	char *beg = NULL, *end = NULL;
 	int lastkind = 0;
@@ -892,7 +892,10 @@ static char *vi_help(char *ln)
 
 static char *vi_input(char *pref, char *post, int *row, int *off)
 {
-	char *rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline, vi_help);
+	char *rep;
+	vi_insert = 1;
+	rep = led_input(pref, post, &xleft, &xkmap, xhl ? ex_filetype() : "", vi_nextline, vi_help);
+	vi_insert = 0;
 	if (!rep)
 		return NULL;
 	*row = linecount(rep) - 1;
@@ -1098,9 +1101,7 @@ static int vc_insert(int cmd)
 	post = ln && cmd != 'o' && cmd != 'O' ? uc_sub(ln, off, -1) : uc_dup("\n");
 	if (cmd == 'O')
 		term_room(1);
-	vi_insert = 1;
 	rep = vi_input(pref, post, &row, &off);
-	vi_insert = 0;
 	if ((cmd == 'o' || cmd == 'O') && !lbuf_len(xb))
 		lbuf_edit(xb, "\n", 0, 0);
 	if (rep) {

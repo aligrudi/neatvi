@@ -163,7 +163,8 @@ int ex_list(char **ls, int size);
 #define xb 	ex_lbuf()
 
 /* process management */
-char *cmd_pipe(char *cmd, char *s, int oproc);
+char *cmd_pipe(char *cmd, char *ibuf, int oproc);
+char *cmd_unix(char *path, char *ibuf);
 int cmd_exec(char *cmd);
 
 /* syntax highlighting */

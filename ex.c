@@ -141,11 +141,8 @@ static void bufs_number(void)
 	int i;
 	for (i = 0; i < LEN(bufs); i++)
 		if (bufs[i].lb != NULL)
-			n++;
+			bufs[i].id = ++n;
 	bufs_cnt = n;
-	for (i = 0; i < LEN(bufs); i++)
-		if (bufs[i].lb != NULL)
-			bufs[i].id = n--;
 }
 
 static long mtime(char *path)

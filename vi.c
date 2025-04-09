@@ -1429,6 +1429,10 @@ static int vc_quick(int newwin)
 	c = vi_read();
 	if (TK_INT(c))
 		return VC_WIN;
+	if (c == '\n') {
+		ex_command("b 1");
+		return newwin ? VC_ALL : VC_WIN;
+	}
 	if (isdigit(c)) {
 		i = c - '0';
 		if (ls[i] == NULL)

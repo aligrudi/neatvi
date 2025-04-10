@@ -1511,7 +1511,7 @@ static void vi(void)
 			int k = 0;
 			if (c <= 0)
 				continue;
-			lbuf_mark(xb, '*', xrow, xoff);
+			lbuf_mark(xb, '^', xrow, xoff);
 			switch (c) {
 			case TK_CTL('b'):
 				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
@@ -1566,7 +1566,7 @@ static void vi(void)
 				break;
 			case 'u':
 				if (!lbuf_undo(xb)) {
-					lbuf_jump(xb, '*', &xrow, &xoff);
+					lbuf_jump(xb, '^', &xrow, &xoff);
 					mod = VC_WIN;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "undo failed");
@@ -1574,7 +1574,7 @@ static void vi(void)
 				break;
 			case TK_CTL('r'):
 				if (!lbuf_redo(xb)) {
-					lbuf_jump(xb, '*', &xrow, &xoff);
+					lbuf_jump(xb, '^', &xrow, &xoff);
 					mod = VC_WIN;
 				} else {
 					snprintf(vi_msg, sizeof(vi_msg), "redo failed");

@@ -68,7 +68,7 @@ New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
 - ^p in insert mode: inserts the contents of the default yank buffer.
 - ^rX in insert mode: inserts the contents of yank buffer X.
-- zL, zl, zr, and zR in normal mode: changes the value of td option.
+- z>, z<, 2z>, and 2z< in normal mode: changes the value of td option.
 - ^e and ^f in insert mode: switches to the English and alternate keymap.
 - ze and zf in normal mode: switches to the English and alternate keymap.
 - gu, gU, and g~ in normal mode: switches character case.
@@ -92,8 +92,8 @@ Other noteworthy differences with vi(1):
   listings; the gl command edits the file under the cursor.  For
   instance, git ls-files >ls && neatvi ls.
 - In addition to the standard single-letter yank buffers, Neatvi
-  supports a set of two-letter buffers whose names begin with a
-  backslash, like \x.
+  supports a set of extended buffers whose two-letter names begin
+  with a backslash, like \x.
 - If EXINIT environment variable is defined as "so /path/to/exrc",
   Neatvi executes the ex commands in this file at startup.
 

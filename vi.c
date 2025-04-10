@@ -1691,14 +1691,10 @@ static void vi(void)
 					n = vi_arg1 ? vi_arg1 : xrow;
 					xtop = MAX(0, n - xrows + 1);
 					break;
-				case 'l':
-				case 'r':
-					xtd = k == 'r' ? -1 : +1;
-					mod = VC_WIN;
-					break;
-				case 'L':
-				case 'R':
-					xtd = k == 'R' ? -2 : +2;
+				case '>':
+				case '<':
+					xtd = k == '>' ? +1 : -1;
+					xtd += vi_arg1 > 1 ? xtd : 0;
 					mod = VC_WIN;
 					break;
 				case 'e':

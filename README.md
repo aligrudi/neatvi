@@ -160,7 +160,7 @@ MARKS AND BUFFERS
 -----------------
 
 Special marks:
-- * the position of the previous change
+- \* the position of the previous change
 - [ the first line of the previous change
 - ] the last line of the previous change
 
@@ -172,7 +172,8 @@ Special yank buffers:
 - " the default yank buffer
 - ; the current line
 - . the last vi command
-- # cursor line number
+
+# cursor line number
 - ^ cursor line offset
 - \/ search history
 - \: ex command history
@@ -209,13 +210,13 @@ execute any ex command (for instance, :ec to print a message), and
 change the contents of ~ to suggest a completion; a second ^a inserts
 the suggestion.  The following lines define \~ to demonstrate how it
 works.
-
-  rs \~
+<pre>
+  
+  ``` rs \~
   ec completing '�~'
   rs ~
   completion
-  �.
-  .
-
+  �.``` 
+</pre>
 In a real implementation, the \~ buffer can use external commands
 (with rx or rk) to compute the completions.

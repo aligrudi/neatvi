@@ -26,43 +26,43 @@ COMMANDS
 
 Commands not available in ex(1):
 
-:cm[ap][!] [kmap]  
-  Without kmap, prints the current keymap name.  
-  When kmap is specified, sets the alternate keymap to  
-  kmap and, unless ! is given, switches to this keymap.  
-:ft [filetype]  
-  Without filetype, prints the current file type.  
-  When filetype is specified, sets the file type of the  
-  current ex buffer.  
-:ta[g] tag  
-  Jumps to tag (tags file: TAGPATH environment variable or ./tags).  
-:tn[ext]  
-  Jumps to the next matching tag.  
-:tp[rev]  
-  Jumps to the previous matching tag.  
-:po[p]  
-  Pops tag stack.  
-:b[uffer] [buf]  
-  Without buf, prints buffer list.  Switches to the given buffer  
-  if buf is a buffer number or alias.  Also, buf can be -, +, !,  
-  and ~ to switch to the previous buffer, switch to the next buffer,  
-  delete the current buffer, and renumber buffers, respectively.  
-:rs reg  
-  Reads dot-terminated lines (similar to :a command) from ex input  
-  and copies them to the given yank buffer.  
-:rx reg cmd  
-  Like :! command, executes cmd.  However, the contents of the  
-  specified yank buffer is given to the command as input, and the  
-  output of the command is written to the same buffer.  
-:rk reg path  
-  Connects to a unix socket, writes the contents of the given buffer  
-  to it, and reads from the socket into the buffer.  
-:ra reg  
-  Similar to :@ command, executes the contents of the given buffer.  
-  Before executing the buffer, however, it replaces ^rx with the  
-  contents of buffer x, and ^vx with x, in which x is any character.  
-:ec[ho] msg  
-  Prints the given message (useful in ex scripts or q-commands).  
+`:cm[ap][!] [kmap]`  
+    Without kmap, prints the current keymap name.  
+    When kmap is specified, sets the alternate keymap to  
+    kmap and, unless ! is given, switches to this keymap.  
+`:ft [filetype]`  
+    Without filetype, prints the current file type.  
+    When filetype is specified, sets the file type of the  
+    current ex buffer.  
+`:ta[g] tag`  
+    Jumps to tag (tags file: TAGPATH environment variable or ./tags).  
+`:tn[ext]`  
+    Jumps to the next matching tag.  
+`:tp[rev]`  
+    Jumps to the previous matching tag.  
+`:po[p]`  
+    Pops tag stack.  
+`:b[uffer] [buf]`  
+    Without buf, prints buffer list.  Switches to the given buffer  
+    if buf is a buffer number or alias.  Also, buf can be -, +, !,  
+    and ~ to switch to the previous buffer, switch to the next buffer,  
+    delete the current buffer, and renumber buffers, respectively.  
+`:rs reg`  
+    Reads dot-terminated lines (similar to :a command) from ex input  
+    and copies them to the given yank buffer.  
+`:rx reg cmd`  
+    Like :! command, executes cmd.  However, the contents of the  
+    specified yank buffer is given to the command as input, and the  
+    output of the command is written to the same buffer.  
+`:rk reg path`  
+    Connects to a unix socket, writes the contents of the given buffer  
+    to it, and reads from the socket into the buffer.  
+`:ra reg`  
+    Similar to :@ command, executes the contents of the given buffer.  
+    Before executing the buffer, however, it replaces ^rx with the  
+    contents of buffer x, and ^vx with x, in which x is any character.  
+`:ec[ho] msg`  
+    Prints the given message (useful in ex scripts or q-commands).  
 
 New key mappings:
 - **^a** in normal mode: searches for the word under the cursor.
@@ -70,7 +70,7 @@ New key mappings:
 - **^rX** in insert mode: inserts the contents of yank buffer X.
 - **z>**, **z<**, **2z>**, and **2z<** in normal mode: changes the value of td option.
 - **^e** and **^f** in insert mode: switches to the English and alternate keymap.
-- ze and zf in normal mode: switches to the English and alternate keymap.
+- **ze** and **zf** in normal mode: switches to the English and alternate keymap.
 - **gu**, **gU**, and **g~** in normal mode: switches character case.
 - **^l** in normal mode: updates terminal dimensions (after resizing it).
 - **^]** and **^t** in normal mode: jumps to tag and pops tag stack.

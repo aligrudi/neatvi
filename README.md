@@ -102,10 +102,11 @@ Note that in :rs command, input lines are read from ex input stream
 passed to :so).  This allows setting the value of yank buffers in ex
 files, as the following example shows:
 
+<pre>
   rs a
   :!git add %
   .
-
+</pre>
 OPTIONS
 -------
 
@@ -211,12 +212,11 @@ change the contents of ~ to suggest a completion; a second ^a inserts
 the suggestion.  The following lines define \~ to demonstrate how it
 works.
 <pre>
-  
-  ``` rs \~
+  rs \~
   ec completing '�~'
   rs ~
   completion
-  �.``` 
+  �.. 
 </pre>
 In a real implementation, the \~ buffer can use external commands
 (with rx or rk) to compute the completions.

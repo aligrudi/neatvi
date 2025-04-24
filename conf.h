@@ -66,7 +66,7 @@ static struct highlight {
 	{"c", {CIMP, CPRE}, "^#([ \t]*include).*"},
 	{"c", {CIMP, CPRE}, "^#([ \t]*[a-zA-Z0-9_]+)"},
 	{"c", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
-	{"c", {CSTR}, "\"([^\"]|\\\\\")*\""},
+	{"c", {CSTR}, "\"([^\"\\]|\\\\.)*\""},
 	{"c", {CNUM}, "'([^\\]|\\\\.)'"},
 	{"c", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9]+)\\>"},
 	{"c", {CCMT}, "^\t*(/\\*.*|\t* \\*.*|\t* \\*\\//)$"},
@@ -125,7 +125,7 @@ static struct highlight {
 	{"go", {CCMT}, "/\\*([^*]|\\*+[^*/])*\\*+/"},
 	{"go", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]*)\\(", 1},
 	{"go", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
-	{"go", {CSTR}, "\"([^\"]|\\\\\")*\""},
+	{"go", {CSTR}, "\"([^\"\\]|\\\\.)*\""},
 	{"go", {CNUM}, "'([^']|\\\\')*'"},
 	{"go", {CSTR}, "`([^`]|\\\\`)*`"},
 	{"go", {CNUM}, "[-+]?\\<(0[xX][0-9a-fA-F]+|[0-9.]+)\\>"},
@@ -149,7 +149,7 @@ static struct highlight {
 	{"py", {CCON}, "\\<(for|while|if|elif|else|pass|return|break|continue)\\>"},
 	{"py", {CCON}, "\\<(try|except|as|raise|finally|with)\\>"},
 	{"py", {0, CFUN}, "([a-zA-Z][a-zA-Z0-9_]+)\\(", 1},
-	{"py", {CSTR}, "[\"']([^\"']|\\\\\")*[\"']"},
+	{"py", {CSTR}, "[\"']([^\"'\\]|\\\\.)*[\"']"},
 	{"py", {CIDN}, "[a-zA-Z][a-zA-Z0-9_]*"},
 
 	/* neatmail listing */

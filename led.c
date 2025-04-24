@@ -279,11 +279,12 @@ static int led_match(char *out, int len, char *kwd, char *opt)
 
 /* read a line from the terminal */
 static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
-	int *key, int *kmap, char *syn, char *hist, void (*showinfo)(char *ln))
+	int *key, int *kmap, char *syn, char *hist, char *(*help)(char *ln))
 {
 	struct sbuf *sb;
 	int ai_len = strlen(ai);
-	int c, y, lnmode;
+	int y, lnmode;
+	int c = 0;
 	char cmp[64] = "";
 	char *cs;
 	sb = sbuf_make();
@@ -292,6 +293,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 	if (post == NULL || !post[0])
 		post = cmp;
 	while (1) {
+		int c1 = c;
 		if (hist != NULL)
 			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
 		led_printparts(ai, pref, sbuf_buf(sb), post, left, *kmap, syn);
@@ -345,12 +347,15 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 				sbuf_str(sb, reg_get(y, &lnmode));
 			break;
 		case TK_CTL('a'):
-			if (showinfo != NULL) {
+			if (help != NULL && c1 != TK_CTL('a')) {
 				char *ln = uc_cat(pref, sbuf_buf(sb));
-				showinfo(ln);
+				char *ac = help(ln);
+				if (ac != NULL)
+					snprintf(cmp, sizeof(cmp), "%s", ac);
 				free(ln);
 			} else {
 				sbuf_str(sb, cmp);
+				cmp[0] = '\0';
 			}
 			break;
 		default:
@@ -400,7 +405,7 @@ static int linecount(char *s)
 }
 
 /* read visual command input */
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), void (*showinfo)(char *ln))
+char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), char *(*help)(char *ln))
 {
 	struct sbuf *sb = sbuf_make();
 	char ai[128];
@@ -411,7 +416,7 @@ char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*
 		ai[n++] = *pref++;
 	ai[n] = '\0';
 	while (1) {
-		char *ln = led_line(pref, post, ai, ai_max, left, &key, kmap, syn, NULL, showinfo);
+		char *ln = led_line(pref, post, ai, ai_max, left, &key, kmap, syn, NULL, help);
 		int ln_sp = 0;	/* number of initial spaces in ln */
 		int lncnt = linecount(ln) - 1 + (key == '\n');
 		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))

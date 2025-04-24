@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "vi.h"
 
-#define NMARKS_BASE		('z' - 'a' + 2)
+#define NMARKS_BASE		('z' - 'a' + 3)
 #define NMARKS			32
 
 /* line operations */
@@ -87,19 +87,29 @@ static int markidx(int mark)
 		return 'z' - 'a' + 3;
 	if (mark == ']')
 		return 'z' - 'a' + 4;
+	if (mark == '^')
+		return 'z' - 'a' + 5;
 	return -1;
+}
+
+static void lbuf_markcopy(struct lbuf *lb, int dst, int src)
+{
+	lb->mark[markidx(dst)] = lb->mark[markidx(src)];
+	lb->mark_off[markidx(dst)] = lb->mark_off[markidx(src)];
 }
 
 static void lbuf_savepos(struct lbuf *lb, struct lopt *lo)
 {
-	if (lb->mark[markidx('*')] >= 0)
-		lo->pos_off = lb->mark_off[markidx('*')];
+	if (lb->mark[markidx('^')] >= 0)
+		lo->pos_off = lb->mark_off[markidx('^')];
+	lbuf_markcopy(lb, '*', '^');
 }
 
 static void lbuf_loadpos(struct lbuf *lb, struct lopt *lo)
 {
-	lb->mark[markidx('*')] = lo->pos;
-	lb->mark_off[markidx('*')] = lo->pos_off;
+	lb->mark[markidx('^')] = lo->pos;
+	lb->mark_off[markidx('^')] = lo->pos_off;
+	lbuf_markcopy(lb, '*', '^');
 }
 
 void lbuf_free(struct lbuf *lb)

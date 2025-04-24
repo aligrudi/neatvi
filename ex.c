@@ -141,11 +141,8 @@ static void bufs_number(void)
 	int i;
 	for (i = 0; i < LEN(bufs); i++)
 		if (bufs[i].lb != NULL)
-			n++;
+			bufs[i].id = ++n;
 	bufs_cnt = n;
-	for (i = 0; i < LEN(bufs); i++)
-		if (bufs[i].lb != NULL)
-			bufs[i].id = n--;
 }
 
 static long mtime(char *path)
@@ -236,6 +233,8 @@ static char *ex_reg(char *src, int *reg)
 		src++;
 	*reg = REG(src);
 	while (*src && *src != ' ' && *src != '\t')
+		src++;
+	while (*src == ' ' || *src == '\t')
 		src++;
 	return src;
 }
@@ -355,14 +354,31 @@ static int ex_region(char *loc, int *beg, int *end)
 	return 0;
 }
 
-static int ec_write(char *loc, char *cmd, char *arg, char *txt);
-
-static int ex_modifiedbuffer(char *msg)
+static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force, long ts)
 {
-	if (!lbuf_modified(xb))
+	int fd;
+	if (end < 0)
+		end = lbuf_len(lb);
+	if (!force && mtime > 0 && mtime(path) > ts) {
+		return "write failed: file changed";
+	} else if (!force && ts <= 0 && mtime(path) >= 0) {
+		return "write failed: file exists";
+	} else if ((fd = open(path, O_WRONLY | O_CREAT, conf_mode())) < 0) {
+		return "write failed: cannot create file";
+	} else if (lbuf_wr(lb, fd, beg, end) != 0 || close(fd) != 0) {
+		close(fd);
+		return "write failed";
+	}
+	return NULL;
+}
+
+static int bufs_modified(int idx, char *msg)
+{
+	struct buf *b = &bufs[idx];
+	if (!b->lb || !lbuf_modified(b->lb))
 		return 0;
-	if (xaw && ex_path()[0])
-		return ec_write("", "w", "", NULL);
+	if (xaw && b->path[0])
+		return lbuf_save(b->lb, 0, -1, b->path, 0, b->mtime) != NULL;
 	if (msg)
 		ex_show(msg);
 	return 1;
@@ -413,8 +429,8 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 			idx = r ? r - aliases : -1;
 		}
 		if (idx >= 0 && idx < LEN(bufs) && bufs[idx].lb) {
-			if (xb && !xwa && strchr(cmd, '!') == NULL)
-				if (ex_modifiedbuffer("buffer modified"))
+			if (!xwa && strchr(cmd, '!') == NULL)
+				if (bufs_modified(0, "buffer modified"))
 					return 1;
 			bufs_switch(idx);
 		} else {
@@ -433,15 +449,6 @@ int ex_list(char **ls, int size)
 	return i;
 }
 
-static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
-{
-	if (!strchr(cmd, '!'))
-		if (ex_modifiedbuffer("buffer modified"))
-			return 1;
-	xquit = 1;
-	return 0;
-}
-
 static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 {
 	char pls[EXLEN];
@@ -449,7 +456,7 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 	char *path;
 	int fd;
 	if (!strchr(cmd, '!'))
-		if (xb && !xwa && ex_modifiedbuffer("buffer modified"))
+		if (xb && !xwa && bufs_modified(0, "buffer modified"))
 			return 1;
 	arg = ex_plus(arg, pls);
 	if (!(path = ex_pathexpand(arg, 0)))
@@ -567,7 +574,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 	int beg, end;
 	path = arg[0] ? ex_pathexpand(arg, 1) : ex_path();
 	if (cmd[0] == 'x' && !lbuf_modified(xb))
-		return ec_quit("", cmd, "", NULL);
+		return 0;
 	if (ex_region(loc, &beg, &end) || path == NULL)
 		return 1;
 	if (!loc[0]) {
@@ -582,19 +589,8 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		cmd_pipe(path + 1, ibuf, 0);
 		free(ibuf);
 	} else {
-		char *err = NULL;
-		int fd = -1;
-		if (!strchr(cmd, '!') && !strcmp(ex_path(), path) &&
-				mtime(ex_path()) > bufs[0].mtime) {
-			err = "write failed: file changed";
-		} else if (!strchr(cmd, '!') && arg[0] && mtime(arg) >= 0) {
-			err = "write failed: file exists";
-		} else if ((fd = open(path, O_WRONLY | O_CREAT, conf_mode())) < 0) {
-			err = "write failed: cannot create file";
-		} else if (lbuf_wr(xb, fd, beg, end) != 0 || close(fd) != 0) {
-			err = "write failed";
-			close(fd);
-		}
+		long ts = !strcmp(ex_path(), path) ? bufs[0].mtime : 0;
+		char *err = lbuf_save(xb, beg, end, path, !!strchr(cmd, '!'), ts);
 		if (err != NULL) {
 			ex_show(err);
 			return 1;
@@ -611,8 +607,36 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		lbuf_saved(xb, 0);
 	if (!strcmp(ex_path(), path))
 		bufs[0].mtime = mtime(path);
-	if (cmd[0] == 'x' || (cmd[0] == 'w' && cmd[1] == 'q'))
-		ec_quit("", cmd, "", NULL);
+	return 0;
+}
+
+static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
+{
+	int i;
+	if (cmd[0] == 'w' || cmd[0] == 'x')
+		if (ec_write("", cmd, arg, NULL))
+			return 1;
+	for (i = 0; i < LEN(bufs); i++) {
+		if (bufs[i].lb) {
+			if (!strchr(cmd, 'a') && !strchr(cmd, '!')) {
+				if (bufs_modified(i, "buffer modified")) {
+					bufs_switch(i);
+					return 0;
+				}
+			}
+			if (strchr(cmd, 'a')) {
+				struct buf *b = &bufs[i];
+				char *err = lbuf_save(b->lb, 0, -1, b->path,
+						!!strchr(cmd, '!'), b->mtime);
+				if (err) {
+					bufs_switch(i);
+					ex_show(err);
+					return 0;
+				}
+			}
+		}
+	}
+	xquit = 1;
 	return 0;
 }
 
@@ -815,8 +839,8 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	char *text;
 	char *rep;
 	char *ecmd;
-	if (!xwa)
-		ex_modifiedbuffer(NULL);
+	if (!xwa && bufs_modified(0, "buffer modified"))
+		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {
@@ -838,25 +862,38 @@ static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *rep, *ecmd;
 	int reg = 0;
-	if (!xwa)
-		ex_modifiedbuffer(NULL);
 	arg = ex_reg(arg, &reg);
 	if (reg <= 0)
 		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
-	reg_put(reg, rep != NULL ? rep : "", 1);
+	reg_put(reg, rep ? rep : "", 1);
 	free(rep);
-	return 0;
+	return !rep;
+}
+
+static int ec_rk(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *rep, *path;
+	int reg = 0;
+	arg = ex_reg(arg, &reg);
+	if (reg <= 0)
+		return 1;
+	if (!(path = ex_pathexpand(arg, 1)))
+		return 1;
+	rep = cmd_unix(path, reg_get(reg, NULL));
+	reg_put(reg, rep ? rep : "", 1);
+	free(rep);
+	return !rep;
 }
 
 static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
 	char *target;
-	if (!xwa)
-		ex_modifiedbuffer(NULL);
+	if (!xwa && bufs_modified(0, "buffer modified"))
+		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
 	sprintf(make, "make %s", target);
@@ -1030,6 +1067,25 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 	if (!buf || ex_region(loc, &beg, &end))
 		return 1;
 	xrow = beg;
+	if (cmd[0] == 'r' && cmd[1] == 'a') {
+		struct sbuf *r = sbuf_make();
+		char *s = buf;
+		int ret;
+		while (*s) {
+			if ((unsigned char) *s == '' && s[1]) {
+				char *reg = reg_get((unsigned char) *++s, NULL);
+				sbuf_str(r, reg ? reg : "");
+				s++;
+			} else {
+				if ((unsigned char) *s == '' && s[1])
+					s++;
+				sbuf_chr(r, (unsigned char) *s++);
+			}
+		}
+		ret = ex_command(sbuf_buf(r));
+		sbuf_free(r);
+		return ret;
+	}
 	return ex_command(buf);
 }
 
@@ -1156,6 +1212,8 @@ static struct excmd {
 	{"redo", "redo", ec_redo},
 	{"rs", "rs", ec_rs},
 	{"rx", "rx", ec_rx},
+	{"ra", "ra", ec_at},
+	{"rk", "rk", ec_rk},
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"so", "source", ec_source},
@@ -1167,10 +1225,12 @@ static struct excmd {
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},
 	{"w!", "write!", ec_write},
-	{"wq", "wq", ec_write},
-	{"wq!", "wq!", ec_write},
-	{"x", "xit", ec_write},
-	{"x!", "xit!", ec_write},
+	{"wq", "wq", ec_quit},
+	{"wq!", "wq!", ec_quit},
+	{"x", "xit", ec_quit},
+	{"x!", "xit!", ec_quit},
+	{"xa", "xa", ec_quit},
+	{"xa!", "xa!", ec_quit},
 	{"y", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"@", "@", ec_at},
@@ -1234,7 +1294,7 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
-			((c0 == 'r' || c0 == 'w') && src[0] == '!')) {
+			((c0 == 'r' || c0 == 'w') && !c1 && src[0] == '!')) {
 		while (*src && *src != '\n') {
 			if (*src == '\\' && src[1])
 				*dst++ = *src++;
@@ -1243,13 +1303,15 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 	} else if ((c0 == 's' && c1 != 'e') || c0 == '&' || c0 == '~') {
 		int delim = *src;
 		int cnt = 2;
-		*dst++ = *src++;
-		while (*src && *src != '\n' && cnt > 0) {
-			if (*src == delim)
-				cnt--;
-			if (*src == '\\' && src[1])
-				*dst++ = *src++;
+		if (delim != '\n' && delim != '|' && delim != '\\' && delim != '"') {
 			*dst++ = *src++;
+			while (*src && *src != '\n' && cnt > 0) {
+				if (*src == delim)
+					cnt--;
+				if (*src == '\\' && src[1])
+					*dst++ = *src++;
+				*dst++ = *src++;
+			}
 		}
 	}
 	while (*src && *src != '\n' && *src != '|' && *src != '"') {

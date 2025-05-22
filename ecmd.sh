@@ -39,6 +39,13 @@ ecmd_q() {
 	echo '@\q'
 }
 
+# Generate and view stag-generated file outline; use gl command on its lines.
+ecmd_o() {
+	if stag -a "$path" >/tmp/.tags.ls 2>/dev/null; then
+		echo "e +1 /tmp/.tags.ls | :e"
+	fi
+}
+
 # Open an email in a neatmail listing file.
 ecmd_m() {
 	path="$1"

@@ -1693,8 +1693,9 @@ static void vi(void)
 					break;
 				case '>':
 				case '<':
-					xtd = k == '>' ? +1 : -1;
-					xtd += vi_arg1 > 1 ? xtd : 0;
+					xtd = 0;
+					if (vi_arg1 <= 2)
+						xtd = k == '>' ? MAX(1, vi_arg1) : -MAX(1, vi_arg1);
 					mod = VC_WIN;
 					break;
 				case 'e':

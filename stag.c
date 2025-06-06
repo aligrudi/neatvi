@@ -56,7 +56,7 @@ static void replace(char *dst, char *rep, char *ln, regmatch_t *subs)
 
 static int mktags(char *path, regex_t *re, int grp, char *rep, int alt)
 {
-	char ln[128];
+	char ln[256];
 	char loc[256];
 	char tag[120];
 	int lnum = 0;
@@ -81,6 +81,9 @@ static int mktags(char *path, regex_t *re, int grp, char *rep, int alt)
 				printf("%s\t%s\t%s \"%s", tag, path, loc, ln);
 			}
 		}
+		while (ln[0] && strchr(ln, '\0')[-1] != '\n')
+			if (!fgets(ln, sizeof(ln), fp))
+				break;
 		lnum++;
 	}
 	fclose(fp);

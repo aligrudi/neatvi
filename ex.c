@@ -736,7 +736,7 @@ static int ec_put(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_lnum(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
+	char msg[32];
 	int beg, end;
 	if (ex_region(loc, &beg, &end))
 		return 1;
@@ -896,7 +896,8 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
-	sprintf(make, "make %s", target);
+	if (snprintf(make, sizeof(make), "make %s", target) >= sizeof(make))
+		return 1;
 	ex_print(NULL);
 	if (cmd_exec(make))
 		return 1;
@@ -934,7 +935,7 @@ static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 	char *s = arg;
 	int i;
 	if (!loc[0] && !xgdep)
-		strcpy(loc, "%");
+		loc = "%";
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	not = strchr(cmd, '!') || cmd[0] == 'v';
@@ -1146,24 +1147,20 @@ static char *cutword(char *s, char *d)
 static int ec_set(char *loc, char *cmd, char *arg, char *txt)
 {
 	char tok[EXLEN];
-	char opt[EXLEN];
+	char *opt = tok;
 	char *s = arg;
 	int val = 0;
 	int i;
 	if (*s) {
 		s = cutword(s, tok);
 		if (tok[0] == 'n' && tok[1] == 'o') {
-			strcpy(opt, tok + 2);
-			val = 0;
+			opt = tok + 2;
 		} else {
 			char *r = strchr(tok, '=');
+			val = 1;
 			if (r) {
 				*r = '\0';
-				strcpy(opt, tok);
 				val = atoi(r + 1);
-			} else {
-				strcpy(opt, tok);
-				val = 1;
 			}
 		}
 		for (i = 0; i < LEN(options); i++) {

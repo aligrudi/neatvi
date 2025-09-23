@@ -1424,7 +1424,8 @@ static int vc_quick(int newwin)
 		snprintf(cmd, sizeof(cmd), "[%d] %s", i, ls[i]);
 		vi_drawquick(cmd, xrows - n + i);
 	}
-	vi_drawquick("QUICK LEAP", xrows - i);
+	snprintf(cmd, sizeof(cmd), "QUICK LEAP [%s]", ex_path());
+	vi_drawquick(cmd, xrows - i);
 	term_commit();
 	c = vi_read();
 	if (TK_INT(c))

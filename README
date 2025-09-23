@@ -89,8 +89,9 @@ Other noteworthy differences with vi(1):
 - If paths start with =, they are assumed to be relative to the
   directory of the current file.
 - Neatvi highlights files whose names end with ls as directory
-  listings; the gl command edits the file under the cursor.  For
-  instance, git ls-files >ls && neatvi ls.
+  listings; combined with the gl command, which edits the file
+  under the cursor, it can be used to explore and edit files
+  under a directory.  For instance, git ls-files >ls && neatvi ls.
 - In addition to the standard single-letter yank buffers, Neatvi
   supports a set of extended buffers whose two-letter names begin
   with a backslash, like \x.
@@ -192,8 +193,8 @@ file, iii) the current line number, and iv) the current line offset.
 What ECMD writes to its standard output, Neatvi executes as ex
 commands.  Q-commands can be used to add interesting features to
 Neatvi, such as language-dependent IDE features, for instance by
-connecting to an LSP (language server protocol) server.  ecmd.sh is an
-example ECMD shell script.
+connecting to an LSP (language server protocol) server.  neatvi.sh is
+an example ECMD shell script.
 
 AUTO-COMPLETION
 ---------------

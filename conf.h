@@ -27,7 +27,7 @@ static struct filetype {
 
 /* colours used in highlights[] for programming languages */
 #define CKWD	(3 | SYN_BD)	/* general keywords */
-#define CCON	(CKWD)		/* control flow keywords */
+#define CCON	(2)		/* control flow keywords */
 #define CPRE	(2 | SYN_BD)	/* preprocessor directives */
 #define CIMP	(4 | SYN_BD)	/* imported packages */
 #define CTYP	(3)		/* built-in types and values */
@@ -35,8 +35,8 @@ static struct filetype {
 #define CCMT	(4 | SYN_IT)	/* comments */
 #define CDEF	(4 | SYN_BD)	/* top-level definition */
 #define CFUN	(SYN_BD)	/* called functions */
-#define CNUM	4		/* numerical constants */
-#define CSTR	4		/* string literals */
+#define CNUM	5		/* numerical constants */
+#define CSTR	5		/* string literals */
 #define CVAR	3		/* macros */
 #define CIDN	0		/* identifiers */
 
@@ -51,7 +51,7 @@ static struct highlight {
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 1}, "^(\".*\").*(\\[[wr]\\]).*$"},
 	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 2, 5, 7}, "^(\".*\").*=.*(L[0-9]+) +(C[0-9]+).*$"},
 	{"---", {SYN_BGMK(0) | 7}, "^(\".*\").*-.*(L[0-9]+) +(C[0-9]+).*$"},
-	{"---", {SYN_BGMK(0) | 7 | SYN_BD, 5, 7, 5}, "^\\[([0-9])\\](.*/)*([^/]*)$"},
+	{"---", {SYN_BGMK(7) | SYN_FGMK(0), 1 | SYN_BD, 0, SYN_BD}, "^\\[([0-9])\\](.*/)*([^/]*)$"},
 	{"---", {SYN_BGMK(0) | 2 | SYN_BD, 3}, "^QUICK LEAP +\\[([^]]+)\\]$\n?"},
 	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$\n?"},
 	/* ex mode */
@@ -171,7 +171,7 @@ static struct highlight {
 	{"diff", {SYN_BD}, "^diff .*$"},
 
 	/* directory listing */
-	{"ls", {7, 3, SYN_FGMK(0) | SYN_BD, 2, 6}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
+	{"ls", {0, 0, 5 | SYN_BD, 0, 4}, "^/?([-a-zA-Z0-9_.]+/)*([-a-zA-Z0-9_.]+)\\>(:[0-9]*:)?(.*)$"},
 	{"ls", {CCMT}, "^#.*$"},
 };
 

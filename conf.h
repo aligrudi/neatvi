@@ -55,7 +55,7 @@ static struct highlight {
 	{"---", {SYN_BGMK(0) | 2 | SYN_BD, 3}, "^QUICK LEAP +\\[([^]]+)\\]$\n?"},
 	{"---", {SYN_BGMK(0) | 2 | SYN_BD}, "^.*$\n?"},
 	/* ex mode */
-	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^[:/!].*$"},
+	{"-ex", {SYN_BGMK(0) | 7 | SYN_BD}, "^[:/?!].*$"},
 	{"-ex", {SYN_BGMK(0) | 7}, "^.*$\n?"},
 
 	/* C */
@@ -76,11 +76,13 @@ static struct highlight {
 	/* troff */
 	{"roff", {0, CKWD, CDEF}, "^[.'][ \t]*(SH)(.*)$"},
 	{"roff", {0, CKWD, CDEF}, "^[.'][ \t]*de (.*)$"},
-	{"roff", {0, CFUN, CSTR}, "^[.']([^ \t\\]{2,})?(.*)$", 1},
+	{"roff", {0, CBIN}, "^[.'][ \t]*([^ \t\\]*)", 1},
+	{"roff", {CSTR}, "\"([^\"]|\"\")*\"?"},
 	{"roff", {CCMT}, "\\\\\".*$"},
-	{"roff", {CFUN}, "\\\\{1,2}[*$fgkmns]([^[(]|\\(..|\\[[^]]*\\])"},
+	{"roff", {CBIN}, "\\\\{1,2}[*$fgkmns]([^[(]|\\(..|\\[[^]]*\\])"},
 	{"roff", {CVAR}, "\\\\([^[(*$fgkmns]|\\(..|\\[[^]]*\\])"},
 	{"roff", {CSTR}, "\\$[^$]+\\$"},
+	{"roff", {CNUM}, "[-+]?\\<([0-9]+(\.[0-9]+)?)\\>"},
 
 	/* tex */
 	{"tex", {0, CKWD, 0, 0, CIMP, 0, CFUN},
@@ -155,7 +157,7 @@ static struct highlight {
 
 	/* neatmail listing */
 	{"nm", {0, 6 | SYN_BD, 4 | SYN_BD, 3, 5, SYN_BD},
-		"^([ROU])([0-9]+)(@[^ ]*)? *\t([^\t]*)\t([^\t]*)"},
+		"^([ROU][^ABCDHML0-9]?)(0*)([0-9]+)(@[^ \t]*)? *\t\\[([^\t]*)\\]\t *\\[([^\t]*)\\].*"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(6)}, "^[N].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(5)}, "^[A-Z][HA].*$"},
 	{"nm", {0 | SYN_BD | SYN_BGMK(3)}, "^[A-Z][MB].*$"},

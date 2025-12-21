@@ -226,15 +226,36 @@ static int vi_wmirror(void)
 static int vi_buf[128];
 static int vi_buflen;
 
-static int vi_read(void)
-{
-	return vi_buflen ? vi_buf[--vi_buflen] : term_read();
-}
-
 static void vi_back(int c)
 {
 	if (vi_buflen < sizeof(vi_buf))
 		vi_buf[vi_buflen++] = c;
+}
+
+static int vi_read(void)
+{
+	int c = vi_buflen ? vi_buf[--vi_buflen] : term_read();
+	
+	if (c == TK_ESC) {
+		int c2 = term_read();
+		if (c2 == '[') {
+			int c3 = term_read();
+			switch (c3) {
+			case 'A': return 'k';
+			case 'B': return 'j';
+			case 'C': return 'l';
+			case 'D': return 'h';
+			default:
+				vi_back(c3);
+				vi_back('[');
+				break;
+			}
+		} else if (c2 != -1) {
+			vi_back(c2);
+		}
+	}
+	
+	return c;
 }
 
 static char *vi_char(void)
@@ -506,13 +527,11 @@ static int vi_motionln(int *row, int cmd)
 			return -1;
 		*row = mark_row;
 		break;
-	case TK_UP:
-	case 'k':
-		*row = MAX(*row - cnt, 0);
-		break;
-	case TK_DOWN:
 	case 'j':
 		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
+		break;
+	case 'k':
+		*row = MAX(*row - cnt, 0);
 		break;
 	case 'G':
 		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
@@ -583,22 +602,6 @@ static int vi_motion(int *row, int *off)
 		return mv;
 	}
 	mv = vi_read();
-
-	switch (mv) {
-	case TK_UP:
-		mv = 'k';
-		break;
-	case TK_DOWN:
-		mv = 'j';
-		break;
-	case TK_LEFT:
-		mv = 'h';
-		break;
-	case TK_RIGHT:
-		mv = 'l';
-		break;
-	}
-
 	switch (mv) {
 	case 'f':
 		if (!(cs = vi_char()))

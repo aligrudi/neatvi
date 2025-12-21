@@ -181,6 +181,28 @@ int term_read(void)
 		ibuf_pos = 0;
 	}
 	c = ibuf_pos < ibuf_cnt ? (unsigned char) ibuf[ibuf_pos++] : -1;
+
+	if (c == TK_ESC) {
+		struct pollfd pfd = {0, POLLIN, 0};
+		if (poll(&pfd, 1, 0) > 0) {
+			char seq[3];
+			int nread = read(0, seq, sizeof(seq));
+			if (nread >= 2 && seq[0] == '[') {
+				switch (seq[1]) {
+				case 'A': c = TK_UP; break;
+				case 'B': c = TK_DOWN; break;
+				case 'C': c = TK_RIGHT; break;
+				case 'D': c = TK_LEFT; break;
+				default:
+					term_push(seq, nread);
+					break;
+				}
+			} else if (nread > 0) {
+				term_push(seq, nread);
+			}
+		}
+	}
+	
 	if (icmd_pos < sizeof(icmd))
 		icmd[icmd_pos++] = c;
 	return c;

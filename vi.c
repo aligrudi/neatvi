@@ -506,11 +506,13 @@ static int vi_motionln(int *row, int cmd)
 			return -1;
 		*row = mark_row;
 		break;
-	case 'j':
-		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
-		break;
+	case TK_UP:
 	case 'k':
 		*row = MAX(*row - cnt, 0);
+		break;
+	case TK_DOWN:
+	case 'j':
+		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 		break;
 	case 'G':
 		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
@@ -581,6 +583,22 @@ static int vi_motion(int *row, int *off)
 		return mv;
 	}
 	mv = vi_read();
+
+	switch (mv) {
+	case TK_UP:
+		mv = 'k';
+		break;
+	case TK_DOWN:
+		mv = 'j';
+		break;
+	case TK_LEFT:
+		mv = 'h';
+		break;
+	case TK_RIGHT:
+		mv = 'l';
+		break;
+	}
+
 	switch (mv) {
 	case 'f':
 		if (!(cs = vi_char()))

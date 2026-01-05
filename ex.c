@@ -231,6 +231,8 @@ static char *ex_reg(char *src, int *reg)
 {
 	while (*src == ' ')
 		src++;
+	if (src[0] == '\\' && src[1] == '"')
+		src++;
 	*reg = REG(src);
 	while (*src && *src != ' ' && *src != '\t')
 		src++;

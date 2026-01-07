@@ -72,7 +72,7 @@ static int mktags(char *path, regex_t *re, int grp, char *rep, int alt)
 			memcpy(tag, ln + grps[grp].rm_so, len);
 			tag[len] = '\0';
 			if (alt) {
-				printf("%s:%04d: %s", path, lnum + 1, ln);
+				printf("%s:%04d:%s	%s", path, lnum + 1, tag, ln);
 			} else {
 				if (rep != NULL)
 					replace(loc, rep, ln, grps);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	if (argc == 1) {
 		printf("usage: %s [options] files >tags\n\n", argv[0]);
 		printf("options:\n");
-		printf("  -a    use file listing output format (path:lnum: line)\n");
+		printf("  -a    use file listing output format (path:lnum:symbol line)\n");
 		return 0;
 	}
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {

@@ -233,6 +233,7 @@ void tag_done(void);
 /* tag lists */
 struct tlist *tlist_make(char *ls[], int ls_n);
 struct tlist *tlist_from(char *path);
+struct tlist *tlist_tags(char *path);
 void tlist_free(struct tlist *tls);
 void tlist_filt(struct tlist *tls, char *kw);
 char *tlist_get(struct tlist *tls, int idx);

@@ -154,6 +154,36 @@ struct tlist *tlist_from(char *path)
 	return tls;
 }
 
+struct tlist *tlist_tags(char *path)
+{
+	struct tlist *tls;
+	char buf[1024];
+	long nr;
+	char *s;
+	struct sbuf *sb;
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+	tls = tlist_make(NULL, 0);
+	sb = sbuf_make();
+	while (sbuf_len(sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(sb, buf, nr);
+	close(fd);
+	tls->raw = sbuf_done(sb);
+	for (s = tls->raw; s && *s; s++) {
+		char *r = strchr(s, '\n');
+		char *t = s ? memchr(s, '\t', r - s) : NULL;
+		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
+			tlist_put(tls, s);
+		if (t)
+			*t = '\0';
+		if (r)
+			*r = '\0';
+		s = r;
+	}
+	return tls;
+}
+
 void tlist_free(struct tlist *tls)
 {
 	if (tls->ls_sz)

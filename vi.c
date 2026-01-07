@@ -1446,7 +1446,7 @@ static int vi_leap(struct tlist *tls, char *mod, char *pos, int mode, int filt, 
 			kws[0] = '\0';
 			continue;
 		}
-		if (c == '/' || ((c == ';' || c == ',') && mode == c)) {
+		if (c == '/' || ((c == ';' || c == ',' || c == '=') && mode == c)) {
 			char *kw = vi_prompt("Filter: ", &xkmap, NULL);
 			if (!kw)
 				continue;
@@ -1486,9 +1486,11 @@ static int vc_quick(int newwin)
 	tls = tlist_make(ls + 1, ls_n - 1);
 	while (tls) {
 		char *name = mod == ',' ? "FILE" : "BUFF";
+		if (mod == '=')
+			name = "TAGS";
 		snprintf(cmd, sizeof(cmd), "%s:%d", ex_path(), xrow);
 		typ = vi_leap(tls, name, cmd, mod ? mod : ';', mod != 0, &sel);
-		if (typ != 2 || (sel != ',' && sel != ';'))
+		if (typ != 2 || (sel != ',' && sel != ';' && sel != '='))
 			break;
 		mod = sel;
 		tlist_free(tls);
@@ -1496,10 +1498,13 @@ static int vc_quick(int newwin)
 			tls = tlist_make(ls + 1, ls_n - 1);
 		if (mod == ',')
 			tls = tlist_from("ls");
+		if (mod == '=')
+			tls = tlist_tags("tags");
 	}
 	if (typ == 1) {
 		char *s = tlist_get(tls, sel);
-		snprintf(cmd, sizeof(cmd), "e %s", s[0] ? s : "/");
+		snprintf(cmd, sizeof(cmd), "%s %s",
+			mod == '=' ? "ta" : "e", s[0] ? s : "/");
 	}
 	if (tls)
 		tlist_free(tls);

@@ -1413,31 +1413,33 @@ static int vc_ecmd(int c, int newwin)
 	return VC_ALL;
 }
 
-/* returns the selection type: 0=none, 1=options, 2=q-commands */
-static int vi_leap(struct tlist *tls, char *mod, char *pos, int mode, int filt, int *sel)
+/* ret>0: selection index, ret=-1 interrupted, ret<0 -termination key */
+static int vi_leap(struct tlist *tls, char *mod, char *pos, int filter_key, int filt, int *rows)
 {
 	char kws[256];
 	char cmd[256];
 	int view[9];
-	int view_sz = LEN(view);
 	int c = 0;
 	int i;
 	kws[0] = '\0';
 	while (1) {
-		int view_n = tlist_top(tls, view, view_sz);
+		int view_n = tlist_top(tls, view, LEN(view));
+		*rows = MAX(*rows, view_n);
 		term_record();
-		for (i = 0; i < view_sz; i++) {
+		for (i = 0; i < *rows; i++) {
 			strcpy(cmd, "-");
 			if (i < view_n)
 				snprintf(cmd, sizeof(cmd), "[%d] %s",
 					i + 1, tlist_get(tls, view[i]));
-			vi_drawquick(cmd, xrows - view_sz + i);
+			vi_drawquick(cmd, xrows - *rows + i);
 		}
-		snprintf(cmd, sizeof(cmd), "Filter: %s", kws);
-		vi_drawquick(kws[0] ? cmd : "-", xrows);
+		if (*rows) {
+			snprintf(cmd, sizeof(cmd), "Filter: %s", kws);
+			vi_drawquick(kws[0] ? cmd : "-", xrows);
+		}
 		snprintf(cmd, sizeof(cmd), "LEAP %s (%d/%d) [%s]",
 			mod, tlist_matches(tls), tlist_cnt(tls), pos);
-		vi_drawquick(cmd, xrows - view_sz - 1);
+		vi_drawquick(cmd, *rows ? xrows - *rows - 1 : xrows);
 		term_commit();
 		c = filt ? '/' : vi_read();
 		filt = 0;
@@ -1446,7 +1448,7 @@ static int vi_leap(struct tlist *tls, char *mod, char *pos, int mode, int filt, 
 			kws[0] = '\0';
 			continue;
 		}
-		if (c == '/' || ((c == ';' || c == ',' || c == '=') && mode == c)) {
+		if (c == '/' || c == filter_key) {
 			char *kw = vi_prompt("Filter: ", &xkmap, NULL);
 			if (!kw)
 				continue;
@@ -1457,22 +1459,15 @@ static int vi_leap(struct tlist *tls, char *mod, char *pos, int mode, int filt, 
 			free(kw);
 			continue;
 		}
-		if (TK_INT(c)) {
-			*sel = 0;
-			return 0;
-		}
-		if (c >= '1' && c <= '9' && c - '1' < view_n) {
-			*sel = view[c - '1'];
-			return 1;
-		}
-		if (c == '\n' && view_n > 0) {
-			*sel = view[0];
-			return 1;
-		}
+		if (TK_INT(c))
+			return -1;
+		if (c >= '1' && c <= '9' && c - '1' < view_n)
+			return view[c - '1'];
+		if (c == '\n' && view_n > 0)
+			return view[0];
 		break;
 	}
-	*sel = c;
-	return 2;
+	return -c;
 }
 
 static int vc_quick(int newwin)
@@ -1480,8 +1475,9 @@ static int vc_quick(int newwin)
 	char cmd[256];
 	struct tlist *tls;
 	char *ls[32];
-	int typ = 0, sel = 0, ls_n = 0;
+	int sel = 0, ls_n = 0;
 	int mod = 0;
+	int rows = 0;
 	ls_n = ex_list(ls, LEN(ls));
 	tls = tlist_make(ls + 1, ls_n - 1);
 	while (tls) {
@@ -1489,10 +1485,10 @@ static int vc_quick(int newwin)
 		if (mod == '=')
 			name = "TAGS";
 		snprintf(cmd, sizeof(cmd), "%s:%d", ex_path(), xrow);
-		typ = vi_leap(tls, name, cmd, mod ? mod : ';', mod != 0, &sel);
-		if (typ != 2 || (sel != ',' && sel != ';' && sel != '='))
+		sel = vi_leap(tls, name, cmd, mod ? mod : ';', mod != 0, &rows);
+		if (-sel != ',' && -sel != ';' && -sel != '=')
 			break;
-		mod = sel;
+		mod = -sel;
 		tlist_free(tls);
 		if (mod == ';')
 			tls = tlist_make(ls + 1, ls_n - 1);
@@ -1501,31 +1497,31 @@ static int vc_quick(int newwin)
 		if (mod == '=')
 			tls = tlist_tags("tags");
 	}
-	if (typ == 1) {
+	if (sel >= 0) {
 		char *s = tlist_get(tls, sel);
 		snprintf(cmd, sizeof(cmd), "%s %s",
 			mod == '=' ? "ta" : "e", s[0] ? s : "/");
 	}
 	if (tls)
 		tlist_free(tls);
-	if (typ == 0)
-		return VC_WIN;
-	if (typ == 1) {
+	if (sel == -1)
+		return rows ? VC_WIN : 0;
+	if (sel >= 0) {
 		if (newwin)
 			vi_wmirror();
 		ex_command(cmd);
 		return newwin ? VC_ALL : VC_WIN;
 	}
-	if (isalpha(sel) && reg_get(0x80 | sel, NULL) != NULL) {
-		char cmd[8] = {'@', '\\', sel};
+	if (isalpha(-sel) && reg_get(0x80 | -sel, NULL) != NULL) {
+		char cmd[8] = {'@', '\\', -sel};
 		if (newwin)
 			vi_wmirror();
 		ex_command(cmd);
 		return VC_ALL;
 	}
-	if (isalpha(sel))
-		return vc_ecmd(sel, newwin) != 0 ? VC_ALL : VC_WIN;
-	return VC_WIN;
+	if (isalpha(-sel))
+		return vc_ecmd(-sel, newwin) != 0 ? VC_ALL : VC_WIN;
+	return rows ? VC_WIN : 0;
 }
 
 static void sigwinch(int signo)

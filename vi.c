@@ -1,7 +1,7 @@
 /*
  * NEATVI Editor
  *
- * Copyright (C) 2015-2025 Ali Gholami Rudi <ali at rudi dot ir>
+ * Copyright (C) 2015-2026 Ali Gholami Rudi <ali at rudi dot ir>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -1413,46 +1413,113 @@ static int vc_ecmd(int c, int newwin)
 	return VC_ALL;
 }
 
+/* returns the selection type: 0=none, 1=options, 2=q-commands */
+static int vi_leap(struct tlist *tls, char *mod, char *pos, int mode, int filt, int *sel)
+{
+	char kws[256];
+	char cmd[256];
+	int view[9];
+	int view_sz = LEN(view);
+	int c = 0;
+	int i;
+	kws[0] = '\0';
+	while (1) {
+		int view_n = tlist_top(tls, view, view_sz);
+		term_record();
+		for (i = 0; i < view_sz; i++) {
+			strcpy(cmd, "-");
+			if (i < view_n)
+				snprintf(cmd, sizeof(cmd), "[%d] %s",
+					i + 1, tlist_get(tls, view[i]));
+			vi_drawquick(cmd, xrows - view_sz + i);
+		}
+		snprintf(cmd, sizeof(cmd), "Filter: %s", kws);
+		vi_drawquick(kws[0] ? cmd : "-", xrows);
+		snprintf(cmd, sizeof(cmd), "LEAP %s (%d/%d) [%s]",
+			mod, tlist_matches(tls), tlist_cnt(tls), pos);
+		vi_drawquick(cmd, xrows - view_sz - 1);
+		term_commit();
+		c = filt ? '/' : vi_read();
+		filt = 0;
+		if (c == 127 || c == TK_CTL('h') || c == TK_CTL('u')) {
+			tlist_filt(tls, NULL);
+			kws[0] = '\0';
+			continue;
+		}
+		if (c == '/' || ((c == ';' || c == ',') && mode == c)) {
+			char *kw = vi_prompt("Filter: ", &xkmap, NULL);
+			if (!kw)
+				continue;
+			if (kw[0])
+				snprintf(strchr(kws, '\0'), sizeof(kws) - strlen(kws),
+					"%s%s", kws[0] ? "|" : "", kw);
+			tlist_filt(tls, kw);
+			free(kw);
+			continue;
+		}
+		if (TK_INT(c)) {
+			*sel = 0;
+			return 0;
+		}
+		if (c >= '1' && c <= '9' && c - '1' < view_n) {
+			*sel = view[c - '1'];
+			return 1;
+		}
+		if (c == '\n' && view_n > 0) {
+			*sel = view[0];
+			return 1;
+		}
+		break;
+	}
+	*sel = c;
+	return 2;
+}
+
 static int vc_quick(int newwin)
 {
-	char *ls[16] = {NULL};
 	char cmd[256];
-	int c, i;
-	int n = ex_list(ls, MIN(10, xrows - 1));
-	term_record();
-	for (i = 1; i < n; i++) {
-		snprintf(cmd, sizeof(cmd), "[%d] %s", i, ls[i]);
-		vi_drawquick(cmd, xrows - n + i);
+	struct tlist *tls;
+	char *ls[32];
+	int typ = 0, sel = 0, ls_n = 0;
+	int mod = 0;
+	ls_n = ex_list(ls, LEN(ls));
+	tls = tlist_make(ls + 1, ls_n - 1);
+	while (tls) {
+		char *name = mod == ',' ? "FILE" : "BUFF";
+		snprintf(cmd, sizeof(cmd), "%s:%d", ex_path(), xrow);
+		typ = vi_leap(tls, name, cmd, mod ? mod : ';', mod != 0, &sel);
+		if (typ != 2 || (sel != ',' && sel != ';'))
+			break;
+		mod = sel;
+		tlist_free(tls);
+		if (mod == ';')
+			tls = tlist_make(ls + 1, ls_n - 1);
+		if (mod == ',')
+			tls = tlist_from("ls");
 	}
-	snprintf(cmd, sizeof(cmd), "QUICK LEAP [%s]", ex_path());
-	vi_drawquick(cmd, xrows - i);
-	term_commit();
-	c = vi_read();
-	if (TK_INT(c))
+	if (typ == 1) {
+		char *s = tlist_get(tls, sel);
+		snprintf(cmd, sizeof(cmd), "e %s", s[0] ? s : "/");
+	}
+	if (tls)
+		tlist_free(tls);
+	if (typ == 0)
 		return VC_WIN;
-	if (c == '\n') {
-		ex_command("b 1");
-		return newwin ? VC_ALL : VC_WIN;
-	}
-	if (isdigit(c)) {
-		i = c - '0';
-		if (ls[i] == NULL)
-			return VC_WIN;
+	if (typ == 1) {
 		if (newwin)
 			vi_wmirror();
-		snprintf(cmd, sizeof(cmd), "e %s", ls[i][0] ? ls[i] : "/");
 		ex_command(cmd);
 		return newwin ? VC_ALL : VC_WIN;
 	}
-	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
-		char cmd[8] = {'@', '\\', c};
+	if (isalpha(sel) && reg_get(0x80 | sel, NULL) != NULL) {
+		char cmd[8] = {'@', '\\', sel};
 		if (newwin)
 			vi_wmirror();
 		ex_command(cmd);
 		return VC_ALL;
 	}
-	if (isalpha(c))
-		return vc_ecmd(c, newwin) != 0 ? VC_ALL : VC_WIN;
+	if (isalpha(sel))
+		return vc_ecmd(sel, newwin) != 0 ? VC_ALL : VC_WIN;
 	return VC_WIN;
 }
 

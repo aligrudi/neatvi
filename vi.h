@@ -230,3 +230,12 @@ extern int xhist;
 int tag_init(void);
 int tag_find(char *name, int *pos, int dir, char *path, int pathlen, char *cmd, int cmdlen);
 void tag_done(void);
+/* tag lists */
+struct tlist *tlist_make(char *ls[], int ls_n);
+struct tlist *tlist_from(char *path);
+void tlist_free(struct tlist *tls);
+void tlist_filt(struct tlist *tls, char *kw);
+char *tlist_get(struct tlist *tls, int idx);
+int tlist_cnt(struct tlist *tls);
+int tlist_matches(struct tlist *tls);
+int tlist_top(struct tlist *tls, int *view, int view_sz);

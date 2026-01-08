@@ -123,7 +123,6 @@ void led_print(char *s, int row, int left, char *syn)
 {
 	char *r = led_render(s, left, left + xcols, syn);
 	term_pos(row, 0);
-	term_kill();
 	term_str(r);
 	free(r);
 }
@@ -143,7 +142,6 @@ void led_printmsg(char *s, int row, char *syn)
 	char *r = led_render(s, 0, xcols, syn);
 	td_set(td);
 	term_pos(row, 0);
-	term_kill();
 	term_str(r);
 	free(r);
 }

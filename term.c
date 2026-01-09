@@ -10,7 +10,8 @@
 
 static struct sbuf *term_sbuf;	/* output buffer if not NULL */
 static int rows, cols;		/* number of terminal rows and columns */
-static int win_beg, win_rows;	/* active window rows */
+static int win_top, win_rows;	/* active window rows */
+static int win_left, win_cols;	/* active window columns */
 static struct termios termios;
 
 void term_init(void)
@@ -33,18 +34,20 @@ void term_init(void)
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;
 	term_str("\33[m");
-	term_window(win_beg, win_rows > 0 ? win_rows : rows);
+	term_window(win_top, win_rows > 0 ? win_rows : rows);
 }
 
 void term_window(int row, int cnt)
 {
 	char cmd[64];
-	win_beg = row;
+	win_top = row;
 	win_rows = cnt;
+	win_left = 0;
+	win_cols = cols;
 	if (row == 0 && win_rows == rows) {
 		term_str("\33[r");
 	} else {
-		sprintf(cmd, "\33[%d;%dr", win_beg + 1, win_beg + win_rows);
+		sprintf(cmd, "\33[%d;%dr", win_top + 1, win_top + win_rows);
 		term_str(cmd);
 	}
 }
@@ -121,11 +124,11 @@ void term_pos(int r, int c)
 	if (c < 0)
 		c = 0;
 	if (c >= term_cols())
-		c = cols - 1;
+		c = win_cols - 1;
 	if (r < 0)
-		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
+		sprintf(buf, "\33[%dG", win_left + c + 1);
 	else
-		sprintf(buf, "\33[%d;%dH", win_beg + r + 1, c + 1);
+		sprintf(buf, "\33[%d;%dH", win_top + r + 1, win_left + c + 1);
 	term_out(buf);
 }
 
@@ -141,7 +144,7 @@ int term_rows(void)
 
 int term_cols(void)
 {
-	return cols;
+	return win_cols;
 }
 
 static char ibuf[4096];		/* input character buffer */

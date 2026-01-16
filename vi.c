@@ -64,7 +64,9 @@ static void vi_wait(void)
 
 static void vi_drawmsg(void)
 {
+	syn_context(w_tmp ? conf_hl('Z') : 0);
 	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, xhl ? "---" : "___");
+	syn_context(0);
 	vi_msg[0] = '\0';
 }
 
@@ -1226,13 +1228,12 @@ static int vi_scrollbackward(int cnt)
 static int vc_status(void)
 {
 	int col = vi_off2col(xb, xrow, xoff);
-	int win = w_tmp ? '-' : '=';
 	snprintf(vi_msg, sizeof(vi_msg),
-		"\"%s\"%c [%c%d]  L%d C%d",
+		"%c%04d %c %s   T%d C%d",
+		w_tmp ? 'I' : 'L', xrow + 1,
+		lbuf_modified(xb) ? 'M' : '-',
 		ex_path()[0] ? ex_path() : "unnamed",
-		lbuf_modified(xb) ? '*' : ' ',
-		win, lbuf_len(xb), xrow + 1,
-		ren_cursor(lbuf_get(xb, xrow), col) + 1);
+		lbuf_len(xb), ren_cursor(lbuf_get(xb, xrow), col) + 1);
 	return 0;
 }
 

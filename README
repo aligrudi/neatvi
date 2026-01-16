@@ -259,14 +259,16 @@ hl i -		" identifiers
 " ex-mode and status line
 hl _ b 7 0	" status line
 hl Z b 7 0	" status line of inactive windows
+hl M b 4	" status line mode
 hl F - 2	" status line file name
 hl N - 5	" status line line number
+hl C - 7	" status line column number
+hl T - 7	" status line line count
 hl W - 1	" status line w/r flags
 hl X b 7 0	" ex-mode messages
 hl : - 7 0	" ex-mode prompts
 hl ! b 7 0	" ex-mode warnings
 hl Q b 2 0	" quick leap header
-hl O b 4	" quick leap mode token
 hl D -		" quick leap path dirname
 hl B b		" quick leap path basename
 hl L - 0 7	" quick leap list

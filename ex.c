@@ -472,8 +472,7 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 	if (fd >= 0) {
 		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
-		snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [r]",
-				ex_path(), lbuf_len(xb));
+		snprintf(msg, sizeof(msg), "R%04d <%s", lbuf_len(xb), ex_path());
 		if (rd)
 			ex_show("read failed");
 		else
@@ -554,8 +553,7 @@ static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 		close(fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
-	snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [r]",
-		path, lbuf_len(xb) - n);
+	snprintf(msg, sizeof(msg), "R%04d <%s", lbuf_len(xb) - n, path);
 	ex_show(msg);
 	return 0;
 }
@@ -590,7 +588,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 			return 1;
 		}
 	}
-	snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [w]", path, end - beg);
+	snprintf(msg, sizeof(msg), "W%04d >%s", end - beg, path);
 	ex_show(msg);
 	if (!ex_path()[0]) {
 		free(bufs[0].path);

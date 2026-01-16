@@ -63,6 +63,12 @@ Commands not available in ex(1):
   contents of buffer x, and ^vx with x, in which x is any character.
 :ec[ho] msg
   Prints the given message (useful in ex scripts or q-commands).
+:hl name [flags] [fg] [bg]
+  Specify syntax highlighting colours.  Flags can be a combination
+  of b for bold, i for italic, and r for reversed mode.  Fg and bg,
+  if present, specify the foreground and background colours.
+  Colours can be numbers from 0 to 255; numbers greater than 15 can
+  be used only if the terminal supports the 256-colour palette.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -220,3 +226,86 @@ works.
 
 In a real implementation, the \~ buffer can use external commands
 (with rx or rk) to compute the completions.
+
+SYNTAX HIGHLIGHTING
+-------------------
+
+The default set of syntax highlighting rules are as follows.
+
+" general text
+hl . -		" all text
+hl ^ - - 11	" current line (hll option)
+hl ~ r		" text in reverse direction
+
+" for programming languages
+hl k b 3	" general keywords
+hl r - 2	" control flow keywords
+hl o b 3	" operators
+hl p b 2	" preprocessor directives
+hl m b 4	" imported packages
+hl t - 3	" built-in types and values
+hl b - 3	" built-in functions
+hl c i 4	" comments
+hl d b 4	" top-level definitions
+hl f b		" called functions
+hl 0 - 5	" numerical constants
+hl h - 5	" character constants
+hl s - 5	" string literals
+hl v - 3	" macros
+hl i -		" identifiers
+
+" ex-mode and status line
+hl _ b 7 0	" status line
+hl Z b 7 0	" status line of inactive windows
+hl F - 2	" status line file name
+hl N - 5	" status line line number
+hl W - 1	" status line w/r flags
+hl X b 7 0	" ex-mode messages
+hl : - 7 0	" ex-mode prompts
+hl ! b 7 0	" ex-mode warnings
+hl Q b 2 0	" quick leap header
+hl O b 4	" quick leap mode token
+hl D -		" quick leap path dirname
+hl B b		" quick leap path basename
+hl L - 0 7	" quick leap list
+hl I b 1	" quick leap identifiers
+
+" diff file type
+hl xD b		" diff header
+hl x@ - 6	" diff hunk information line
+hl x- - 1	" diff deleted lines
+hl x+ - 2	" diff added lines
+hl x= - 0	" diff preserved lines
+
+" file listings
+hl xd b 8	" path dirname
+hl xb b 1	" path basename
+hl xn - 2	" path line number
+hl xs - 6	" path symbol
+hl xl - 8	" the rest of the line
+hl x# - 4	" comments
+
+" messages
+hl mh b 6	" mail headers
+hl ms b 4	" Subject header
+hl mf b 4	" From header
+hl mt b 5	" To header
+hl mc b 5	" CC header
+hl mr i 2	" replied text
+hl ml b - 3	" labels
+
+" neatmail listing
+hl mN b - 6	" new mails
+hl mA b 0 5	" high priority
+hl mB b 0 3	" priority level 2
+hl mC b 0 3	" priority level 3
+hl mD - 8	" low priority
+hl mF b - 7	" flagged
+hl mI i 7	" ignored lines
+hl mX b		" commands
+hl mS b 6	" status flags
+hl m0 - 12	" ignored zeros of the message number
+hl m1 b 4	" message number
+hl mM - 3	" mbox path
+hl mR - 5	" message from
+hl mU - 5	" message subject

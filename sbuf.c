@@ -93,3 +93,38 @@ void sbuf_printf(struct sbuf *sbuf, char *s, ...)
 	va_end(ap);
 	sbuf_str(sbuf, buf);
 }
+
+void fbuf_init(struct fbuf *fb)
+{
+	fb->pos = 0;
+}
+
+void fbuf_chr(struct fbuf *fb, int c)
+{
+	if (fb->pos < LEN(fb->buf))
+		fb->buf[fb->pos++] = c;
+}
+
+void fbuf_mem(struct fbuf *fb, char *s, int len)
+{
+	int cp = MIN(len, LEN(fb->buf) - fb->pos);
+	memcpy(fb->buf + fb->pos, s, cp);
+	fb->pos += cp;
+}
+
+void fbuf_str(struct fbuf *fb, char *s)
+{
+	fbuf_mem(fb, s, strlen(s));
+}
+
+char *fbuf_buf(struct fbuf *fb)
+{
+	if (fb->pos < LEN(fb->buf))
+		fb->buf[fb->pos] = '\0';
+	return fb->pos < LEN(fb->buf) ? fb->buf : NULL;
+}
+
+int fbuf_len(struct fbuf *fb)
+{
+	return fb->pos;
+}

@@ -66,12 +66,13 @@ int *syn_highlight(char *ft, char *s)
 	struct rset *rs = syn_find(ft);
 	int flg = 0;
 	int hl, j, i;
-	memset(att, 0, n * sizeof(att[0]));
 	if (!strcmp(ft, "___")) {
 		for (i = 0; i < n; i++)
 			att[i] = SYN_RV;
 		return att;
 	}
+	for (i = 0; i < n; i++)
+		att[i] = conf_hl('.');
 	if (rs == NULL)
 		rs = syn_make(ft);
 	if (!rs)
@@ -86,7 +87,7 @@ int *syn_highlight(char *ft, char *s)
 				int beg = uc_off(s, sidx + subs[i * 2 + 0]);
 				int end = uc_off(s, sidx + subs[i * 2 + 1]);
 				for (j = beg; j < end; j++)
-					att[j] = syn_merge(att[j], catt[i]);
+					att[j] = syn_merge(att[j], conf_hl(catt[i]));
 				if (i == grp)
 					cend = MAX(cend, subs[i * 2 + 1]);
 			}

@@ -44,6 +44,17 @@ void sbuf_mem(struct sbuf *sb, char *s, int len);
 void sbuf_printf(struct sbuf *sbuf, char *s, ...);
 int sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, int len);
+/* fixed-sized buffers */
+struct fbuf {
+	char buf[504];
+	int pos;
+};
+void fbuf_init(struct fbuf *fb);
+void fbuf_chr(struct fbuf *fb, int c);
+void fbuf_mem(struct fbuf *fb, char *s, int len);
+void fbuf_str(struct fbuf *fb, char *s);
+int fbuf_len(struct fbuf *fb);
+char *fbuf_buf(struct fbuf *fb);
 
 /* regular expressions */
 #define RE_ICASE		1
@@ -204,6 +215,9 @@ char *conf_lnpref(void);
 char *conf_definition(char *ft);
 char *conf_section(char *ft);
 char *conf_ecmd(void);
+int conf_hl(int id);
+int conf_hlnum(char *hl);
+void conf_hlset(int id, int hl);
 
 /* global variables */
 extern int xrow;

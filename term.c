@@ -203,7 +203,7 @@ char *term_seqattr(int att, int old)
 		s += sprintf(s, ";1");
 	if (att & SYN_IT)
 		s += sprintf(s, ";3");
-	else if (att & SYN_RV)
+	if (att & SYN_RV)
 		s += sprintf(s, ";7");
 	if (SYN_FGSET(att)) {
 		if ((fg & 0xff) < 8)

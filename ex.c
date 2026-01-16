@@ -1456,8 +1456,16 @@ int ex_init(char **files)
 	next = files;
 	if (ex_next("e", 0))
 		return 1;
-	if (getenv("EXINIT"))
+	if (getenv("EXINIT")) {
 		ex_command(getenv("EXINIT"));
+	} else if (getenv("HOME")) {
+		struct fbuf fb;
+		fbuf_init(&fb);
+		fbuf_str(&fb, getenv("HOME"));
+		fbuf_str(&fb, "/.neatvi");
+		if (fbuf_buf(&fb) && !access(fbuf_buf(&fb), R_OK))
+			ec_source("", "so", fbuf_buf(&fb), NULL);
+	}
 	return 0;
 }
 

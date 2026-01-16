@@ -102,7 +102,9 @@ Other noteworthy differences with vi(1):
   supports a set of extended buffers whose two-letter names begin
   with a backslash, like \x.
 - If EXINIT environment variable is defined as "so /path/to/exrc",
-  Neatvi executes the ex commands in this file at startup.
+  Neatvi executes the ex commands in this file at startup.  If
+  EXINIT is not defined, Neatvi executes the commands in
+  $HOME/.neatvi, if present.
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files

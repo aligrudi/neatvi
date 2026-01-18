@@ -106,7 +106,7 @@ char *uc_chr(char *s, int off)
 			return s;
 		s = uc_next(s);
 	}
-	return s && (off < 0 || i == off) ? s : "";
+	return s && (off < 0 || i == off) ? s : NULL;
 }
 
 /* the number of characters between s and s + off */

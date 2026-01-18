@@ -11,6 +11,7 @@ void lbuf_free(struct lbuf *lbuf);
 int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end);
 int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end);
 void lbuf_edit(struct lbuf *lbuf, char *s, int beg, int end);
+void lbuf_tx(struct lbuf *lbuf);
 char *lbuf_cp(struct lbuf *lbuf, int beg, int end);
 char *lbuf_get(struct lbuf *lbuf, int pos);
 int lbuf_len(struct lbuf *lbuf);
@@ -76,6 +77,7 @@ int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
 int ren_pos(char *s, int off);
 int ren_cursor(char *s, int pos);
+int ren_insert(char *s, int pos);
 int ren_noeol(char *s, int p);
 int ren_off(char *s, int pos);
 int ren_wid(char *s);
@@ -150,10 +152,8 @@ char *term_cmd(int *n);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist);
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), char *(*help)(char *ln));
 void led_print(char *msg, int row, int left, char *syn);
 void led_printmsg(char *s, int row, char *syn);
-char *led_read(int *kmap);
 
 /* ex commands */
 void ex(void);

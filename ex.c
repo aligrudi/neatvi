@@ -1432,7 +1432,7 @@ static int ex_exec(char *ln)
 int ex_command(char *ln)
 {
 	int ret = ex_exec(ln);
-	lbuf_modified(xb);
+	lbuf_tx(xb);
 	return ret;
 }
 

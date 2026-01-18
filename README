@@ -257,22 +257,23 @@ hl v - 3	" macros
 hl i -		" identifiers
 
 " ex-mode and status line
-hl _ b 7 0	" status line
-hl Z b 7 0	" status line of inactive windows
-hl M b 4	" status line mode
-hl F - 2	" status line file name
-hl N - 5	" status line line number
-hl C - 7	" status line column number
-hl T - 7	" status line line count
-hl W - 1	" status line w/r flags
-hl X b 7 0	" ex-mode messages
+hl _ - 7 0	" status line
+hl Z - 7 0	" status line of inactive windows
+hl N b 2	" status line normal mode
+hl I b 4	" status line insert mode
+hl F b 3	" status line file name
+hl L b 5	" status line line number
+hl W b 1	" status line w/r flags
+hl C 5 		" status line column number
+hl T 5 		" status line line count
+hl X b 7 0	" ex-mode output
 hl : - 7 0	" ex-mode prompts
 hl ! b 7 0	" ex-mode warnings
-hl Q b 2 0	" quick leap header
+hl Q b 7 0	" quick leap header
+hl P - 0 7	" quick leap list
 hl D -		" quick leap path dirname
 hl B b		" quick leap path basename
-hl L - 0 7	" quick leap list
-hl I b 1	" quick leap identifiers
+hl 1 b 1	" quick leap identifiers
 
 " diff file type
 hl xD b		" diff header
@@ -292,7 +293,7 @@ hl x# - 4	" comments
 " messages
 hl mh b 6	" mail headers
 hl ms b 4	" Subject header
-hl mf b 4	" From header
+hl mf b 2	" From header
 hl mt b 5	" To header
 hl mc b 5	" CC header
 hl mr i 2	" replied text

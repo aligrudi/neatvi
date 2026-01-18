@@ -8,7 +8,7 @@ int lbuf_indents(struct lbuf *lb, int r)
 	int o;
 	if (!ln)
 		return 0;
-	for (o = 0; uc_isspace(ln); o++)
+	for (o = 0; ln[0] == ' ' || ln[0] == '\t'; o++)
 		ln = uc_next(ln);
 	return o;
 }

@@ -198,6 +198,17 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	for (i = lb->hist_u; i < lb->hist_n; i++)
 		lopt_done(&lb->hist[i]);
 	lb->hist_n = lb->hist_u;
+	lo = &lb->hist[lb->hist_n - 1];
+	/* merging changes to the same line */
+	if (lb->hist_n > 0 && lo->seq == lb->useq && lo->pos == pos) {
+		if (lo->n_ins == 1 && n_del == 1 && linecount(buf) == 1) {
+			free(lo->ins);
+			lo->ins = buf ? uc_dup(buf) : NULL;
+			lb->hist_u = lb->hist_n;
+			lbuf_savepos(lb, lo);
+			return;
+		}
+	}
 	if (lb->hist_n == lb->hist_sz) {
 		int sz = lb->hist_sz + (lb->hist_sz ? lb->hist_sz : 128);
 		struct lopt *hist = malloc(sz * sizeof(hist[0]));
@@ -375,11 +386,16 @@ void lbuf_saved(struct lbuf *lb, int clear)
 	lbuf_modified(xb);
 }
 
-/* was the file modified since the last lbuf_modreset() */
+/* was the file modified since the last lbuf_saved() */
 int lbuf_modified(struct lbuf *lb)
 {
-	lb->useq++;
 	return lbuf_seq(lb) != lb->useq_zero;
+}
+
+/* start a new change set */
+void lbuf_tx(struct lbuf *lb)
+{
+	lb->useq++;
 }
 
 /* mark the line for ex global command */

@@ -74,10 +74,18 @@ void term_record(void)
 		term_sbuf = sbuf_make();
 }
 
+static long write_fully(int fd, void *buf, long sz)
+{
+	long nw = 0, nc = 0;
+	while (nw < sz && (nc = write(fd, buf + nw, sz - nw)) >= 0)
+		nw += nc;
+	return nc >= 0 ? nw : -1;
+}
+
 void term_commit(void)
 {
 	if (term_sbuf) {
-		write(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
+		write_fully(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
 		sbuf_free(term_sbuf);
 		term_sbuf = NULL;
 	}
@@ -88,7 +96,7 @@ static void term_out(char *s)
 	if (term_sbuf)
 		sbuf_str(term_sbuf, s);
 	else
-		write(1, s, strlen(s));
+		write_fully(1, s, strlen(s));
 }
 
 void term_str(char *s)
@@ -120,7 +128,7 @@ void term_room(int n)
 
 void term_pos(int r, int c)
 {
-	char buf[32] = "\r";
+	char buf[32];
 	if (c < 0)
 		c = 0;
 	if (c >= term_cols())

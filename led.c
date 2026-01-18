@@ -166,35 +166,23 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *ai, char *pref, char *main,
-		char *post, int *left, int kmap, char *syn)
+static void led_printparts(char *pref, char *main, char *post, int *left, int kmap, char *syn)
 {
 	struct sbuf *ln;
 	int off, pos;
-	int idir = 0;
 	ln = sbuf_make();
-	sbuf_str(ln, ai);
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
 	off = uc_slen(sbuf_buf(ln));
-	/* cursor position for inserting the next character */
-	if (*pref || *main || *ai) {
-		int len = sbuf_len(ln);
-		sbuf_str(ln, kmap_map(kmap, 'a'));
-		sbuf_str(ln, post);
-		idir = ren_pos(sbuf_buf(ln), off) -
-			ren_pos(sbuf_buf(ln), off - 1) < 0 ? -1 : +1;
-		sbuf_cut(ln, len);
-	}
 	term_record();
 	sbuf_str(ln, post);
-	pos = ren_cursor(sbuf_buf(ln), ren_pos(sbuf_buf(ln), MAX(0, off - 1)));
+	pos = ren_insert(sbuf_buf(ln), off);
 	if (pos >= *left + xcols)
 		*left = pos - xcols / 2;
 	if (pos < *left)
 		*left = pos < xcols ? 0 : pos - xcols / 2;
 	led_print(sbuf_buf(ln), -1, *left, syn);
-	term_pos(-1, led_pos(dir_context(sbuf_buf(ln)), pos + idir, *left, *left + xcols));
+	term_pos(-1, led_pos(dir_context(sbuf_buf(ln)), pos, *left, *left + xcols));
 	sbuf_free(ln);
 	term_commit();
 }
@@ -232,26 +220,6 @@ static char *led_readchar(int c, int kmap)
 	return kmap_map(kmap, c);
 }
 
-/* read a character from the terminal */
-char *led_read(int *kmap)
-{
-	int c = term_read();
-	while (!TK_INT(c)) {
-		switch (c) {
-		case TK_CTL('f'):
-			*kmap = xkmap_alt;
-			break;
-		case TK_CTL('e'):
-			*kmap = 0;
-			break;
-		default:
-			return led_readchar(c, *kmap);
-		}
-		c = term_read();
-	}
-	return NULL;
-}
-
 static int led_match(char *out, int len, char *kwd, char *opt)
 {
 	while (opt != NULL) {
@@ -276,11 +244,9 @@ static int led_match(char *out, int len, char *kwd, char *opt)
 }
 
 /* read a line from the terminal */
-static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
-	int *key, int *kmap, char *syn, char *hist, char *(*help)(char *ln))
+static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, char *syn, char *hist)
 {
 	struct sbuf *sb;
-	int ai_len = strlen(ai);
 	int y, lnmode;
 	int c = 0;
 	char cmp[64] = "";
@@ -291,10 +257,9 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 	if (post == NULL || !post[0])
 		post = cmp;
 	while (1) {
-		int c1 = c;
 		if (hist != NULL)
 			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
-		led_printparts(ai, pref, sbuf_buf(sb), post, left, *kmap, syn);
+		led_printparts(pref, sbuf_buf(sb), post, left, *kmap, syn);
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):
@@ -315,26 +280,6 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 			if (sbuf_len(sb))
 				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
 			break;
-		case TK_CTL('t'):
-			if (ai_len < ai_max) {
-				ai[ai_len++] = '\t';
-				ai[ai_len] = '\0';
-			}
-			break;
-		case TK_CTL('d'):
-			/* when ai and pref are empty, remove the first space of sb */
-			if (ai_len == 0 && !pref[0]) {
-				char *buf = sbuf_buf(sb);
-				if (buf[0] == ' ' || buf[0] == '\t') {
-					char *dup = uc_dup(buf + 1);
-					sbuf_cut(sb, 0);
-					sbuf_str(sb, dup);
-					free(dup);
-				}
-			}
-			if (ai_len > 0)
-				ai[--ai_len] = '\0';
-			break;
 		case TK_CTL('p'):
 			if (reg_get(0, &lnmode))
 				sbuf_str(sb, reg_get(0, &lnmode));
@@ -345,16 +290,8 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 				sbuf_str(sb, reg_get(y, &lnmode));
 			break;
 		case TK_CTL('a'):
-			if (help != NULL && c1 != TK_CTL('a')) {
-				char *ln = uc_cat(pref, sbuf_buf(sb));
-				char *ac = help(ln);
-				if (ac != NULL)
-					snprintf(cmp, sizeof(cmp), "%s", ac);
-				free(ln);
-			} else {
-				sbuf_str(sb, cmp);
-				cmp[0] = '\0';
-			}
+			sbuf_str(sb, cmp);
+			cmp[0] = '\0';
 			break;
 		default:
 			if (c == '\n' || TK_INT(c))
@@ -363,7 +300,7 @@ static char *led_line(char *pref, char *post, char *ai, int ai_max, int *left,
 				sbuf_str(sb, cs);
 		}
 		if (c == '\n')
-			led_printparts(ai, pref, sbuf_buf(sb), "", left, *kmap, syn);
+			led_printparts(pref, sbuf_buf(sb), "", left, *kmap, syn);
 		if (c == '\n' || TK_INT(c))
 			break;
 	}
@@ -377,7 +314,7 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist)
 	int key;
 	int td = td_set(+2);
 	int left = 0;
-	char *s = led_line(pref, post, "", 0, &left, &key, kmap, syn, hist, NULL);
+	char *s = led_line(pref, post, &left, &key, kmap, syn, hist);
 	td_set(td);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
@@ -390,68 +327,5 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist)
 		return sbuf_done(sb);
 	}
 	free(s);
-	return NULL;
-}
-
-static int linecount(char *s)
-{
-	int n;
-	for (n = 0; s; n++)
-		if ((s = strchr(s, '\n')))
-			s++;
-	return n;
-}
-
-/* read visual command input */
-char *led_input(char *pref, char *post, int *left, int *kmap, char *syn, void (*nextline)(void), char *(*help)(char *ln))
-{
-	struct sbuf *sb = sbuf_make();
-	char ai[128];
-	int ai_max = sizeof(ai) - 1;
-	int n = 0;
-	int key;
-	while (n < ai_max && (*pref == ' ' || *pref == '\t'))
-		ai[n++] = *pref++;
-	ai[n] = '\0';
-	while (1) {
-		char *ln = led_line(pref, post, ai, ai_max, left, &key, kmap, syn, NULL, help);
-		int ln_sp = 0;	/* number of initial spaces in ln */
-		int lncnt = linecount(ln) - 1 + (key == '\n');
-		while (ln[ln_sp] && (ln[ln_sp] == ' ' || ln[ln_sp] == '\t'))
-			ln_sp++;
-		/* append the auto-indent only if there are other characters */
-		if (ln[ln_sp] || (pref && pref[0]) ||
-				(key != '\n' && post[0] && post[0] != '\n'))
-			sbuf_str(sb, ai);
-		if (pref)
-			sbuf_str(sb, pref);
-		sbuf_str(sb, ln);
-		if (key == '\n')
-			sbuf_chr(sb, '\n');
-		while (lncnt-- > 0)
-			nextline();
-		if (!pref || !pref[0]) {	/* updating autoindent */
-			int ai_len = ai_max ? strlen(ai) : 0;
-			int ai_new = ln_sp;
-			if (ai_len + ai_new > ai_max)
-				ai_new = ai_max - ai_len;
-			memcpy(ai + ai_len, ln, ai_new);
-			ai[ai_len + ai_new] = '\0';
-		}
-		if (!xai)
-			ai[0] = '\0';
-		free(ln);
-		if (key != '\n')
-			break;
-		pref = NULL;
-		n = 0;
-		while (xai && (post[n] == ' ' || post[n] == '\t'))
-			n++;
-		memmove(post, post + n, strlen(post) - n + 1);
-	}
-	sbuf_str(sb, post);
-	if (TK_INT(key))
-		return sbuf_done(sb);
-	sbuf_free(sb);
 	return NULL;
 }

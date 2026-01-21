@@ -167,9 +167,6 @@ static struct highlight {
 	{"ls", {SX('c')}, "^#.*$"},
 };
 
-/* define it as "\33[8l" to disable BiDi in vte-based terminals */
-#define LNPREF		""
-
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */
 #define CR2L		"ءآأؤإئابةتثجحخدذرزسشصضطظعغـفقكلمنهوىييپچژکگی‌‍؛،»«؟ًٌٍَُِّْٔ"
 /* neutral characters (used only in dircontexts[] and dirmarks[]) */

@@ -77,7 +77,8 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	led_markrev(n, chrs, pos, att);
 	/* generate term output */
 	out = sbuf_make();
-	sbuf_str(out, conf_lnpref());
+	/* disable BiDi in vte-based terminals */
+	sbuf_str(out, xvte ? "\33[8l" : "");
 	i = cbeg;
 	while (i < cend && i <= clast) {
 		int o = off[i - cbeg];

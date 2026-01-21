@@ -227,11 +227,6 @@ char *conf_digraph(int c1, int c2)
 	return NULL;
 }
 
-char *conf_lnpref(void)
-{
-	return LNPREF;
-}
-
 char *conf_definition(char *ft)
 {
 	int i;

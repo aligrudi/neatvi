@@ -209,7 +209,6 @@ int conf_hlrev(void);
 int conf_hlline(void);
 int conf_mode(void);
 char *conf_digraph(int c1, int c2);
-char *conf_lnpref(void);
 char *conf_definition(char *ft);
 char *conf_section(char *ft);
 char *conf_ecmd(void);
@@ -240,6 +239,7 @@ extern int xkmap_alt;
 extern int xlim;
 extern int xru;
 extern int xhist;
+extern int xvte;
 
 /* tag file handling */
 int tag_init(void);

@@ -12,7 +12,8 @@ If the EXINIT environment variable is defined, Neatvi executes its
 contents as ex commands at startup.  Otherwise, it executes the ex
 commands in $HOME/.neatvi, if present.  They can set the value of
 Neatvi options, change syntax highlighting colours, define new or
-modify existing keymaps, or define q-commands.
+modify existing keymaps, or define q-commands.  To change syntax
+highlighting and text direction patterns, conf.h must be modified.
 
 The :hl (:highlight) ex-mode command changes syntax highlighting
 colours; see the syntax highlighting section of this file for the
@@ -25,9 +26,7 @@ of the current a keymap.
 Sadly, VTE-based terminals such as GNOME's implement a
 backward-incompatible extension of virtual terminal escape codes to
 render bidirectional text by default.  When using these terminal, the
-value of LNPREF macro in conf.h needs to be changed to "\33[8l".
-conf.h must also be modified to change syntax highlighting rules
-and text direction patterns.
+the value of the vte option must be changed to 1.
 
 COMMANDS
 --------
@@ -35,9 +34,9 @@ COMMANDS
 Commands not available in ex(1):
 
 :cm[ap][!] [kmap]
-  Without kmap, prints the current keymap name.
-  When kmap is specified, sets the alternate keymap to
-  kmap and, unless ! is given, switches to this keymap.
+  Without argument, prints the current keymap name.
+  When kmap is given, sets the alternate keymap to the keymap with
+  the given name and, unless ! is given, switches to this keymap.
 :ft [filetype]
   Without filetype, prints the current file type.
   When filetype is specified, sets the file type of the
@@ -78,7 +77,7 @@ Commands not available in ex(1):
   Colours can be numbers from 0 to 255; numbers greater than 15 can
   be used only if the terminal supports the 256-colour palette.
 :mk key [def]
-  Maps a character to the given key in the current keymap.  If def is
+  Maps a key to the given character in the current keymap.  If def is
   missing, the mapping is reset.
 
 New key mappings:

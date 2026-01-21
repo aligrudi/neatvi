@@ -74,8 +74,9 @@ static int conf_hldefs[384] = {
 	['F'] = 3 | SYN_BD,		/* status line file name */
 	['L'] = 5 | SYN_BD,		/* status line line number */
 	['W'] = 1 | SYN_BD,		/* status line w/r flags */
+	['K'] = 0,			/* keymap name */
 	['C'] = 5,			/* status line column number */
-	['T'] = 5,			/* status line line count */
+	['T'] = 0,			/* status line line count */
 	['X'] = SYN_BGMK(0) | 7 | SYN_BD,	/* ex-mode output lines */
 	[':'] = SYN_BGMK(0) | 7,		/* ex-mode prompts */
 	['!'] = SYN_BGMK(0) | 7 | SYN_BD,	/* ex-mode warnings */
@@ -183,18 +184,38 @@ int conf_mode(void)
 	return MKFILE_MODE;
 }
 
-char **conf_kmap(int id)
+char *kmap_map(int id, int key)
 {
-	return kmaps[id];
+	static char cs[4];
+	cs[0] = key;
+	return id < LEN(kmaps) && kmaps[id][key] ? kmaps[id][key] : cs;
 }
 
-int conf_kmapfind(char *name)
+void kmap_def(int id, int key, char *def)
+{
+	static char defs[512];
+	static int defs_pos;
+	int len = strlen(def) + 1;
+	if (id >= 0 && id < LEN(kmaps) && key >= 0 && key < 256) {
+		if (len < sizeof(defs) - defs_pos) {
+			memcpy(defs + defs_pos, def, len);
+			kmaps[id][key] = defs + defs_pos;
+			defs_pos += len;
+		}
+	}
+}
+
+int kmap_find(char *name)
 {
 	int i;
 	for (i = 0; i < LEN(kmaps); i++)
 		if (name && kmaps[i][0] && !strcmp(name, kmaps[i][0]))
 			return i;
-	return 0;
+	if (!kmaps[LEN(kmaps) - 1][0]) {
+		kmap_def(LEN(kmaps) - 1, 0, name);
+		return LEN(kmaps) - 1;
+	}
+	return -1;
 }
 
 char *conf_digraph(int c1, int c2)

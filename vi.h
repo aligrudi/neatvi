@@ -208,8 +208,6 @@ int conf_hlback(void);
 int conf_hlrev(void);
 int conf_hlline(void);
 int conf_mode(void);
-char **conf_kmap(int id);
-int conf_kmapfind(char *name);
 char *conf_digraph(int c1, int c2);
 char *conf_lnpref(void);
 char *conf_definition(char *ft);
@@ -218,6 +216,9 @@ char *conf_ecmd(void);
 int conf_hl(int id);
 int conf_hlnum(char *hl);
 void conf_hlset(int id, int hl);
+char *kmap_map(int id, int key);
+void kmap_def(int id, int key, char *def);
+int kmap_find(char *name);
 
 /* global variables */
 extern int xrow;

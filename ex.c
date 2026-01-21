@@ -907,10 +907,10 @@ static int ec_ft(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_cmap(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (arg[0])
-		xkmap_alt = conf_kmapfind(arg);
+	if (arg[0] && kmap_find(arg) >= 0)
+		xkmap_alt = kmap_find(arg);
 	else
-		ex_print(conf_kmap(xkmap)[0]);
+		ex_print(kmap_map(xkmap, 0));
 	if (arg[0] && !strchr(cmd, '!'))
 		xkmap = xkmap_alt;
 	return 0;
@@ -952,6 +952,16 @@ static int ec_highlight(char *loc, char *cmd, char *arg, char *txt)
 	if (bg && isdigit((unsigned char) *bg))
 		mode |= SYN_BGMK(atoi(bg));
 	conf_hlset(conf_hlnum(name), mode);
+	return 0;
+}
+
+static int ec_mapkey(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *src = ex_skip(&arg);
+	char *dst = ex_skip(&arg);
+	if (!src)
+		return 1;
+	kmap_def(xkmap, (unsigned char) src[0], dst);
 	return 0;
 }
 
@@ -1233,6 +1243,7 @@ static struct excmd {
 	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
 	{"make", "make", ec_make},
+	{"mk", "mapkey", ec_mapkey},
 	{"n", "next", ec_next},
 	{"p", "print", ec_print},
 	{"po", "pop", ec_pop},

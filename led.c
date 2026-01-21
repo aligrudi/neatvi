@@ -6,14 +6,6 @@
 #include <unistd.h>
 #include "vi.h"
 
-static char *kmap_map(int kmap, int c)
-{
-	static char cs[4];
-	char **keymap = conf_kmap(kmap);
-	cs[0] = c;
-	return keymap[c] ? keymap[c] : cs;
-}
-
 static int led_pos(int dir, int pos, int beg, int end)
 {
 	return dir >= 0 ? pos - beg : end - pos - 1;

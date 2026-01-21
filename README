@@ -8,18 +8,26 @@ keymaps.
 CONFIGURATION
 -------------
 
-Edit conf.h to adjust syntax highlighting rules and text direction
-patterns.  To define a new keymap, create a new array in kmap.h, like
-kmap_fa, and add it to kmaps array in the same header (the first entry
-of the new array specifies its name).  The current keymap may be
-changed with :cm ex command.  When in input mode, ^e activates the
-English keymap and ^f switches to the alternate keymap (the last
-keymap specified with :cm).
+If the EXINIT environment variable is defined, Neatvi executes its
+contents as ex commands at startup.  Otherwise, it executes the ex
+commands in $HOME/.neatvi, if present.  They can set the value of
+Neatvi options, change syntax highlighting colours, define new or
+modify existing keymaps, or define q-commands.
+
+The :hl (:highlight) ex-mode command changes syntax highlighting
+colours; see the syntax highlighting section of this file for the
+default set of highlighting rules.  The :cm command switches the
+current keymap.  Also, when in input mode, ^e activates the English
+keymap and ^f switches to the alternate keymap (the last keymap
+specified with :cm).  The :mk (:mapkey) command modifies key mappings
+of the current a keymap.
 
 Sadly, VTE-based terminals such as GNOME's implement a
 backward-incompatible extension of virtual terminal escape codes to
 render bidirectional text by default.  When using these terminal, the
 value of LNPREF macro in conf.h needs to be changed to "\33[8l".
+conf.h must also be modified to change syntax highlighting rules
+and text direction patterns.
 
 COMMANDS
 --------
@@ -64,11 +72,14 @@ Commands not available in ex(1):
 :ec[ho] msg
   Prints the given message (useful in ex scripts or q-commands).
 :hl name [flags] [fg] [bg]
-  Specify syntax highlighting colours.  Flags can be a combination
+  Specifies syntax highlighting colours.  Flags can be a combination
   of b for bold, i for italic, and r for reversed mode.  Fg and bg,
   if present, specify the foreground and background colours.
   Colours can be numbers from 0 to 255; numbers greater than 15 can
   be used only if the terminal supports the 256-colour palette.
+:mk key [def]
+  Maps a character to the given key in the current keymap.  If def is
+  missing, the mapping is reset.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -101,10 +112,6 @@ Other noteworthy differences with vi(1):
 - In addition to the standard single-letter yank buffers, Neatvi
   supports a set of extended buffers whose two-letter names begin
   with a backslash, like \x.
-- If EXINIT environment variable is defined as "so /path/to/exrc",
-  Neatvi executes the ex commands in this file at startup.  If
-  EXINIT is not defined, Neatvi executes the commands in
-  $HOME/.neatvi, if present.
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
@@ -264,8 +271,9 @@ hl I b 4	" status line insert mode
 hl F b 3	" status line file name
 hl L b 5	" status line line number
 hl W b 1	" status line w/r flags
-hl C 5 		" status line column number
-hl T 5 		" status line line count
+hl K -		" keymap name
+hl C - 5	" status line column number
+hl T -		" status line line count
 hl X b 7 0	" ex-mode output
 hl : - 7 0	" ex-mode prompts
 hl ! b 7 0	" ex-mode warnings

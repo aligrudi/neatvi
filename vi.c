@@ -477,14 +477,6 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	return failed != NULL;
 }
 
-static char *kmap_map(int kmap, int c)
-{
-	static char cs[4];
-	char **keymap = conf_kmap(kmap);
-	cs[0] = c;
-	return keymap[c] ? keymap[c] : cs;
-}
-
 static char *vi_char(int (*next)(void), int kmap)
 {
 	static char buf[8];
@@ -1340,10 +1332,11 @@ static int vc_status(void)
 	int col = vi_off2col(xb, xrow, xoff);
 	int c = vi_insert ? 'I' : 'N';
 	snprintf(vi_msg, sizeof(vi_msg),
-		"%c%04d %c %s   T%d C%d",
+		"%c%04d %c %s  %s %d C%d",
 		w_tmp ? '_' : c, xrow + 1,
 		lbuf_modified(xb) ? 'M' : '-',
 		ex_path()[0] ? ex_path() : "unnamed",
+		kmap_map(xkmap, 0),
 		lbuf_len(xb), ren_cursor(lbuf_get(xb, xrow), col) + 1);
 	return 0;
 }

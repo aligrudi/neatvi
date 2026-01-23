@@ -81,10 +81,11 @@ static int conf_hldefs[384] = {
 	[':'] = SYN_BGMK(0) | 7,		/* ex-mode prompts */
 	['!'] = SYN_BGMK(0) | 7 | SYN_BD,	/* ex-mode warnings */
 	['Q'] = SYN_BGMK(0) | 7 | SYN_BD,	/* quick leap header */
-	['P'] = SYN_BGMK(7) | SYN_FGMK(0),	/* quick leap list */
-	['D'] = 0,		/* quick leap path dirname */
-	['B'] = SYN_BD,		/* quick leap path basename */
-	['1'] = 1 | SYN_BD,	/* quick leap identifiers */
+	['U'] = 0,		/* quick leap list */
+	['D'] = 0,		/* quick leap item dirname */
+	['B'] = 3 | SYN_BD,	/* quick leap item basename */
+	['1'] = 1 | SYN_BD,	/* quick leap item identifier */
+	['2'] = 4,		/* quick leap item description */
 	/* diff file type */
 	[SX('D')] = SYN_BD,		/* diff header */
 	[SX('@')] = 6,		/* diff hunk information line */

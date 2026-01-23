@@ -277,10 +277,11 @@ hl X b 7 0	" ex-mode output
 hl : - 7 0	" ex-mode prompts
 hl ! b 7 0	" ex-mode warnings
 hl Q b 7 0	" quick leap header
-hl P - 0 7	" quick leap list
-hl D -		" quick leap path dirname
-hl B b		" quick leap path basename
-hl 1 b 1	" quick leap identifiers
+hl U -		" quick leap items
+hl D -		" quick leap item dirname
+hl B b 3	" quick leap item basename
+hl 1 b 1	" quick leap item identifiers
+hl 2 - 4	" quick leap item description
 
 " diff file type
 hl xD b		" diff header

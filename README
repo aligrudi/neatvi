@@ -21,7 +21,7 @@ default set of highlighting rules.  The :cm command switches the
 current keymap.  Also, when in input mode, ^e activates the English
 keymap and ^f switches to the alternate keymap (the last keymap
 specified with :cm).  The :mk (:mapkey) command modifies key mappings
-of the current a keymap.
+of the current keymap.
 
 Sadly, VTE-based terminals such as GNOME's implement a
 backward-incompatible extension of virtual terminal escape codes to

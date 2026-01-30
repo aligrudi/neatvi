@@ -198,27 +198,5 @@ static struct dirmark {
 	{-1, +1, 0, "\\\\[^ \t" CR2L "]+"},
 };
 
-/* character placeholders */
-static struct placeholder {
-	char *s;	/* the source character */
-	char *d;	/* the placeholder */
-	int wid;	/* the width of the placeholder */
-} placeholders[] = {
-	{"‌", "-", 1},
-	{"‍", "-", 1},
-	{"ً", "ـً", 1},
-	{"ٌ", "ـٌ", 1},
-	{"ٍ", "ـٍ", 1},
-	{"َ", "ـَ", 1},
-	{"ُ", "ـُ", 1},
-	{"ِ", "ـِ", 1},
-	{"ّ", "ـّ", 1},
-	{"ْ", "ـْ", 1},
-	{"ٓ", "ـٓ", 1},
-	{"ٔ", "ـٔ", 1},
-	{"ٕ", "ـٕ", 1},
-	{"ٰ", "ـٰ", 1},
-};
-
 /* external commands */
 #define ECMD	"neatvi.sh"

@@ -967,6 +967,17 @@ static int ec_mapkey(char *loc, char *cmd, char *arg, char *txt)
 	return 0;
 }
 
+static int ec_mapchar(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *src = ex_skip(&arg);
+	char *dst = ex_skip(&arg);
+	char *wid = ex_skip(&arg);
+	if (!src || !dst)
+		return 1;
+	mapch_def(src, dst, wid ? atoi(wid) : -1);
+	return 0;
+}
+
 static int ex_exec(char *ln);
 
 static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
@@ -1250,6 +1261,7 @@ static struct excmd {
 	{"mk", "mapkey", ec_mapkey},
 	{"n", "next", ec_next},
 	{"p", "print", ec_print},
+	{"mc", "mapchar", ec_mapchar},
 	{"po", "pop", ec_pop},
 	{"pu", "put", ec_put},
 	{"prev", "prev", ec_prev},

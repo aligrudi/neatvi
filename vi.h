@@ -201,7 +201,6 @@ void syn_done(void);
 /* configuration variables */
 int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
 int conf_dircontext(int idx, char **pat, int *ctx);
-int conf_placeholder(int idx, char **s, char **d, int *wid);
 int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
 int conf_hlback(void);
@@ -218,6 +217,8 @@ void conf_hlset(int id, int hl);
 char *kmap_map(int id, int key);
 void kmap_def(int id, int key, char *def);
 int kmap_find(char *name);
+char *mapch_get(char *s, int *wid);
+void mapch_def(char *s, char *d, int wid);
 
 /* global variables */
 extern int xrow;

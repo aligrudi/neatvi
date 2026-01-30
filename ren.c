@@ -162,27 +162,6 @@ int ren_next(char *s, int p, int dir)
 	return s && uc_chr(s, ren_off(s, p))[0] != '\n' ? p : -1;
 }
 
-static char *ren_placeholder(char *s, int *wid)
-{
-	static int bits = 0xffff;	/* common bits in placeholders */
-	char *src, *dst;
-	int i;
-	if (bits == 0xffff) {
-		for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
-			bits &= (unsigned char) *src;
-	}
-	if ((((unsigned char) *s) & bits) == bits) {
-		for (i = 0; !conf_placeholder(i, &src, &dst, wid); i++)
-			if (src[0] == s[0] && uc_code(src) == uc_code(s))
-				return dst;
-	}
-	if (wid)
-		*wid = 1;
-	if (uc_isbell(s))
-		return "�";
-	return NULL;
-}
-
 int ren_cwid(char *s, int pos)
 {
 	int wid;
@@ -190,13 +169,13 @@ int ren_cwid(char *s, int pos)
 		int ts = xts > 0 ? xts : 8;
 		return ts - (pos % ts);
 	}
-	if (ren_placeholder(s, &wid))
+	if (mapch_get(s, &wid))
 		return wid;
 	return uc_wid(s);
 }
 
 char *ren_translate(char *s, char *ln)
 {
-	char *p = ren_placeholder(s, NULL);
+	char *p = mapch_get(s, NULL);
 	return p || !xshape ? p : uc_shape(ln, s);
 }

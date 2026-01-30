@@ -31,24 +31,12 @@ int conf_dircontext(int idx, char **pat, int *ctx)
 	return 0;
 }
 
-int conf_placeholder(int idx, char **s, char **d, int *wid)
-{
-	if (idx < 0 || idx >= LEN(placeholders))
-		return 1;
-	if (s)
-		*s = placeholders[idx].s;
-	if (d)
-		*d = placeholders[idx].d;
-	if (wid)
-		*wid = placeholders[idx].wid;
-	return 0;
-}
-
 static int conf_hldefs[384] = {
 	/* general text */
 	['.'] = 0,		/* all text */
 	['^'] = SYN_BGMK(11),	/* current line highlight (hll option) */
 	['~'] = SYN_RV,		/* text in reverse direction */
+	['&'] = 4,		/* mapped characters (mc command) */
 	/* for programming languages  */
 	['k'] = SYN_BD | 3,	/* general keywords */
 	['r'] = 2,		/* control flow keywords */
@@ -249,4 +237,80 @@ char *conf_section(char *ft)
 char *conf_ecmd(void)
 {
 	return ECMD;
+}
+
+/* character placeholders */
+static struct mapch {
+	char s[6];	/* the source character */
+	char d[16];	/* the placeholder */
+	int wid;	/* the width of the placeholder */
+} mapch[64];
+
+#define MCH_IDX(i)	((i) >> (sizeof(unsigned long) + 3))
+#define MCH_BIT(i)	((i) & ((1 << (sizeof(unsigned long) + 3)) - 1))
+
+static int mapch_cnt;
+static unsigned long mapch_map[32 / sizeof(unsigned long)];
+
+static void mapch_init(void)
+{
+	static int called;
+	if (!called) {
+		called = 1;
+		mapch_def("‌", "-", 1);
+		mapch_def("‍", "-", 1);
+		mapch_def("ً", "ـً", 1);
+		mapch_def("ٌ", "ـٌ", 1);
+		mapch_def("ٍ", "ـٍ", 1),
+		mapch_def("َ", "ـَ", 1);
+		mapch_def("ُ", "ـُ", 1);
+		mapch_def("ِ", "ـِ", 1);
+		mapch_def("ّ", "ـّ", 1);
+		mapch_def("ْ", "ـْ", 1);
+		mapch_def("ٓ", "ـٓ", 1);
+		mapch_def("ٔ", "ـٔ", 1);
+		mapch_def("ٕ", "ـٕ", 1);
+		mapch_def("ٰ", "ـٰ", 1);
+	}
+}
+
+void mapch_def(char *s, char *d, int wid)
+{
+	int i;
+	mapch_init();
+	for (i = 0; i < mapch_cnt; i++)
+		if (uc_code(s) == uc_code(mapch[i].s))
+			break;
+	if (i < LEN(mapch)) {
+		struct mapch *mc = &mapch[i];
+		int c = (unsigned char) s[0];
+		snprintf(mc->s, sizeof(mc->s), "%s", s);
+		snprintf(mc->d, sizeof(mc->d), "%s", d);
+		mc->wid = wid >= 0 ? wid : ren_wid(d);
+		mapch_map[MCH_IDX(c)] |= 1 << MCH_BIT(c);
+		mapch_cnt = MAX(mapch_cnt, i + 1);
+	}
+}
+
+char *mapch_get(char *s, int *wid)
+{
+	int c = (unsigned char) s[0];
+	int i;
+	if (!mapch_cnt)
+		mapch_init();
+	if (!!(mapch_map[MCH_IDX(c)] & (1 << MCH_BIT(c)))) {
+		for (i = 0; i < mapch_cnt; i++) {
+			struct mapch *mc = &mapch[i];
+			if (s[0] == mc->s[0] && uc_code(s) == uc_code(mc->s)) {
+				if (wid)
+					*wid = mc->wid;
+				return mc->d;
+			}
+		}
+	}
+	if (wid)
+		*wid = 1;
+	if (uc_isbell(s))
+		return "�";
+	return NULL;
 }

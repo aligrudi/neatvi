@@ -79,6 +79,9 @@ Commands not available in ex(1):
 :mk key [def]
   Maps a key to the given character in the current keymap.  If def is
   missing, the mapping is reset.
+:mc ch [def]
+  Defines a character placeholder for UTF-8 character ch.  For
+  instance, "mc  ^r" maps ^r.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -96,8 +99,11 @@ New key mappings:
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
 - zj, zk, zD: equivalent to :b+, :b-, :b !.
 - zJ, zK: equivalent to :next, :prev.
-- q in normal mode: see quick access section.
 - ^a in ex, search, and pipe prompts: inserts from history lines.
+- q in normal mode: see the quick access section.
+- q;: lists and filters buffers.
+- q,: lists and filters files listed in ./ls.
+- q=: lists and filters files tags in ./tags.
 
 Other noteworthy differences with vi(1):
 - Neatvi assumes POSIX extended regular expressions (ERE) in search
@@ -168,6 +174,8 @@ aw, autowrite
   As in vi(1).
 ic, ignorecase
   As in vi(1).
+ts, tapstop
+  As in vi(1).
 wa, writeany
   As in vi(1).
 
@@ -197,18 +205,29 @@ QUICK ACCESS
 ------------
 
 When q is pressed in normal mode, Neatvi prints the list of buffers at
-the bottom of the screen and waits for a key.  If the key is a digit,
-it switches to its corresponding buffer.  If it is a letter and the
-extended buffer with that letter is defined, the contents of that
-buffer is executed.  Otherwise, Neatvi executes ECMD (defined in
-conf.h) with the following parameters: i) the letter, ii) the current
-file, iii) the current line number, and iv) the current line offset.
+the bottom of the screen and waits for a key.
 
-What ECMD writes to its standard output, Neatvi executes as ex
-commands.  Q-commands can be used to add interesting features to
-Neatvi, such as language-dependent IDE features, for instance by
-connecting to an LSP (language server protocol) server.  neatvi.sh is
-an example ECMD shell script.
+- If the key is a digit, it switches to its corresponding buffer.
+- If the key is enter, it switches to the first buffer.
+- If the key is /, it prompts for a keyword to filter the list of
+  buffers (files or tags).  After pressing enter, the list is updated
+  only to include those entries that contain the keyword.
+- If the key is , (comma), Neatvi lists the lines in ./ls as files,
+  and prompts for a keyword to filter them.
+- If the key is =, Neatvi lists the tags in ./tags, and prompts
+  for a keyword to filter them.
+- If it is a letter and the extended buffer with that letter (\X for
+  letter X) is defined, the contents of that buffer is executed.
+- If the key is a letter, but the extended buffer with that letter
+  is not defined, Neatvi executes ECMD (defined in conf.h) with the
+  following parameters: i) the letter, ii) the current file, iii) the
+  current line number, and iv) the current line offset.  What ECMD
+  writes to its standard output, Neatvi executes as ex commands.
+
+ECMD commands can be used to add interesting features to Neatvi, such
+as language-dependent IDE features, for instance by connecting to an
+LSP (language server protocol) server.  neatvi.sh is an example ECMD
+shell script.
 
 AUTO-COMPLETION
 ---------------
@@ -244,6 +263,7 @@ The default set of syntax highlighting rules are as follows.
 hl . -		" all text
 hl ^ - - 11	" current line (hll option)
 hl ~ r		" text in reverse direction
+hl & - 2	" mapped characters (mc command)
 
 " for programming languages
 hl k b 3	" general keywords

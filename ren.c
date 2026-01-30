@@ -105,17 +105,15 @@ int ren_off(char *s, int p)
 /* adjust cursor position */
 int ren_cursor(char *s, int p)
 {
-	int n, next;
+	int n;
 	int *pos;
-	if (!s)
+	if (!s || !p)
 		return 0;
 	n = uc_slen(s);
 	pos = ren_position(s);
 	p = pos_prev(pos, n, p, 1);
 	if (uc_code(uc_chr(s, ren_off(s, p))) == '\n')
 		p = pos_prev(pos, n, p, 0);
-	next = pos_next(pos, n, p, 0);
-	p = (next >= 0 ? next : pos[n]) - 1;
 	free(pos);
 	return p >= 0 ? p : 0;
 }
@@ -188,8 +186,10 @@ static char *ren_placeholder(char *s, int *wid)
 int ren_cwid(char *s, int pos)
 {
 	int wid;
-	if (s[0] == '\t')
-		return 8 - (pos & 7);
+	if (s[0] == '\t') {
+		int ts = xts > 0 ? xts : 8;
+		return ts - (pos % ts);
+	}
 	if (ren_placeholder(s, &wid))
 		return wid;
 	return uc_wid(s);

@@ -240,6 +240,7 @@ extern int xlim;
 extern int xru;
 extern int xhist;
 extern int xvte;
+extern int xts;
 
 /* tag file handling */
 int tag_init(void);

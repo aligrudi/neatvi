@@ -2,8 +2,7 @@
 # This is an example ECMD script for Neatvi (see conf.h).
 #
 # When q is pressed in normal mode, Neatvi prints the list of buffers
-# and waits for a key.  If the key is a digit, it switches to its
-# corresponding buffer.  If it is a letter and the extended buffer
+# and waits for a key.  If it is a letter and the extended buffer
 # with that letter is defined, the contents of that buffer is executed.
 # Otherwise, Neatvi executes ECMD with the following parameters:
 # i) the letter, ii) the current file, iii) the current line number,

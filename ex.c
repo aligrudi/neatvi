@@ -949,6 +949,10 @@ static int ec_highlight(char *loc, char *cmd, char *arg, char *txt)
 		mode |= SYN_IT;
 	if (strchr(attr, 'r'))
 		mode |= SYN_RV;
+	if (strchr(attr, 'h'))
+		mode |= SYN_HP;
+	if (strchr(attr, 'l'))
+		mode |= SYN_LP;
 	if (fg && isdigit((unsigned char) *fg))
 		mode |= SYN_FGMK(atoi(fg));
 	if (bg && isdigit((unsigned char) *bg))

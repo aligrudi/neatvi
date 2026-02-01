@@ -49,6 +49,8 @@ int syn_merge(int old, int new)
 {
 	int fg = SYN_FGSET(new) ? SYN_FG(new) : SYN_FG(old);
 	int bg = SYN_BGSET(new) ? SYN_BG(new) : SYN_BG(old);
+	if (SYN_RANK(old) > SYN_RANK(new))
+		return syn_merge(new, old);
 	return ((old | new) & SYN_FLG) | (bg << 8) | fg;
 }
 
@@ -73,7 +75,19 @@ int *syn_highlight(char *ft, char *s)
 	}
 	for (i = 0; i < n; i++)
 		att[i] = conf_hl('.');
-	if (rs == NULL)
+	if (conf_hl('&')) {
+		char *r = s;
+		for (i = 0; i < n; i++) {
+			if (mapch_get(r, NULL))
+				att[i] = syn_merge(att[i], conf_hl('&'));
+			r = uc_next(r);
+		}
+	}
+	if (syn_ctx) {
+		for (i = 0; i < n; i++)
+			att[i] = syn_merge(att[i], syn_ctx);
+	}
+	if (!rs)
 		rs = syn_make(ft);
 	if (!rs)
 		return att;
@@ -98,16 +112,6 @@ int *syn_highlight(char *ft, char *s)
 		soff += cend;
 		flg = RE_NOTBOL;
 	}
-	if (conf_hl('&')) {
-		char *r = s;
-		for (i = 0; i < n; i++) {
-			if (mapch_get(r, NULL))
-				att[i] = syn_merge(att[i], conf_hl('&'));
-			r = uc_next(r);
-		}
-	}
-	for (i = 0; i < n; i++)
-		att[i] = syn_merge(att[i], syn_ctx);
 	return att;
 }
 

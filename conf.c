@@ -158,16 +158,6 @@ int conf_filetype(int idx, char **ft, char **pat)
 	return 0;
 }
 
-int conf_hlrev(void)
-{
-	return conf_hl('~');
-}
-
-int conf_hlline(void)
-{
-	return conf_hl('^');
-}
-
 int conf_mode(void)
 {
 	return MKFILE_MODE;

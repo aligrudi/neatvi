@@ -182,14 +182,17 @@ int cmd_exec(char *cmd);
 #define SYN_BD		0x010000
 #define SYN_IT		0x020000
 #define SYN_RV		0x040000
+#define SYN_HP		0x400000
+#define SYN_LP		0x800000
 #define SYN_FGMK(f)	(0x100000 | (f))
 #define SYN_BGMK(b)	(0x200000 | ((b) << 8))
 
-#define SYN_FLG		0xff0000
+#define SYN_FLG		0x7f0000
 #define SYN_FGSET(a)	((a) & 0x1000ff)
 #define SYN_BGSET(a)	((a) & 0x20ff00)
 #define SYN_FG(a)	((a) & 0xff)
 #define SYN_BG(a)	(((a) >> 8) & 0xff)
+#define SYN_RANK(c)	(((c) & SYN_HP) - ((c) & SYN_LP))
 
 int *syn_highlight(char *ft, char *s);
 char *syn_filetype(char *path);
@@ -203,9 +206,6 @@ int conf_dirmark(int idx, char **pat, int *ctx, int *dir, int *grp);
 int conf_dircontext(int idx, char **pat, int *ctx);
 int conf_highlight(int idx, char **ft, int **att, char **pat, int *end);
 int conf_filetype(int idx, char **ft, char **pat);
-int conf_hlback(void);
-int conf_hlrev(void);
-int conf_hlline(void);
 int conf_mode(void);
 char *conf_digraph(int c1, int c2);
 char *conf_definition(char *ft);

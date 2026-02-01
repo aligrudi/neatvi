@@ -24,7 +24,7 @@ static int led_offdir(char **chrs, int *pos, int i)
 static void led_markrev(int n, char **chrs, int *pos, int *att)
 {
 	int i = 0, j;
-	int hl = conf_hlrev();
+	int hl = conf_hl('~');
 	while (i + 1 < n) {
 		int dir = led_offdir(chrs, pos, i);
 		int beg = i;

@@ -81,7 +81,7 @@ static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
 	if (xhll && row == xrow)
-		syn_context(conf_hlline());
+		syn_context(conf_hl('^'));
 	led_print(s ? s : (row ? "~" : ""), row - xtop, xleft, xhl ? ex_filetype() : "");
 	syn_context(0);
 }
@@ -832,8 +832,8 @@ static int vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 		struct sbuf *sb = sbuf_make();
 		char *s1 = lbuf_get(xb, r1);
 		char *s2 = lbuf_get(xb, r2);
-		sbuf_mem(sb, s1, uc_chr(s1, o1) - s1);
-		sbuf_str(sb, uc_chr(s2, o2));
+		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
+		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
 		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
 		sbuf_free(sb);
 	} else {
@@ -923,9 +923,8 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 		sbuf_str(sb, xai ? vi_ai : "");
 		sbuf_str(sb, "\n");
 	} else {
-		char *pos = uc_chr(s2, o2);
-		sbuf_mem(sb, s1, uc_chr(s1, o1) - s1);
-		sbuf_mem(sb, pos, strchr(s2, '\0') - pos);
+		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
+		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
 	}
 	lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
 	sbuf_free(sb);
@@ -958,9 +957,9 @@ static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 		struct sbuf *sb = sbuf_make();
 		char *s1 = lbuf_get(xb, r1);
 		char *s2 = lbuf_get(xb, r2);
-		sbuf_mem(sb, s1, uc_chr(s1, o1) - s1);
+		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
 		sbuf_str(sb, region);
-		sbuf_str(sb, uc_chr(s2, o2));
+		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
 		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
 		sbuf_free(sb);
 	} else {

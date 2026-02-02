@@ -833,8 +833,6 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	char *text;
 	char *rep;
 	char *ecmd;
-	if (!xwa && bufs_modified(0, "buffer modified"))
-		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {

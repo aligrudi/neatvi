@@ -1583,15 +1583,18 @@ static int vi_leap(struct tlist *tls, char *mod, char *pos, int minrows)
 		snprintf(msg, sizeof(msg), "Filter (%s): ", kws);
 		if (!(kw = vi_prompt(msg, &xkmap, NULL)))
 			return -1;
-		if (kw[0]) {
-			snprintf(strchr(kws, '\0'), sizeof(kws) - strlen(kws),
-				"%s%s", kws[0] ? "|" : "", kw);
-			tlist_filt(tls, kw);
-			free(kw);
-		} else {
+		if (!kw[0]) {
 			free(kw);
 			return view_n ? view[0] : -1;
+		} else if (kw[0] == '\\' && !kw[2] && kw[1] >= '1' && kw[1] <= '9') {
+			int idx = kw[1] - '1';
+			free(kw);
+			return idx < view_n ? view[idx] : -1;
 		}
+		snprintf(strchr(kws, '\0'), sizeof(kws) - strlen(kws),
+			"%s%s", kws[0] ? "|" : "", kw);
+		tlist_filt(tls, kw);
+		free(kw);
 	}
 	return -1;
 }

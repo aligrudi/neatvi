@@ -172,11 +172,12 @@ struct tlist *tlist_tags(char *path)
 	tls->raw = sbuf_done(sb);
 	for (s = tls->raw; s && *s; s++) {
 		char *r = strchr(s, '\n');
-		char *t = s ? memchr(s, '\t', r - s) : NULL;
+		char *t1 = s ? memchr(s, '\t', r - s) : NULL;
+		char *t2 = t1 ? memchr(t1 + 1, '\t', r - t1 - 1) : NULL;
 		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
 			tlist_put(tls, s);
-		if (t)
-			*t = '\0';
+		if (t2)
+			*t2 = '\0';
 		if (r)
 			*r = '\0';
 		s = r;

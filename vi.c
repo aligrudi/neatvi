@@ -1441,10 +1441,10 @@ static int vc_openpath(char *ln, int off, int num, int newwin)
 	return newwin ? VC_ALL : VC_WIN;
 }
 
-static int vc_tag(int newwin)
+static int vc_tag(char *ln, int off, int newwin)
 {
 	char cw[120], ex[128];
-	if (vi_curword(lbuf_get(xb, xrow), cw, sizeof(cw), xoff, "") != 0)
+	if (vi_curword(ln, cw, sizeof(cw), off, ""))
 		return 0;
 	snprintf(ex, sizeof(ex), "ta %s", cw);
 	vi_marksave();
@@ -1522,7 +1522,7 @@ static int vc_ecmd(int c, int newwin)
 	return VC_ALL;
 }
 
-/* format a quick leap entry */
+/* format a quick leap item */
 static char *vi_leapfmt(int id, char *ln)
 {
 	static char out[128];
@@ -1543,64 +1543,57 @@ static char *vi_leapfmt(int id, char *ln)
 	return out;
 }
 
-/* ret>0: selection index, ret=-1 interrupted, ret<0 -termination key */
-static int vi_leap(struct tlist *tls, char *mod, char *pos, int filter_key, int filt, int *rows)
+/* list quick leap items */
+static void vi_leaplist(char *list[], int cnt, int matches, int total, char *mod, char *pos)
 {
-	char kws[256];
 	char cmd[256];
+	int i;
+	term_record();
+	for (i = 0; i < cnt; i++) {
+		strcpy(cmd, "[-]");
+		if (list[i]) {
+			char ln[256];
+			snprintf(ln, sizeof(ln), "%s", list[i]);
+			snprintf(cmd, sizeof(cmd), "%s", vi_leapfmt(i, ln));
+		}
+		vi_drawquick(cmd, xrows - cnt + i);
+	}
+	snprintf(cmd, sizeof(cmd), "LEAP %s (%d/%d) %s", mod, matches, total, pos);
+	vi_drawquick(cmd, cnt ? xrows - cnt - 1 : xrows);
+	term_pos(-1, 5);
+	term_commit();
+}
+
+/* ret>=0: selection index, ret=-1 interrupted */
+static int vi_leap(struct tlist *tls, char *mod, char *pos, int minrows)
+{
+	char msg[256];
+	char kws[256];
 	int view[9];
-	int c = 0;
+	char *view_s[LEN(view)];
 	int i;
 	kws[0] = '\0';
 	while (1) {
 		int view_n = tlist_top(tls, view, LEN(view));
-		*rows = MAX(*rows, view_n);
-		term_record();
-		for (i = 0; i < *rows; i++) {
-			strcpy(cmd, "[-]");
-			if (i < view_n) {
-				char ln[256];
-				snprintf(ln, sizeof(ln), tlist_get(tls, view[i]));
-				snprintf(cmd, sizeof(cmd), "%s", vi_leapfmt(i, ln));
-			}
-			vi_drawquick(cmd, xrows - *rows + i);
-		}
-		if (*rows) {
-			snprintf(cmd, sizeof(cmd), "Filter: %s", kws);
-			vi_drawquick(kws[0] ? cmd : "-", xrows);
-		}
-		snprintf(cmd, sizeof(cmd), "LEAP %s (%d/%d) %s",
-			mod, tlist_matches(tls), tlist_cnt(tls), pos);
-		vi_drawquick(cmd, *rows ? xrows - *rows - 1 : xrows);
-		term_pos(-1, 5);
-		term_commit();
-		c = filt ? '/' : vi_read();
-		filt = 0;
-		if (c == 127 || c == TK_CTL('h') || c == TK_CTL('u')) {
-			tlist_filt(tls, NULL);
-			kws[0] = '\0';
-			continue;
-		}
-		if (c == '/' || c == filter_key) {
-			char *kw = vi_prompt("Filter: ", &xkmap, NULL);
-			if (!kw)
-				continue;
-			if (kw[0])
-				snprintf(strchr(kws, '\0'), sizeof(kws) - strlen(kws),
-					"%s%s", kws[0] ? "|" : "", kw);
+		char *kw;
+		minrows = MAX(minrows, view_n);
+		for (i = 0; i < LEN(view); i++)
+			view_s[i] = i < view_n ? tlist_get(tls, view[i]) : NULL;
+		vi_leaplist(view_s, minrows, tlist_matches(tls), tlist_cnt(tls), mod, pos);
+		snprintf(msg, sizeof(msg), "Filter (%s): ", kws);
+		if (!(kw = vi_prompt(msg, &xkmap, NULL)))
+			return -1;
+		if (kw[0]) {
+			snprintf(strchr(kws, '\0'), sizeof(kws) - strlen(kws),
+				"%s%s", kws[0] ? "|" : "", kw);
 			tlist_filt(tls, kw);
 			free(kw);
-			continue;
+		} else {
+			free(kw);
+			return view_n ? view[0] : -1;
 		}
-		if (TK_INT(c))
-			return -1;
-		if (c >= '1' && c <= '9' && c - '1' < view_n)
-			return view[c - '1'];
-		if (c == '\n' && view_n > 0)
-			return view[0];
-		break;
 	}
-	return -c;
+	return -1;
 }
 
 static int vc_quick(int newwin)
@@ -1608,20 +1601,18 @@ static int vc_quick(int newwin)
 	char cmd[256];
 	struct tlist *tls;
 	char *ls[32];
-	int sel = 0, ls_n = 0;
-	int mod = 0;
-	int rows = 0;
+	int sel = -1, ls_n = 0;
+	int mod = 0, c;
+	char *pos = ex_path()[0] ? ex_path() : "unnamed";
 	ls_n = ex_list(ls, LEN(ls));
 	tls = tlist_make(ls + 1, ls_n - 1);
-	while (tls) {
-		char *name = mod == ',' ? "FILE" : "BUFF";
-		char *pos = ex_path()[0] ? ex_path() : "unnamed";
-		if (mod == '=')
+	vi_leaplist(ls + 1, ls_n - 1, ls_n - 1, ls_n - 1, "BUFF", pos);
+	c = vi_read();
+	if (c == ',' || c == ';' || c == '=') {
+		char *name = c == ',' ? "FILE" : "BUFF";
+		if (c == '=')
 			name = "TAGS";
-		sel = vi_leap(tls, name, pos, mod ? mod : ';', mod != 0, &rows);
-		if (-sel != ',' && -sel != ';' && -sel != '=')
-			break;
-		mod = -sel;
+		mod = c;
 		tlist_free(tls);
 		if (mod == ';')
 			tls = tlist_make(ls + 1, ls_n - 1);
@@ -1629,25 +1620,29 @@ static int vc_quick(int newwin)
 			tls = tlist_from("ls");
 		if (mod == '=')
 			tls = tlist_tags("tags");
+		if (tls)
+			sel = vi_leap(tls, name, pos, ls_n - 1);
+	} else if (c >= '1' && c <= '9') {
+		sel = c - '1';
 	}
 	if (sel >= 0)
 		snprintf(cmd, sizeof(cmd), "%s", tlist_get(tls, sel));
 	if (tls)
 		tlist_free(tls);
-	if (sel == -1)
-		return rows ? VC_WIN : 0;
+	if (sel >= 0 && mod == '=')
+		return vc_tag(cmd, 0, newwin) | VC_WIN;
 	if (sel >= 0)
 		return vc_openpath(cmd, 0, 1, newwin) | VC_WIN;
-	if (isalpha(-sel) && reg_get(0x80 | -sel, NULL) != NULL) {
-		char cmd[8] = {'@', '\\', -sel};
+	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
+		char cmd[8] = {'@', '\\', c};
 		if (newwin)
 			vi_wmirror();
 		ex_command(cmd);
 		return VC_ALL;
 	}
-	if (isalpha(-sel))
-		return vc_ecmd(-sel, newwin) != 0 ? VC_ALL : VC_WIN;
-	return rows ? VC_WIN : 0;
+	if (isalpha(c))
+		return vc_ecmd(c, newwin) != 0 ? VC_ALL : VC_WIN;
+	return mod || ls_n > 1 ? VC_WIN : 0;
 }
 
 static void sigwinch(int signo)
@@ -1788,7 +1783,7 @@ static void vi(void)
 				mod = VC_WIN;
 				break;
 			case TK_CTL(']'):
-				mod = vc_tag(0);
+				mod = vc_tag(lbuf_get(xb, xrow), xoff, 1);
 				break;
 			case TK_CTL('t'):
 				if (!ex_command("pop")) {
@@ -1817,7 +1812,7 @@ static void vi(void)
 					if (!vi_wswap())
 						mod = VC_ALL;
 				if (k == TK_CTL(']') || k == ']')
-					mod = vc_tag(1);
+					mod = vc_tag(lbuf_get(xb, xrow), xoff, 1);
 				if (k == 'g') {
 					char *ln = lbuf_get(xb, xrow);
 					int j = vi_read();

@@ -174,7 +174,7 @@ aw, autowrite
   As in vi(1).
 ic, ignorecase
   As in vi(1).
-ts, tapstop
+ts, tabstop
   As in vi(1).
 wa, writeany
   As in vi(1).
@@ -209,13 +209,13 @@ the bottom of the screen and waits for a key.
 
 - If the key is a digit, it switches to its corresponding buffer.
 - If the key is enter, it switches to the first buffer.
-- If the key is /, it prompts for a keyword to filter the list of
-  buffers (files or tags).  After pressing enter, the list is updated
-  only to include those entries that contain the keyword.
 - If the key is , (comma), Neatvi lists the lines in ./ls as files,
-  and prompts for a keyword to filter them.
+  and prompts for a keyword to filter them.  An empty keyword selects
+  the first item, and \N (for digit N) selects the N-th item.
 - If the key is =, Neatvi lists the tags in ./tags, and prompts
   for a keyword to filter them.
+- If the key is ;, Neatvi lists the buffers and prompts for a keyword
+  to filter them.
 - If it is a letter and the extended buffer with that letter (\X for
   letter X) is defined, the contents of that buffer is executed.
 - If the key is a letter, but the extended buffer with that letter

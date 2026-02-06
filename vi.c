@@ -1195,8 +1195,7 @@ static int vc_insertcmd(void)
 			int sz = MIN(LEN(in) - 2, xoff);
 			int indents = vi_indents(ln, in, sz);
 			int noindents = indents == sz;
-			if (!noindents)
-				snprintf(vi_ai, sizeof(vi_ai), "%s", in);
+			snprintf(vi_ai, sizeof(vi_ai), "%s", in);
 			snprintf(in, sizeof(in), "\n%s", vi_ai);
 			vi_edit(noindents ? 0 : xoff, noindents ? xoff : 0, in);
 		} else {

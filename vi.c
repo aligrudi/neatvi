@@ -82,7 +82,7 @@ static void vi_drawrow(int row)
 	char *s = lbuf_get(xb, row);
 	if (xhll && row == xrow)
 		syn_context(conf_hl('^'));
-	led_print(s ? s : (row ? "~" : ""), row - xtop, xleft, xhl ? ex_filetype() : "");
+	led_print(s ? s : "~", row - xtop, xleft, xhl ? ex_filetype() : "");
 	syn_context(0);
 }
 
@@ -132,7 +132,7 @@ static void vi_drawfix(int r1, int del, int ins)
 	}
 	/* draw replaced lines */
 	for (i = s1; i < xtop + xrows; i++)
-		if (i < r1 + ins)
+		if (i < r1 + ins || (!i && !r1 && !ins))
 			vi_drawrow(i);
 	term_commit();
 }
@@ -1080,7 +1080,7 @@ static int vc_insert(int cmd)
 		xoff = lbuf_eol(xb, xrow);
 	if ((cmd == 'o' || cmd == 'O') && xai)
 		vi_indents(ln, vi_ai, sizeof(vi_ai) - 1);
-	if (cmd == 'o')
+	if (cmd == 'o' && ln)
 		xrow++;
 	if (cmd == 'a')
 		xoff++;
@@ -1096,8 +1096,10 @@ static int vc_insert(int cmd)
 		xoff = xai ? lbuf_indents(xb, xrow) : 0;
 	if ((cmd == 'o' || cmd == 'O') && ln)
 		vi_drawfix(xrow, 0, 1);
-	if (cmd == 'O' && xhll)
-		vi_drawfix(xrow + 1, 1, 1);
+	if (cmd == 'O' && xhll && ln)
+		vi_drawrow(xrow + 1);
+	if (!ln)
+		vi_drawrow(0);
 	vi_insoff = xoff;
 	vi_insert = 1;
 	return VC_OK;

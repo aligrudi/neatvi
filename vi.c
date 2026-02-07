@@ -1237,9 +1237,7 @@ static int vc_put(int cmd)
 		struct sbuf *sb = sbuf_make();
 		for (i = 0; i < cnt; i++)
 			sbuf_str(sb, buf);
-		if (!lbuf_len(xb))
-			lbuf_edit(xb, "\n", 0, 0);
-		if (cmd == 'p')
+		if (cmd == 'p' && lbuf_len(xb))
 			xrow++;
 		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow);
 		lncnt = linecount(sbuf_buf(sb));

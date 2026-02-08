@@ -121,7 +121,6 @@ static void vi_drawfix(int r1, int del, int ins)
 {
 	int i;
 	int s1 = MIN(MAX(r1, xtop), xtop + xrows - 1);
-	term_record();
 	term_pos(s1 - xtop, 0);
 	term_room(ins - del);
 	/* new lines are visible */
@@ -134,7 +133,6 @@ static void vi_drawfix(int r1, int del, int ins)
 	for (i = s1; i < xtop + xrows; i++)
 		if (i < r1 + ins || (!i && !r1 && !ins))
 			vi_drawrow(i);
-	term_commit();
 }
 
 static int vi_switch(int id)
@@ -1547,7 +1545,6 @@ static void vi_leaplist(char *list[], int cnt, int matches, int total, char *mod
 {
 	char cmd[256];
 	int i;
-	term_record();
 	for (i = 0; i < cnt; i++) {
 		strcpy(cmd, "[-]");
 		if (list[i]) {
@@ -1560,7 +1557,6 @@ static void vi_leaplist(char *list[], int cnt, int matches, int total, char *mod
 	snprintf(cmd, sizeof(cmd), "LEAP %s (%d/%d) %s", mod, matches, total, pos);
 	vi_drawquick(cmd, cnt ? xrows - cnt - 1 : xrows);
 	term_pos(-1, 5);
-	term_commit();
 }
 
 /* ret>=0: selection index, ret=-1 interrupted */
@@ -1609,6 +1605,7 @@ static int vc_quick(int newwin)
 	ls_n = ex_list(ls, LEN(ls));
 	tls = tlist_make(ls + 1, ls_n - 1);
 	vi_leaplist(ls + 1, ls_n - 1, ls_n - 1, ls_n - 1, "BUFF", pos);
+	term_commit();
 	c = vi_read();
 	if (c == ',' || c == ';' || c == '=') {
 		char *name = c == ',' ? "FILE" : "BUFF";
@@ -1664,7 +1661,6 @@ static void vi(void)
 	xtop = MAX(0, xrow - xrows / 2);
 	xoff = 0;
 	xcol = vi_off2col(xb, xrow, xoff);
-	term_record();
 	vi_drawagain(xcol, -1);
 	term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow), xcol));
 	term_commit();
@@ -1995,7 +1991,6 @@ static void vi(void)
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
 		vi_wait();
-		term_record();
 		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
 		if (mod & VC_ALT && w_cnt == 1)
 			vi_switch(w_cur);

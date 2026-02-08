@@ -22,6 +22,7 @@ void term_init(void)
 	newtermios = termios;
 	newtermios.c_lflag &= ~(ICANON | ISIG);
 	newtermios.c_lflag &= ~ECHO;
+	term_sbuf = sbuf_make();
 	tcsetattr(0, TCSAFLUSH, &newtermios);
 	if (getenv("LINES"))
 		rows = atoi(getenv("LINES"));
@@ -58,6 +59,8 @@ void term_done(void)
 	term_pos(rows - 1, 0);
 	term_kill();
 	term_commit();
+	sbuf_free(term_sbuf);
+	term_sbuf = NULL;
 	tcsetattr(0, 0, &termios);
 }
 
@@ -66,12 +69,6 @@ void term_suspend(void)
 	term_done();
 	kill(0, SIGSTOP);
 	term_init();
-}
-
-void term_record(void)
-{
-	if (!term_sbuf)
-		term_sbuf = sbuf_make();
 }
 
 static long write_fully(int fd, void *buf, long sz)
@@ -84,35 +81,24 @@ static long write_fully(int fd, void *buf, long sz)
 
 void term_commit(void)
 {
-	if (term_sbuf) {
-		write_fully(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
-		sbuf_free(term_sbuf);
-		term_sbuf = NULL;
-	}
-}
-
-static void term_out(char *s)
-{
-	if (term_sbuf)
-		sbuf_str(term_sbuf, s);
-	else
-		write_fully(1, s, strlen(s));
+	write_fully(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
+	sbuf_cut(term_sbuf, 0);
 }
 
 void term_str(char *s)
 {
-	term_out(s);
+	sbuf_str(term_sbuf, s);
 }
 
 void term_chr(int ch)
 {
 	char s[4] = {ch};
-	term_out(s);
+	term_str(s);
 }
 
 void term_kill(void)
 {
-	term_out("\33[K");
+	term_str("\33[K");
 }
 
 void term_room(int n)
@@ -123,7 +109,7 @@ void term_room(int n)
 	if (n > 0)
 		sprintf(cmd, "\33[%dL", n);
 	if (n)
-		term_out(cmd);
+		term_str(cmd);
 }
 
 void term_pos(int r, int c)
@@ -137,7 +123,7 @@ void term_pos(int r, int c)
 		sprintf(buf, "\33[%dG", win_left + c + 1);
 	else
 		sprintf(buf, "\33[%d;%dH", win_top + r + 1, win_left + c + 1);
-	term_out(buf);
+	term_str(buf);
 }
 
 int term_rowx(void)

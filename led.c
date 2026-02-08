@@ -167,7 +167,6 @@ static void led_printparts(char *pref, char *main, char *post, int *left, int km
 	sbuf_str(ln, pref);
 	sbuf_str(ln, main);
 	off = uc_slen(sbuf_buf(ln));
-	term_record();
 	sbuf_str(ln, post);
 	pos = ren_insert(sbuf_buf(ln), off);
 	if (pos >= *left + xcols)

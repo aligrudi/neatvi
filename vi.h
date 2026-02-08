@@ -139,7 +139,6 @@ int term_rows(void);
 int term_cols(void);
 int term_rowx(void);
 int term_read(void);
-void term_record(void);
 void term_commit(void);
 char *term_seqattr(int att, int old);
 char *term_seqkill(void);

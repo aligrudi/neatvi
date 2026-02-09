@@ -236,24 +236,6 @@ When the hist option is nonzero, Neatvi suggests the most recent
 matching entry when reading user input for :, /, and ! prompts; ^a
 completes the input using the suggestion.
 
-On the other hand, when in insert mode, ^a changes the value of the
-buffer named ~ to the contents of the current line up to the cursor,
-and executes the contents of \~ buffer (as :ra \~).  The buffer can
-execute any ex command (for instance, :ec to print a message), and
-change the contents of ~ to suggest a completion; a second ^a inserts
-the suggestion.  The following lines define \~ to demonstrate how it
-works.
-
-  rs \~
-  ec completing '~'
-  rs ~
-  completion
-  .
-  .
-
-In a real implementation, the \~ buffer can use external commands
-(with rx or rk) to compute the completions.
-
 SYNTAX HIGHLIGHTING
 -------------------
 

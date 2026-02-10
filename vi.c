@@ -1781,7 +1781,7 @@ static void vi(void)
 				mod = VC_WIN;
 				break;
 			case TK_CTL(']'):
-				mod = vc_tag(lbuf_get(xb, xrow), xoff, 1);
+				mod = vc_tag(lbuf_get(xb, xrow), xoff, 0);
 				break;
 			case TK_CTL('t'):
 				if (!ex_command("pop")) {

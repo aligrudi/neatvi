@@ -4,7 +4,6 @@
 #include <string.h>
 #include "regex.h"
 
-#define NGRPS		64	/* maximum number of groups */
 #define NREPS		128	/* maximum repetitions */
 #define NDEPT		256	/* re_rec() recursion depth limit */
 
@@ -58,10 +57,11 @@ struct regex {
 struct rstate {
 	char *s;		/* the current position in the string */
 	char *o;		/* the beginning of the string */
-	int mark[NGRPS * 2];	/* marks for RI_MARK */
 	int pc;			/* program counter */
 	int flg;		/* flags passed to regcomp() and regexec() */
 	int dep;		/* re_rec() depth */
+	regmatch_t *sub;	/* matched groups */
+	int sub_n;		/* the length of sub[] */
 };
 
 /* regular expression tree; used for parsing */
@@ -585,8 +585,13 @@ static int re_rec(struct regex *re, struct rstate *rs)
 			continue;
 		}
 		if (ri->ri == RI_MARK) {
-			if (ri->mark < NGRPS)
-				rs->mark[ri->mark] = rs->s - rs->o;
+			if (ri->mark < rs->sub_n * 2) {
+				int grp = ri->mark >> 1;
+				if (ri->mark & 1)
+					rs->sub[grp].rm_eo = rs->s - rs->o;
+				else
+					rs->sub[grp].rm_so = rs->s - rs->o;
+			}
 			rs->pc++;
 			continue;
 		}
@@ -609,20 +614,17 @@ static int re_rec(struct regex *re, struct rstate *rs)
 	return ri->ri != RI_MATCH;
 }
 
-static int re_recmatch(struct regex *re, struct rstate *rs, int nsub, regmatch_t *psub)
+static int re_recmatch(struct regex *re, struct rstate *rs)
 {
 	int i;
 	rs->pc = 0;
 	rs->dep = 0;
-	for (i = 0; i < LEN(rs->mark) && i < nsub * 2; i++)
-		rs->mark[i] = -1;
-	if (!re_rec(re, rs)) {
-		for (i = 0; i < nsub; i++) {
-			psub[i].rm_so = i * 2 < LEN(rs->mark) ? rs->mark[i * 2] : -1;
-			psub[i].rm_eo = i * 2 < LEN(rs->mark) ? rs->mark[i * 2 + 1] : -1;
-		}
-		return 0;
+	for (i = 0; i < rs->sub_n; i++) {
+		rs->sub[i].rm_so = -1;
+		rs->sub[i].rm_eo = -1;
 	}
+	if (!re_rec(re, rs))
+		return 0;
 	return 1;
 }
 
@@ -633,11 +635,13 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 	char *o = s;
 	memset(&rs, 0, sizeof(rs));
 	rs.flg = re->flg | flg;
+	rs.sub = psub;
+	rs.sub_n = flg & REG_NOSUB ? 0 : nsub;
 	rs.o = s;
 	while (*o) {
 		rs.s = o = s;
 		s += uc_len(s);
-		if (!re_recmatch(re, &rs, flg & REG_NOSUB ? 0 : nsub, psub))
+		if (!re_recmatch(re, &rs))
 			return 0;
 	}
 	return 1;

@@ -4,8 +4,8 @@
 #include <string.h>
 #include "regex.h"
 
-#define NREPS		128	/* maximum repetitions */
-#define NDEPT		256	/* re_rec() recursion depth limit */
+#define NREPS		128	/* number of rstate_push calls */
+#define NMARK		256	/* number of mark updates to record */
 
 #define MAX(a, b)	((a) < (b) ? (b) : (a))
 #define LEN(a)		(sizeof(a) / sizeof((a)[0]))
@@ -59,10 +59,55 @@ struct rstate {
 	char *o;		/* the beginning of the string */
 	int pc;			/* program counter */
 	int flg;		/* flags passed to regcomp() and regexec() */
-	int dep;		/* re_rec() depth */
-	regmatch_t *sub;	/* matched groups */
-	int sub_n;		/* the length of sub[] */
+	int subcnt;		/* number of groups to return */
+	int mark_num[NMARK];	/* mark number */
+	int mark_val[NMARK];	/* mark value */
+	int mark_pos;		/* last item in mark_num[] and mark_val[] */
+	int past_s[NREPS];	/* previous values of s */
+	int past_mpos[NREPS];	/* previous values of mark_pos */
+	int past_pos;		/* last pushed value in past_s and past_mpos[] */
 };
+
+static int rstate_push(struct rstate *rs)
+{
+	if (rs->past_pos >= LEN(rs->past_s))
+		return 1;
+	rs->past_s[rs->past_pos] = rs->s - rs->o;
+	rs->past_mpos[rs->past_pos] = rs->mark_pos;
+	rs->past_pos++;
+	return 0;
+}
+
+static void rstate_pop(struct rstate *rs)
+{
+	rs->past_pos--;
+	rs->s = rs->o + rs->past_s[rs->past_pos];
+	rs->mark_pos = rs->past_mpos[rs->past_pos];
+}
+
+static int rstate_mark(struct rstate *rs, int mark)
+{
+	if (mark >= rs->subcnt * 2)
+		return 0;
+	if (rs->mark_pos >= LEN(rs->mark_num))
+		return 1;
+	rs->mark_num[rs->mark_pos] = mark;
+	rs->mark_val[rs->mark_pos] = rs->s - rs->o;
+	rs->mark_pos++;
+	return 0;
+}
+
+static void rstate_marks(struct rstate *rs, regmatch_t sub[])
+{
+	int i;
+	for (i = 0; i < rs->mark_pos; i++) {
+		int mark = rs->mark_num[i];
+		if (mark & 1)
+			sub[mark >> 1].rm_eo = rs->mark_val[i];
+		else
+			sub[mark >> 1].rm_so = rs->mark_val[i];
+	}
+}
 
 /* regular expression tree; used for parsing */
 struct rnode {
@@ -573,9 +618,6 @@ void regfree(regex_t *preg)
 static int re_rec(struct regex *re, struct rstate *rs)
 {
 	struct rinst *ri = NULL;
-	if (rs->dep >= NDEPT)
-		return 1;
-	rs->dep++;
 	while (1) {
 		ri = &re->p[rs->pc];
 		if (ri->ri == RI_ATOM) {
@@ -585,13 +627,7 @@ static int re_rec(struct regex *re, struct rstate *rs)
 			continue;
 		}
 		if (ri->ri == RI_MARK) {
-			if (ri->mark < rs->sub_n * 2) {
-				int grp = ri->mark >> 1;
-				if (ri->mark & 1)
-					rs->sub[grp].rm_eo = rs->s - rs->o;
-				else
-					rs->sub[grp].rm_so = rs->s - rs->o;
-			}
+			rstate_mark(rs, ri->mark);
 			rs->pc++;
 			continue;
 		}
@@ -600,29 +636,25 @@ static int re_rec(struct regex *re, struct rstate *rs)
 			continue;
 		}
 		if (ri->ri == RI_FORK) {
-			struct rstate base = *rs;
+			if (rstate_push(rs))
+				return 1;
 			rs->pc = ri->a1;
 			if (!re_rec(re, rs))
 				return 0;
-			*rs = base;
+			rstate_pop(rs);
 			rs->pc = ri->a2;
 			continue;
 		}
 		break;
 	}
-	rs->dep--;
 	return ri->ri != RI_MATCH;
 }
 
 static int re_recmatch(struct regex *re, struct rstate *rs)
 {
-	int i;
 	rs->pc = 0;
-	rs->dep = 0;
-	for (i = 0; i < rs->sub_n; i++) {
-		rs->sub[i].rm_so = -1;
-		rs->sub[i].rm_eo = -1;
-	}
+	rs->mark_pos = 0;
+	rs->past_pos = 0;
 	if (!re_rec(re, rs))
 		return 0;
 	return 1;
@@ -633,16 +665,22 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 	struct regex *re = *preg;
 	struct rstate rs;
 	char *o = s;
+	int i;
 	memset(&rs, 0, sizeof(rs));
 	rs.flg = re->flg | flg;
-	rs.sub = psub;
-	rs.sub_n = flg & REG_NOSUB ? 0 : nsub;
+	rs.subcnt = flg & REG_NOSUB ? 0 : nsub;
 	rs.o = s;
+	for (i = 0; i < nsub; i++) {
+		psub[i].rm_so = -1;
+		psub[i].rm_eo = -1;
+	}
 	while (*o) {
 		rs.s = o = s;
 		s += uc_len(s);
-		if (!re_recmatch(re, &rs))
+		if (!re_recmatch(re, &rs)) {
+			rstate_marks(&rs, psub);
 			return 0;
+		}
 	}
 	return 1;
 }

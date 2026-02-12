@@ -4,9 +4,6 @@
 #include <string.h>
 #include "regex.h"
 
-#define NREPS		128	/* number of rstate_push calls */
-#define NMARK		256	/* number of mark updates to record */
-
 #define MAX(a, b)	((a) < (b) ? (b) : (a))
 #define LEN(a)		(sizeof(a) / sizeof((a)[0]))
 
@@ -28,9 +25,10 @@
 /* regular expression program instructions */
 #define RI_ATOM		'\0'	/* regular expression */
 #define RI_FORK		'f'	/* fork the execution */
+#define RI_REPT		'r'	/* repetition */
 #define RI_JUMP		'j'	/* jump to the given instruction */
 #define RI_MARK		'm'	/* mark the current position */
-#define RI_MATCH	'q'	/* the pattern is matched */
+#define RI_MATCH	'q'	/* pattern or sub-pattern is matched */
 
 /* regular expression atom */
 struct ratom {
@@ -43,6 +41,7 @@ struct rinst {
 	struct ratom ra;	/* regular expression atom (RI_ATOM) */
 	int ri;			/* instruction type (RI_*) */
 	int a1, a2;		/* destination of RI_FORK and RI_JUMP */
+	int mincnt, maxcnt;	/* repetitions (RI_REPT) */
 	int mark;		/* mark (RI_MARK) */
 };
 
@@ -55,23 +54,69 @@ struct regex {
 
 /* regular expression matching state */
 struct rstate {
-	char *s;		/* the current position in the string */
-	char *o;		/* the beginning of the string */
-	int pc;			/* program counter */
-	int flg;		/* flags passed to regcomp() and regexec() */
-	int subcnt;		/* number of groups to return */
-	int mark_num[NMARK];	/* mark number */
-	int mark_val[NMARK];	/* mark value */
-	int mark_pos;		/* last item in mark_num[] and mark_val[] */
-	int past_s[NREPS];	/* previous values of s */
-	int past_mpos[NREPS];	/* previous values of mark_pos */
-	int past_pos;		/* last pushed value in past_s and past_mpos[] */
+	char *s;			/* the current position in the string */
+	char *o;			/* the beginning of the string */
+	int pc;				/* program counter */
+	int flg;			/* flags passed to regcomp() and regexec() */
+	int subcnt;			/* number of groups to return */
+	int *mark_num, *mark_val;	/* mark number and value */
+	int mark_pos, mark_len;		/* last item in mark_num[] and mark_val[] */
+	int *past_s, *past_mpos;	/* previous values of s and mark_pos */
+	int past_pos, past_len;		/* last pushed value in past_s and past_mpos[] */
+	/* before heap allocations, these buffers are used */
+	int _mark_val[128], _mark_num[128];
+	int _past_s[128], _past_mpos[128];
 };
+
+static void rstate_init(struct rstate *rs, char *s, int flg, int subcnt)
+{
+	rs->o = s;
+	rs->s = s;
+	rs->flg = flg;
+	rs->mark_num = rs->_mark_num;
+	rs->mark_val = rs->_mark_val;
+	rs->mark_pos = 0;
+	rs->mark_len = LEN(rs->_mark_num);
+	rs->past_s = rs->_past_s;
+	rs->past_mpos = rs->_past_mpos;
+	rs->past_pos = 0;
+	rs->past_len = LEN(rs->_past_s);
+	rs->subcnt = subcnt;
+}
+
+static void rstate_done(struct rstate *rs)
+{
+	if (rs->mark_num != rs->_mark_num) {
+		free(rs->mark_num);
+		free(rs->mark_val);
+	}
+	if (rs->past_s != rs->_past_s) {
+		free(rs->past_s);
+		free(rs->past_mpos);
+	}
+}
 
 static int rstate_push(struct rstate *rs)
 {
-	if (rs->past_pos >= LEN(rs->past_s))
-		return 1;
+	if (rs->past_pos >= rs->past_len) {
+		int past_len = rs->past_len * 2;
+		int *past_s = malloc(past_len * sizeof(past_s[0]));
+		int *past_mpos = malloc(past_len * sizeof(past_mpos[0]));
+		if (!past_s || !past_mpos) {
+			free(past_s);
+			free(past_mpos);
+			return 1;
+		}
+		memcpy(past_s, rs->past_s, rs->past_len * sizeof(past_s[0]));
+		memcpy(past_mpos, rs->past_mpos, rs->past_len * sizeof(past_mpos[0]));
+		if (rs->past_s != rs->_past_s) {
+			free(rs->past_s);
+			free(rs->past_mpos);
+		}
+		rs->past_s = past_s;
+		rs->past_mpos = past_mpos;
+		rs->past_len = past_len;
+	}
 	rs->past_s[rs->past_pos] = rs->s - rs->o;
 	rs->past_mpos[rs->past_pos] = rs->mark_pos;
 	rs->past_pos++;
@@ -89,8 +134,25 @@ static int rstate_mark(struct rstate *rs, int mark)
 {
 	if (mark >= rs->subcnt * 2)
 		return 0;
-	if (rs->mark_pos >= LEN(rs->mark_num))
-		return 1;
+	if (rs->mark_pos >= rs->mark_len) {
+		int mark_len = rs->mark_len * 2;
+		int *mark_num = malloc(mark_len * sizeof(mark_num[0]));
+		int *mark_val = malloc(mark_len * sizeof(mark_val[0]));
+		if (!mark_num || !mark_val) {
+			free(mark_num);
+			free(mark_val);
+			return 1;
+		}
+		memcpy(mark_num, rs->mark_num, rs->mark_len * sizeof(mark_num[0]));
+		memcpy(mark_val, rs->mark_val, rs->mark_len * sizeof(mark_val[0]));
+		if (rs->mark_num != rs->_mark_num) {
+			free(rs->mark_num);
+			free(rs->mark_val);
+		}
+		rs->mark_num = mark_num;
+		rs->mark_val = mark_val;
+		rs->mark_len = mark_len;
+	}
 	rs->mark_num[rs->mark_pos] = mark;
 	rs->mark_val[rs->mark_pos] = rs->s - rs->o;
 	rs->mark_pos++;
@@ -436,10 +498,6 @@ static struct rnode *rnode_atom(char **pat)
 			rnode->maxcnt = rnode->mincnt;
 		}
 		++*pat;
-		if (rnode->mincnt > NREPS || rnode->maxcnt > NREPS) {
-			rnode_free(rnode);
-			return NULL;
-		}
 	}
 	return rnode;
 }
@@ -542,10 +600,7 @@ static void rnode_emitnorep(struct rnode *n, struct regex *p)
 
 static void rnode_emit(struct rnode *n, struct regex *p)
 {
-	int last;
-	int jmpend[NREPS];
-	int jmpend_cnt = 0;
-	int i;
+	int rept;
 	if (!n)
 		return;
 	if (n->mincnt == 0 && n->maxcnt == 0)
@@ -554,29 +609,12 @@ static void rnode_emit(struct rnode *n, struct regex *p)
 		rnode_emitnorep(n, p);
 		return;
 	}
-	if (n->mincnt == 0) {
-		int fork = re_insert(p, RI_FORK);
-		p->p[fork].a1 = p->n;
-		jmpend[jmpend_cnt++] = fork;
-	}
-	for (i = 0; i < MAX(1, n->mincnt); i++) {
-		last = p->n;
-		rnode_emitnorep(n, p);
-	}
-	if (n->maxcnt < 0) {
-		int fork;
-		fork = re_insert(p, RI_FORK);
-		p->p[fork].a1 = last;
-		p->p[fork].a2 = p->n;
-	}
-	for (i = MAX(1, n->mincnt); i < n->maxcnt; i++) {
-		int fork = re_insert(p, RI_FORK);
-		p->p[fork].a1 = p->n;
-		jmpend[jmpend_cnt++] = fork;
-		rnode_emitnorep(n, p);
-	}
-	for (i = 0; i < jmpend_cnt; i++)
-		p->p[jmpend[i]].a2 = p->n;
+	rept = re_insert(p, RI_REPT);
+	p->p[rept].mincnt = n->mincnt;
+	p->p[rept].maxcnt = n->maxcnt;
+	rnode_emitnorep(n, p);
+	re_insert(p, RI_MATCH);
+	p->p[rept].a1 = p->n;
 }
 
 int regcomp(regex_t *preg, char *pat, int flg)
@@ -635,6 +673,33 @@ static int re_rec(struct regex *re, struct rstate *rs)
 			rs->pc = ri->a1;
 			continue;
 		}
+		if (ri->ri == RI_REPT) {
+			int cnt2 = ri->maxcnt > 0 ? ri->maxcnt - ri->mincnt : 1024;
+			int body = rs->pc + 1;
+			int i;
+			for (i = 0; i < ri->mincnt; i++) {
+				rs->pc = body;
+				if (re_rec(re, rs))
+					return 1;
+			}
+			for (i = 0; i < cnt2; i++) {
+				if (rstate_push(rs))
+					break;
+				rs->pc = body;
+				if (re_rec(re, rs)) {
+					rstate_pop(rs);
+					break;
+				}
+			}
+			for (; i > 0; i--) {
+				rs->pc = ri->a1;
+				if (!re_rec(re, rs))
+					return 0;
+				rstate_pop(rs);
+			}
+			rs->pc = ri->a1;
+			return re_rec(re, rs);
+		}
 		if (ri->ri == RI_FORK) {
 			if (rstate_push(rs))
 				return 1;
@@ -666,10 +731,7 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 	struct rstate rs;
 	char *o = s;
 	int i;
-	memset(&rs, 0, sizeof(rs));
-	rs.flg = re->flg | flg;
-	rs.subcnt = flg & REG_NOSUB ? 0 : nsub;
-	rs.o = s;
+	rstate_init(&rs, s, re->flg | flg, flg & REG_NOSUB ? 0 : nsub);
 	for (i = 0; i < nsub; i++) {
 		psub[i].rm_so = -1;
 		psub[i].rm_eo = -1;
@@ -679,9 +741,11 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 		s += uc_len(s);
 		if (!re_recmatch(re, &rs)) {
 			rstate_marks(&rs, psub);
+			rstate_done(&rs);
 			return 0;
 		}
 	}
+	rstate_done(&rs);
 	return 1;
 }
 

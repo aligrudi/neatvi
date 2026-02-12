@@ -40,7 +40,7 @@ struct ratom {
 struct rinst {
 	struct ratom ra;	/* regular expression atom (RI_ATOM) */
 	int ri;			/* instruction type (RI_*) */
-	int a1, a2;		/* destination of RI_FORK and RI_JUMP */
+	int dst;		/* destination of RI_FORK, RI_JUMP, RI_REPT */
 	int mincnt, maxcnt;	/* repetitions (RI_REPT) */
 	int mark;		/* mark (RI_MARK) */
 };
@@ -574,12 +574,11 @@ static void rnode_emitnorep(struct rnode *n, struct regex *p)
 	int fork, done, mark;
 	if (n->rn == RN_ALT) {
 		fork = re_insert(p, RI_FORK);
-		p->p[fork].a1 = p->n;
 		rnode_emit(n->c1, p);
 		done = re_insert(p, RI_JUMP);
-		p->p[fork].a2 = p->n;
+		p->p[fork].dst = p->n;
 		rnode_emit(n->c2, p);
-		p->p[done].a1 = p->n;
+		p->p[done].dst = p->n;
 	}
 	if (n->rn == RN_CAT) {
 		rnode_emit(n->c1, p);
@@ -614,7 +613,7 @@ static void rnode_emit(struct rnode *n, struct regex *p)
 	p->p[rept].maxcnt = n->maxcnt;
 	rnode_emitnorep(n, p);
 	re_insert(p, RI_MATCH);
-	p->p[rept].a1 = p->n;
+	p->p[rept].dst = p->n;
 }
 
 int regcomp(regex_t *preg, char *pat, int flg)
@@ -670,7 +669,7 @@ static int re_rec(struct regex *re, struct rstate *rs)
 			continue;
 		}
 		if (ri->ri == RI_JUMP) {
-			rs->pc = ri->a1;
+			rs->pc = ri->dst;
 			continue;
 		}
 		if (ri->ri == RI_REPT) {
@@ -692,22 +691,22 @@ static int re_rec(struct regex *re, struct rstate *rs)
 				}
 			}
 			for (; i > 0; i--) {
-				rs->pc = ri->a1;
+				rs->pc = ri->dst;
 				if (!re_rec(re, rs))
 					return 0;
 				rstate_pop(rs);
 			}
-			rs->pc = ri->a1;
+			rs->pc = ri->dst;
 			return re_rec(re, rs);
 		}
 		if (ri->ri == RI_FORK) {
 			if (rstate_push(rs))
 				return 1;
-			rs->pc = ri->a1;
+			rs->pc++;
 			if (!re_rec(re, rs))
 				return 0;
 			rstate_pop(rs);
-			rs->pc = ri->a2;
+			rs->pc = ri->dst;
 			continue;
 		}
 		break;

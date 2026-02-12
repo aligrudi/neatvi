@@ -117,7 +117,7 @@ static int tlist_put(struct tlist *tls, char *item)
 	if (tls->ls_n >= tls->ls_sz) {
 		char **new;
 		int ls_sz = tls->ls_sz + 256;
-		if (!(new = malloc(tls->ls_sz * sizeof(tls->ls[0]))))
+		if (!(new = malloc(ls_sz * sizeof(tls->ls[0]))))
 			return 1;
 		memcpy(new, tls->ls, tls->ls_n * sizeof(tls->ls[0]));
 		free(tls->ls);

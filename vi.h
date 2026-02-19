@@ -168,6 +168,7 @@ struct lbuf *ex_lbuf(void);
 int ex_kwd(char **kwd, int *dir);
 void ex_kwdset(char *kwd, int dir);
 int ex_list(char **ls, int size);
+int ex_id(void);
 
 #define EXLEN	512		/* ex line length */
 #define xb 	ex_lbuf()

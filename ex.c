@@ -160,6 +160,11 @@ char *ex_path(void)
 	return bufs[0].path;
 }
 
+int ex_id(void)
+{
+	return bufs[0].id;
+}
+
 struct lbuf *ex_lbuf(void)
 {
 	return bufs[0].lb;

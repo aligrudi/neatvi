@@ -49,6 +49,7 @@ static int w_cur;		/* active window identifier */
 static int w_tmp;		/* temporary window */
 static char *w_path;		/* saved window path */
 static int w_row, w_off, w_top, w_left;	/* saved window configuration */
+static int glob_id[128];	/* global mark buffer IDs */
 
 static int vc_status(void);
 
@@ -1644,6 +1645,28 @@ static int vc_quick(int newwin)
 	return mod || ls_n > 1 ? VC_WIN : 0;
 }
 
+static int vc_jumpglob(int mark, int lnmode)
+{
+	char cmd[16];
+	int mod = 0;
+	int mark_row, mark_off;
+	if (mark <= 0 || !isalpha(mark) || glob_id[tolower(mark)] <= 0)
+		return 0;
+	vi_marksave();
+	if (glob_id[tolower(mark)] != ex_id()) {
+		snprintf(cmd, sizeof(cmd), "b %d", glob_id[tolower(mark)]);
+		if (ex_command(cmd))
+			return 0;
+		mod = VC_WIN;
+	}
+	if (!lbuf_jump(xb, mark, &mark_row, &mark_off)) {
+		xrow = mark_row;
+		if (!lnmode)
+			xoff = mark_off;
+	}
+	return VC_COL | mod;
+}
+
 static void sigwinch(int signo)
 {
 	vi_back(TK_CTL('l'));
@@ -1864,8 +1887,11 @@ static void vi(void)
 				mod = VC_ALL;
 				break;
 			case 'm':
-				if ((mark = vi_read()) > 0 && islower(mark))
-					lbuf_mark(xb, mark, xrow, xoff);
+				if ((mark = vi_read()) > 0 && isalpha(mark)) {
+					if (isupper(mark))
+						glob_id[tolower(mark)] = ex_id();
+					lbuf_mark(xb, tolower(mark), xrow, xoff);
+				}
 				break;
 			case 'p':
 			case 'P':
@@ -1923,6 +1949,8 @@ static void vi(void)
 					mod = vc_definition(ln, xoff, 0);
 				if (k == 'f' || k == 'l')
 					mod = vc_openpath(ln, xoff, k == 'l', 0);
+				if (k == '\'' || k == '`')
+					mod = vc_jumpglob(vi_read(), k == '\'');
 				break;
 			case 'x':
 				vi_back(' ');

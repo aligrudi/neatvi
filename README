@@ -246,7 +246,7 @@ hl . -		" all text
 hl ^ - - 11	" current line (hll option)
 hl ~ r		" text in reverse direction
 hl & - 2	" mapped characters (mc command)
-hl | - 2	" lines after EOF
+hl , - 2	" lines after EOF
 
 " for programming languages
 hl k b 3	" general keywords

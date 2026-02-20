@@ -81,7 +81,7 @@ static void vi_drawquick(char *s, int row)
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
-	syn_context(s ? '.' : '|', xhll && row == xrow ? '^' : 0);
+	syn_context(s ? '.' : ',', xhll && row == xrow ? '^' : 0);
 	led_print(s ? s : "~", row - xtop, xleft, xhl ? ex_filetype() : "");
 	syn_context('.', 0);
 }

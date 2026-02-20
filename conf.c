@@ -37,7 +37,7 @@ static int conf_hldefs[384] = {
 	['^'] = SYN_BGMK(11),	/* current line highlight (hll option) */
 	['~'] = SYN_RV,		/* text in reverse direction */
 	['&'] = 4,		/* mapped characters (mc command) */
-	['|'] = SYN_BD | 4,	/* lines after EOF */
+	[','] = SYN_BD | 4,	/* lines after EOF */
 	/* for programming languages  */
 	['k'] = SYN_BD | 3,	/* general keywords */
 	['r'] = 2,		/* control flow keywords */

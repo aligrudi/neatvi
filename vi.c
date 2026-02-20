@@ -1660,8 +1660,7 @@ static int vc_jumpglob(int mark, int lnmode)
 	}
 	if (!lbuf_jump(xb, mark, &mark_row, &mark_off)) {
 		xrow = mark_row;
-		if (!lnmode)
-			xoff = mark_off;
+		xoff = lnmode ? 0 : mark_off;
 	}
 	return VC_COL | mod;
 }
@@ -1708,6 +1707,8 @@ static void vi(void)
 			mod = vc_insertcmd();
 			if (!vi_insert)
 				vi_repeatset(1);
+			if (!vi_insert)
+				glob_id['*'] = ex_id();
 		} else if (mv > 0) {
 			if (strchr("\'`GHML/?{}[]nN", mv) || (mv == '%' && noff < 0))
 				vi_marksave();

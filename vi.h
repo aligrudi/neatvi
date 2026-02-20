@@ -196,7 +196,7 @@ int cmd_exec(char *cmd);
 
 int *syn_highlight(char *ft, char *s);
 char *syn_filetype(char *path);
-void syn_context(int att);
+void syn_context(int fg, int bg);
 int syn_merge(int old, int new);
 void syn_init(void);
 void syn_done(void);

@@ -67,9 +67,9 @@ static void vi_wait(void)
 
 static void vi_drawmsg(void)
 {
-	syn_context(w_tmp ? conf_hl('Z') : 0);
+	syn_context('.', w_tmp ? 'Z' : 0);
 	led_printmsg(vi_msg[0] ? vi_msg : "\n", xrows, xhl ? "---" : "___");
-	syn_context(0);
+	syn_context('.', 0);
 	vi_msg[0] = '\0';
 }
 
@@ -81,10 +81,9 @@ static void vi_drawquick(char *s, int row)
 static void vi_drawrow(int row)
 {
 	char *s = lbuf_get(xb, row);
-	if (xhll && row == xrow)
-		syn_context(conf_hl('^'));
+	syn_context(s ? '.' : '|', xhll && row == xrow ? '^' : 0);
 	led_print(s ? s : "~", row - xtop, xleft, xhl ? ex_filetype() : "");
-	syn_context(0);
+	syn_context('.', 0);
 }
 
 /* redraw the given row; if row is -1 redraws all rows */
@@ -1650,11 +1649,11 @@ static int vc_jumpglob(int mark, int lnmode)
 	char cmd[16];
 	int mod = 0;
 	int mark_row, mark_off;
-	if (mark <= 0 || !isalpha(mark) || glob_id[tolower(mark)] <= 0)
+	if (mark <= 0 || mark >= LEN(glob_id) || glob_id[mark] <= 0)
 		return 0;
 	vi_marksave();
-	if (glob_id[tolower(mark)] != ex_id()) {
-		snprintf(cmd, sizeof(cmd), "b %d", glob_id[tolower(mark)]);
+	if (glob_id[mark] != ex_id()) {
+		snprintf(cmd, sizeof(cmd), "b %d", glob_id[mark]);
 		if (ex_command(cmd))
 			return 0;
 		mod = VC_WIN;
@@ -2005,9 +2004,13 @@ static void vi(void)
 			default:
 				continue;
 			}
-			if (!vi_insert)
-				vi_repeatset(strchr("!<>ACDIJOPRSXYacdioprsxy~", c) ||
-					(c == 'g' && strchr("uU~", k)));
+			if (!vi_insert) {
+				int changecmd = strchr("!<>ACDIJOPRSXYacdioprsxy~", c) ||
+					(c == 'g' && strchr("uU~", k));
+				vi_repeatset(changecmd);
+				if (changecmd)
+					glob_id['*'] = ex_id();
+			}
 		}
 		if (mod & VC_OK)
 			otop = xtop;

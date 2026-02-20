@@ -12,7 +12,7 @@ static struct ftmap {
 } ftmap[NFTS];
 
 static struct rset *syn_ftrs;
-static int syn_ctx;
+static int syn_ctx1, syn_ctx2;
 
 static struct rset *syn_find(char *ft)
 {
@@ -54,9 +54,10 @@ int syn_merge(int old, int new)
 	return ((old | new) & SYN_FLG) | (bg << 8) | fg;
 }
 
-void syn_context(int att)
+void syn_context(int ctx1, int ctx2)
 {
-	syn_ctx = att;
+	syn_ctx1 = conf_hl(ctx1);
+	syn_ctx2 = conf_hl(ctx2);
 }
 
 int *syn_highlight(char *ft, char *s)
@@ -74,7 +75,7 @@ int *syn_highlight(char *ft, char *s)
 		return att;
 	}
 	for (i = 0; i < n; i++)
-		att[i] = conf_hl('.');
+		att[i] = syn_ctx1;
 	if (conf_hl('&')) {
 		char *r = s;
 		for (i = 0; i < n; i++) {
@@ -83,9 +84,9 @@ int *syn_highlight(char *ft, char *s)
 			r = uc_next(r);
 		}
 	}
-	if (syn_ctx) {
+	if (syn_ctx2) {
 		for (i = 0; i < n; i++)
-			att[i] = syn_merge(att[i], syn_ctx);
+			att[i] = syn_merge(att[i], syn_ctx2);
 	}
 	if (!rs)
 		rs = syn_make(ft);

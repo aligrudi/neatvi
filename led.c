@@ -97,7 +97,10 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 			} else if (uc_isprint(chrs[o])) {
 				sbuf_mem(out, chrs[o], uc_len(chrs[o]));
 			} else {
-				for (j = i; j < cend && off[j - cbeg] == o; j++)
+				int cw = 0;
+				if (chrs[o][0] == '\t' && mapch_get("\t", NULL))
+					sbuf_str(out, mapch_get("\t", &cw));
+				for (j = i + cw; j < cend && off[j - cbeg] == o; j++)
 					sbuf_chr(out, ' ');
 			}
 			while (i < cend && off[i - cbeg] == o)

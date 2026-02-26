@@ -931,7 +931,8 @@ static char *ex_skip(char **arg)
 		return NULL;
 	beg = s;
 	while (*s && !isspace((unsigned char) *s))
-		s++;
+		if (*s++ == '' && s[0])
+			s++;
 	*arg = *s ? s + 1 : s;
 	*s = '\0';
 	return beg;
@@ -979,9 +980,13 @@ static int ec_mapchar(char *loc, char *cmd, char *arg, char *txt)
 	char *src = ex_skip(&arg);
 	char *dst = ex_skip(&arg);
 	char *wid = ex_skip(&arg);
-	if (!src || !dst)
+	if (!src || !src[0])
 		return 1;
-	mapch_def(src, dst, wid ? atoi(wid) : -1);
+	if (src[0] == '' && src[1])
+		src++;
+	if (dst && dst[0] == '' && dst[1])
+		dst++;
+	mapch_def(src, dst ? dst : "", wid ? atoi(wid) : -1);
 	return 0;
 }
 

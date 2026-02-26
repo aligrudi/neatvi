@@ -176,6 +176,6 @@ int ren_cwid(char *s, int pos)
 
 char *ren_translate(char *s, char *ln)
 {
-	char *p = mapch_get(s, NULL);
+	char *p = s[0] != '\t' ? mapch_get(s, NULL) : NULL;
 	return p || !xshape ? p : uc_shape(ln, s);
 }

@@ -270,12 +270,12 @@ void mapch_def(char *s, char *d, int wid)
 	int i;
 	mapch_init();
 	for (i = 0; i < mapch_cnt; i++)
-		if (uc_code(s) == uc_code(mapch[i].s))
+		if (!mapch[i].s[0] || uc_code(s) == uc_code(mapch[i].s))
 			break;
 	if (i < LEN(mapch)) {
 		struct mapch *mc = &mapch[i];
 		int c = (unsigned char) s[0];
-		snprintf(mc->s, sizeof(mc->s), "%s", s);
+		snprintf(mc->s, sizeof(mc->s), "%s", d[0] ? s : "");
 		snprintf(mc->d, sizeof(mc->d), "%s", d);
 		mc->wid = wid >= 0 ? wid : ren_wid(d);
 		mapch_map[MCH_IDX(c)] |= 1 << MCH_BIT(c);

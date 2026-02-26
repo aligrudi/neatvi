@@ -951,6 +951,7 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	vi_drawfix(r1, r2 - r1 + 1, 1);
 	vi_insoff = xoff;
 	vi_insert = 1;
+	led_reset(&vi_ledins);
 	return VC_OK;
 }
 

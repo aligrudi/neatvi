@@ -81,7 +81,8 @@ Commands not available in ex(1):
   missing, the mapping is reset.
 :mc ch [def]
   Defines a character placeholder for UTF-8 character ch.  For
-  instance, "mc  ^r" maps ^r.
+  instance, "mc  ^r" maps ^r; ^v can be used to escape non-printable
+  characters.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.

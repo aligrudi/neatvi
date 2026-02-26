@@ -151,8 +151,8 @@ char *term_cmd(int *n);
 
 /* line-oriented input and output */
 char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist);
-void led_print(char *msg, int row, int left, char *syn);
-void led_printmsg(char *s, int row, char *syn);
+void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old);
+void led_reset(char **old);
 
 /* ex commands */
 void ex(void);

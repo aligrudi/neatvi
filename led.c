@@ -38,20 +38,24 @@ static void led_markrev(int n, char **chrs, int *pos, int *att)
 	}
 }
 
-/* render and highlight a line */
-static char *led_render(char *s0, int cbeg, int cend, char *syn)
+/* render and print a line */
+void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 {
-	int n;
 	int *pos;	/* pos[i]: the screen position of the i-th character */
 	int *off;	/* off[i]: the character at screen position i */
 	int *att;	/* att[i]: the attributes of i-th character */
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
-	int clast = 0;
+	int cend = cbeg + cols;
+	int clast = 0;			/* the last non-block column */
 	int att_old = 0;
 	struct sbuf *out;
-	int i, j;
+	int n, i, j;
 	int ctx = dir_context(s0);
 	int att_blank = 0;		/* the attribute of blank space */
+	int out_col = 0;		/* draw starting at this column */
+	int out_off = old && *old ? -1 : 0;
+	int out_att = 0;
+	int old_len = old && *old ? strlen(*old) : 0;
 	chrs = uc_chop(s0, &n);
 	pos = ren_position(s0);
 	off = malloc((cend - cbeg) * sizeof(off[0]));
@@ -83,6 +87,8 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 	while (i < cend && i <= clast) {
 		int o = off[i - cbeg];
 		int att_new = o >= 0 ? att[o] : att_blank;
+		int soff = sbuf_len(out);
+		int scol = i - cbeg;
 		sbuf_str(out, term_seqattr(att_new, att_old));
 		att_old = att_new;
 		if (o >= 0) {
@@ -100,43 +106,38 @@ static char *led_render(char *s0, int cbeg, int cend, char *syn)
 			sbuf_chr(out, ' ');
 			i++;
 		}
+		if (out_off < 0 && (old_len <= soff ||
+				memcmp(*old + soff, sbuf_buf(out) + soff, sbuf_len(out) - soff))) {
+			out_off = soff;
+			out_col = scol;
+			out_att = att_new;
+		}
 	}
-	if (clast < cend - 1)
-		sbuf_str(out, term_seqkill());
-	sbuf_str(out, term_seqattr(0, att_old));
+	/* write only if the line was changed */
+	if (out_off >= 0) {
+		term_pos(row, out_col);
+		term_str(term_seqattr(out_att, 0));
+		term_str(sbuf_buf(out) + out_off);
+		if (clast < cend - 1)
+			term_str(term_seqkill());
+		term_str(term_seqattr(0, att_old));
+	}
+	if (old) {
+		free(*old);
+		*old = sbuf_done(out);
+	} else {
+		sbuf_free(out);
+	}
 	free(att);
 	free(pos);
 	free(off);
 	free(chrs);
-	return sbuf_done(out);
 }
 
-/* print a line on the screen */
-void led_print(char *s, int row, int left, char *syn)
+void led_reset(char **old)
 {
-	char *r = led_render(s, left, left + xcols, syn);
-	term_pos(row, 0);
-	term_str(r);
-	free(r);
-}
-
-/* set xtd and return its old value */
-static int td_set(int td)
-{
-	int old = xtd;
-	xtd = td;
-	return old;
-}
-
-/* print a line on the screen; for ex messages */
-void led_printmsg(char *s, int row, char *syn)
-{
-	int td = td_set(+2);
-	char *r = led_render(s, 0, xcols, syn);
-	td_set(td);
-	term_pos(row, 0);
-	term_str(r);
-	free(r);
+	free(*old);
+	*old = NULL;
 }
 
 static int led_lastchar(char *s)
@@ -159,7 +160,7 @@ static int led_lastword(char *s)
 	return r - s;
 }
 
-static void led_printparts(char *pref, char *main, char *post, int *left, int kmap, char *syn)
+static void led_printparts(char *pref, char *main, char *post, int *left, int kmap, char *syn, char **old)
 {
 	struct sbuf *ln;
 	int off, pos;
@@ -173,7 +174,7 @@ static void led_printparts(char *pref, char *main, char *post, int *left, int km
 		*left = pos - xcols / 2;
 	if (pos < *left)
 		*left = pos < xcols ? 0 : pos - xcols / 2;
-	led_print(sbuf_buf(ln), -1, *left, syn);
+	led_print(sbuf_buf(ln), -1, *left, xcols, syn, old);
 	term_pos(-1, led_pos(dir_context(sbuf_buf(ln)), pos, *left, *left + xcols));
 	sbuf_free(ln);
 	term_commit();
@@ -243,6 +244,7 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 	int c = 0;
 	char cmp[64] = "";
 	char *cs;
+	char *led_old = NULL;
 	sb = sbuf_make();
 	if (pref == NULL)
 		pref = "";
@@ -251,7 +253,7 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 	while (1) {
 		if (hist != NULL)
 			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
-		led_printparts(pref, sbuf_buf(sb), post, left, *kmap, syn);
+		led_printparts(pref, sbuf_buf(sb), post, left, *kmap, syn, &led_old);
 		c = term_read();
 		switch (c) {
 		case TK_CTL('f'):
@@ -292,10 +294,11 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 				sbuf_str(sb, cs);
 		}
 		if (c == '\n')
-			led_printparts(pref, sbuf_buf(sb), "", left, *kmap, syn);
+			led_printparts(pref, sbuf_buf(sb), "", left, *kmap, syn, &led_old);
 		if (c == '\n' || TK_INT(c))
 			break;
 	}
+	led_reset(&led_old);
 	*key = c;
 	return sbuf_done(sb);
 }
@@ -304,10 +307,8 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist)
 {
 	int key;
-	int td = td_set(+2);
 	int left = 0;
 	char *s = led_line(pref, post, &left, &key, kmap, syn, hist);
-	td_set(td);
 	if (key == '\n') {
 		struct sbuf *sb = sbuf_make();
 		if (pref)

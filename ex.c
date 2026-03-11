@@ -1364,7 +1364,7 @@ static char *ex_cmd(char **src0)
 	return fbuf_buf(&fb);
 }
 
-/* read ex command arguement for excmd command; returns a static buffer */
+/* read ex command argument for excmd command; returns a static buffer */
 static char *ex_arg(char **src0, char *excmd)
 {
 	static struct fbuf fb;

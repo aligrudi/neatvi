@@ -1139,7 +1139,7 @@ static void vi_edit(int off, int del, char *ins)
 	sbuf_str(sb, ins);
 	sbuf_str(sb, end && end[0] ? end : "\n");
 	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
-	vi_drawrow(xrow);
+	vi_drawrow(row);
 	xrow += lncnt - 1;
 	xoff = xoff - del + uc_slen(last) - (lncnt > 1 ? off : 0);
 	vi_insoff = lncnt > 1 ? 0 : vi_insoff;

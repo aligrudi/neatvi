@@ -1651,13 +1651,14 @@ static int vc_quick(int newwin)
 		sel = c - '1';
 	}
 	led_reset(&vi_ledmod);
-	if (sel >= 0)
+	cmd[0] = '\0';
+	if (sel >= 0 && sel < tlist_cnt(tls))
 		snprintf(cmd, sizeof(cmd), "%s", tlist_get(tls, sel));
 	if (tls)
 		tlist_free(tls);
-	if (sel >= 0 && mod == '=')
+	if (cmd[0] && mod == '=')
 		return vc_tag(cmd, 0, newwin) | VC_WIN;
-	if (sel >= 0)
+	if (cmd[0])
 		return vc_openpath(cmd, 0, 1, newwin) | VC_WIN;
 	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
 		char cmd[8] = {'@', '\\', c};

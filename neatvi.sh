@@ -49,10 +49,10 @@ ecmd_o() {
 ecmd_m() {
 	path="$1"
 	lnum="$2"
-	loc=$(sed -E -n "${lnum}s/^[A-Z]+([0-9]+(@[^ \t]+)?).*$/\\1/p" <$path)
+	loc=$(sed -E -n "${lnum}s/^[A-Z]+([0-9]+(@[^ \t]+)?).*$/\\1/p" <"$path")
 	echo "ec $loc"
 	if test -n "$loc"; then
-		if neatmail pg -s -b path/to/mbox -i $loc >.cur.mail 2>/dev/null; then
+		if neatmail pg -s -b path/to/mbox -i "$loc" >.cur.mail 2>/dev/null; then
 			echo "e +1 .cur.mail | e"
 		else
 			echo "ec neatmail failed"
@@ -62,9 +62,9 @@ ecmd_m() {
 
 # Goto definition for Go; uses gopls (not very efficient without using LSP).
 ecmd_d() {
-	loc=$(gopls definition $1:$2:$3)
+	loc=$(gopls definition "$1:$2:$3")
 	if test -n "$loc"; then
-		echo $loc | sed -E 's/^([^:]+):([^:]+):([^:]+).*$/:e +\2 \1/'
+		echo "$loc" | sed -E 's/^([^:]+):([^:]+):([^:]+).*$/:e +\2 \1/'
 	else
 		echo "ec gopls failed"
 	fi
@@ -72,7 +72,7 @@ ecmd_d() {
 
 # Find references for Go.  Use gl command on each line.
 ecmd_f() {
-	if gopls references $1:$2:$3 >.list.ls; then
+	if gopls references "$1:$2:$3" >.list.ls; then
 		echo "e +1 .list.ls | :e"
 	else
 		echo "ec gopls failed"

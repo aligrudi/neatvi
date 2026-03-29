@@ -1594,6 +1594,7 @@ static int vi_leap(struct tlist *tls, char *mod, char *pos, int minrows)
 	char *view_s[LEN(view)];
 	int i;
 	kws[0] = '\0';
+	minrows = MIN(LEN(view), minrows);
 	while (1) {
 		int view_n = tlist_top(tls, view, LEN(view));
 		char *kw;
@@ -1625,12 +1626,13 @@ static int vc_quick(int newwin)
 	char cmd[256];
 	struct tlist *tls;
 	char *ls[32];
-	int sel = -1, ls_n = 0;
+	int sel = -1;
 	int mod = 0, c;
 	char *pos = ex_path()[0] ? ex_path() : "unnamed";
-	ls_n = ex_list(ls, LEN(ls));
+	int ls_n = ex_list(ls, LEN(ls));
+	int minrows = MIN(9, ls_n - 1);
 	tls = tlist_make(ls + 1, ls_n - 1);
-	vi_leaplist(ls + 1, ls_n - 1, ls_n - 1, ls_n - 1, "BUFF", pos);
+	vi_leaplist(ls + 1, minrows, ls_n - 1, ls_n - 1, "BUFF", pos);
 	term_commit();
 	c = vi_read();
 	if (c == ',' || c == ';' || c == '=') {
@@ -1646,7 +1648,7 @@ static int vc_quick(int newwin)
 		if (mod == '=')
 			tls = tlist_tags("tags");
 		if (tls)
-			sel = vi_leap(tls, name, pos, ls_n - 1);
+			sel = vi_leap(tls, name, pos, minrows);
 	} else if (c >= '1' && c <= '9') {
 		sel = c - '1';
 	}

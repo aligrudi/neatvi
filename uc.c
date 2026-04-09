@@ -10,11 +10,11 @@
 int uc_len(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (~c & 0xc0)		/* ASCII or invalid */
+	if (~c & 0xc0 || !s[1])		/* ASCII or invalid */
 		return c > 0;
-	if (~c & 0x20)
+	if (~c & 0x20 || !s[2])
 		return 2;
-	if (~c & 0x10)
+	if (~c & 0x10 || !s[3])
 		return 3;
 	if (~c & 0x08)
 		return 4;
@@ -34,11 +34,11 @@ int uc_slen(char *s)
 int uc_code(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (~c & 0xc0)		/* ASCII or invalid */
+	if (~c & 0xc0 || !s[1])		/* ASCII or invalid */
 		return c;
-	if (~c & 0x20)
+	if (~c & 0x20 || !s[2])
 		return ((c & 0x1f) << 6) | (s[1] & 0x3f);
-	if (~c & 0x10)
+	if (~c & 0x10 || !s[3])
 		return ((c & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f);
 	if (~c & 0x08)
 		return ((c & 0x07) << 18) | ((s[1] & 0x3f) << 12) | ((s[2] & 0x3f) << 6) | (s[3] & 0x3f);

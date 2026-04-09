@@ -46,7 +46,7 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 	int *att;	/* att[i]: the attributes of i-th character */
 	char **chrs;	/* chrs[i]: the i-th character in s1 */
 	int cend = cbeg + cols;
-	int clast = 0;			/* the last non-block column */
+	int clast = 0;			/* the last non-blank column */
 	int att_old = 0;
 	struct sbuf *out;
 	int n, i, j;
@@ -109,11 +109,15 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 			sbuf_chr(out, ' ');
 			i++;
 		}
-		if (out_off < 0 && (old_len <= soff ||
-				memcmp(*old + soff, sbuf_buf(out) + soff, sbuf_len(out) - soff))) {
-			out_off = soff;
-			out_col = scol;
-			out_att = att_new;
+		if (out_off < 0) {
+			int old_diverged = soff >= old_len ||
+				memcmp(*old + soff, sbuf_buf(out) + soff, sbuf_len(out) - soff);
+			int old_prefix = i > clast && sbuf_len(out) < old_len;
+			if (old_diverged || old_prefix) {
+				out_off = soff;
+				out_col = scol;
+				out_att = att_new;
+			}
 		}
 	}
 	/* write only if the line was changed */

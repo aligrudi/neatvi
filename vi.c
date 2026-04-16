@@ -620,6 +620,15 @@ k:		*row = MAX(*row - cnt, 0);
 	case 'G':
 		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
 		break;
+	case 'g':
+		c = vi_read();
+		if (c != 'g') {
+			vi_back(c);
+			vi_back('g');
+			return 0;
+		}
+		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : 0;
+		break;
 	case 'H':
 		*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
 		break;

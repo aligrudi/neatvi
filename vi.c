@@ -17,6 +17,7 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -280,6 +281,30 @@ static int vi_skipesc(void)
 	while (('0' <= k && k <= '9') || k == ';')
 		k = vi_read();
 	return 1;
+}
+
+static int match_key(char *fmt, ...)
+{
+	char w[16], b[16];
+	va_list ap;
+	int i;
+	va_start(ap, fmt);
+	vsnprintf(w, sizeof(w), fmt, ap);
+	va_end(ap);
+	for (i = 0; w[i]; i++) {
+		b[i] = vi_read();
+		if (b[i] != w[i]) {
+			while (i >= 0)
+				vi_back(b[i--]);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int xt_key(int c)
+{
+	return match_key("\33[%c", c);
 }
 
 /* map cursor horizontal position to terminal column number */
@@ -573,13 +598,6 @@ static int vi_motionln(int *row, int cmd)
 	int c = vi_read();
 	int mark, mark_row, mark_off;
 	switch (c) {
-	case '\n':
-	case '+':
-		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
-		break;
-	case '-':
-		*row = MAX(*row - cnt, 0);
-		break;
 	case '_':
 		*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 		break;
@@ -591,10 +609,13 @@ static int vi_motionln(int *row, int cmd)
 		*row = mark_row;
 		break;
 	case 'j':
-		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
+	case '+':
+	case '\n':
+j:		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 		break;
 	case 'k':
-		*row = MAX(*row - cnt, 0);
+	case '-':
+k:		*row = MAX(*row - cnt, 0);
 		break;
 	case 'G':
 		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
@@ -608,6 +629,11 @@ static int vi_motionln(int *row, int cmd)
 	case 'M':
 		*row = MIN(xtop + xrows / 2, lbuf_len(xb) - 1);
 		break;
+	case '\33':
+		vi_back('\33');
+		if (xt_key('A')) { c = 'k'; goto k; }	/* arrow up */
+		if (xt_key('B')) { c = 'j'; goto j; }	/* arrow down */
+		return 0;
 	default:
 		if (c == cmd) {
 			*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
@@ -690,12 +716,12 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case 'h':
-		for (i = 0; i < cnt; i++)
+h:		for (i = 0; i < cnt; i++)
 			if (vi_nextcol(xb, -1 * dir, row, off))
 				break;
 		break;
 	case 'l':
-		for (i = 0; i < cnt; i++)
+l:		for (i = 0; i < cnt; i++)
 			if (vi_nextcol(xb, +1 * dir, row, off))
 				break;
 		break;
@@ -826,6 +852,11 @@ static int vi_motion(int *row, int *off)
 		if (lbuf_pair(xb, row, off))
 			return -1;
 		break;
+	case '\33':
+		vi_back('\33');
+		if (xt_key('C')) { mv = 'l'; goto l; }	/* arrow right */
+		if (xt_key('D')) { mv = 'h'; goto h; }	/* arrow left */
+		return 0;
 	default:
 		vi_back(mv);
 		return 0;

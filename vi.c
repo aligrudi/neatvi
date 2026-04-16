@@ -307,6 +307,11 @@ static int xt_key(int c)
 	return match_key("\33[%c", c);
 }
 
+static int vt_key(int c)
+{
+	return match_key("\33[%d~", c);
+}
+
 /* map cursor horizontal position to terminal column number */
 static int vi_pos(char *s, int pos)
 {
@@ -1830,13 +1835,13 @@ static void vi(void)
 			lbuf_mark(xb, '^', xrow, xoff);
 			switch (c) {
 			case TK_CTL('b'):
-				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
+ctl_b:				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
 				mod = VC_COL;
 				break;
 			case TK_CTL('f'):
-				if (vi_scrollforward(MAX(1, vi_arg1) * (xrows - 1)))
+ctl_f:				if (vi_scrollforward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
 				mod = VC_COL;
@@ -2104,6 +2109,8 @@ static void vi(void)
 				break;
 			case '\33':
 				vi_back('\33');
+				if (vt_key(5)) goto ctl_b;	/* page up */
+				if (vt_key(6)) goto ctl_f;	/* page down */
 				if (!vi_skipesc())
 					vi_read();
 				continue;

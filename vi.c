@@ -623,7 +623,7 @@ j:		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 k:		*row = MAX(*row - cnt, 0);
 		break;
 	case 'G':
-		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
+G:		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
 		break;
 	case 'g':
 		c = vi_read();
@@ -632,7 +632,7 @@ k:		*row = MAX(*row - cnt, 0);
 			vi_back('g');
 			return 0;
 		}
-		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : 0;
+gg:		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : 0;
 		break;
 	case 'H':
 		*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
@@ -647,6 +647,12 @@ k:		*row = MAX(*row - cnt, 0);
 		vi_back('\33');
 		if (xt_key('A')) { c = 'k'; goto k; }	/* arrow up */
 		if (xt_key('B')) { c = 'j'; goto j; }	/* arrow down */
+		if (xt_key('H') ||
+		    vt_key(1)   ||
+		    vt_key(7))   { c = 'g'; goto gg; }	/* home */
+		if (xt_key('F') ||
+		    vt_key(4)   ||
+		    vt_key(8))   { c = 'G'; goto G; }	/* end */
 		return 0;
 	default:
 		if (c == cmd) {

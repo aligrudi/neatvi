@@ -72,7 +72,7 @@ int rstr_find(struct rstr *rs, char *s, int n, int *grps, int flg);
 void rstr_free(struct rstr *rs);
 
 /* rendering lines */
-int *ren_position(char *s);
+int *ren_position(char *s, int n);
 int ren_next(char *s, int p, int dir);
 int ren_eol(char *s, int dir);
 int ren_pos(char *s, int off);
@@ -117,7 +117,6 @@ char **uc_chop(char *s, int *n);
 char *uc_next(char *s);
 char *uc_prev(char *beg, char *s);
 char *uc_beg(char *beg, char *s);
-char *uc_end(char *s);
 char *uc_shape(char *beg, char *s);
 char *uc_lastline(char *s);
 

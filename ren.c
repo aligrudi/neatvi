@@ -6,10 +6,10 @@
 #include "vi.h"
 
 /* specify the screen position of the characters in s; reordering version */
-static int *ren_position_reorder(char *s)
+static int *ren_position_reorder(char *s, int n)
 {
-	int i, n;
-	char **chrs = uc_chop(s, &n);
+	int i, cnt;
+	char **chrs = uc_chop(s, &cnt);
 	int *off, *pos;
 	int cpos = 0;
 	pos = malloc((n + 1) * sizeof(pos[0]));
@@ -31,14 +31,13 @@ static int *ren_position_reorder(char *s)
 }
 
 /* specify the screen position of the characters in s; fast version */
-int *ren_position(char *s)
+int *ren_position(char *s, int n)
 {
 	int cpos = 0;
 	int *pos;
 	int i;
-	int n = uc_slen(s);
 	if (n <= xlim && (xorder == 2 || (xorder == 1 && (n < strlen(s) || dir_context(s) < 0))))
-		return ren_position_reorder(s);
+		return ren_position_reorder(s, n);
 	pos = malloc((n + 1) * sizeof(pos[0]));
 	for (i = 0; i < n; i++, s += uc_len(s)) {
 		pos[i] = cpos;
@@ -50,8 +49,8 @@ int *ren_position(char *s)
 
 int ren_wid(char *s)
 {
-	int *pos = ren_position(s);
 	int n = uc_slen(s);
+	int *pos = ren_position(s, n);
 	int ret = pos[n];
 	free(pos);
 	return ret;
@@ -81,7 +80,7 @@ static int pos_prev(int *pos, int n, int p, int cur)
 int ren_pos(char *s, int off)
 {
 	int n = uc_slen(s);
-	int *pos = ren_position(s);
+	int *pos = ren_position(s, n);
 	int ret = off < n ? pos[off] : 0;
 	free(pos);
 	return ret;
@@ -92,7 +91,7 @@ int ren_off(char *s, int p)
 {
 	int off = -1;
 	int n = uc_slen(s);
-	int *pos = ren_position(s);
+	int *pos = ren_position(s, n);
 	int i;
 	p = pos_prev(pos, n, p, 1);
 	for (i = 0; i < n; i++)
@@ -110,7 +109,7 @@ int ren_cursor(char *s, int p)
 	if (!s || !p)
 		return 0;
 	n = uc_slen(s);
-	pos = ren_position(s);
+	pos = ren_position(s, n);
 	p = pos_prev(pos, n, p, 1);
 	if (uc_code(uc_chr(s, ren_off(s, p))) == '\n')
 		p = pos_prev(pos, n, p, 0);
@@ -124,16 +123,19 @@ int ren_insert(char *ln, int off)
 	struct sbuf *sb;
 	char *cur;
 	int *pos;
-	int ret;
+	int ret, n;
 	if (off == 0)
 		return 0;
 	sb = sbuf_make();
-	cur = uc_chr(ln, off - 1);
+	if (!(cur = uc_chr(ln, off - 1)))
+		cur = uc_chr(ln, -1);
 	sbuf_mem(sb, ln, cur - ln);
 	sbuf_mem(sb, cur, uc_len(cur));
 	sbuf_str(sb, cur);
-	pos = ren_position(sbuf_buf(sb));
-	ret = pos[off] - (pos[off] < pos[off - 1]);
+	n = uc_slen(sbuf_buf(sb));
+	pos = ren_position(sbuf_buf(sb), n);
+	off = off > n ? n : off;
+	ret = off > 0 ? pos[off] - (pos[off] < pos[off - 1]) : 0;
 	sbuf_free(sb);
 	free(pos);
 	return ret;
@@ -142,17 +144,19 @@ int ren_insert(char *ln, int off)
 /* return an offset before EOL */
 int ren_noeol(char *s, int o)
 {
-	int n = s ? uc_slen(s) : 0;
-	if (o >= n)
-		o = MAX(0, n - 1);
-	return o > 0 && uc_chr(s, o)[0] == '\n' ? o - 1 : o;
+	int i = 0;
+	if (!s)
+		return 0;
+	for (; i < o && *s; i++)
+		s = uc_next(s);
+	return i > 0 && (!*s || *s == '\n') ? i - 1 : i;
 }
 
 /* the position of the next character */
 int ren_next(char *s, int p, int dir)
 {
 	int n = uc_slen(s);
-	int *pos = ren_position(s);
+	int *pos = ren_position(s, n);
 	p = pos_prev(pos, n, p, 1);
 	if (dir >= 0)
 		p = pos_next(pos, n, p, 0);

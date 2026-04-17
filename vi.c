@@ -1130,12 +1130,12 @@ static void vi_edit(int off, int del, char *ins)
 	char *ln = lbuf_get(xb, xrow);
 	struct sbuf *sb = sbuf_make();
 	char *pos = ln ? uc_chr(ln, off) : NULL;
-	char *end = ln ? uc_chr(pos, del) : NULL;
+	char *end = pos ? uc_chr(pos, del) : NULL;
 	char *last = strrchr(ins, '\n');
 	int lncnt = linecount(ins);
 	int row = xrow;
 	last = last ? last + 1 : ins;
-	sbuf_mem(sb, ln, ln ? pos - ln : 0);
+	sbuf_mem(sb, ln, pos ? pos - ln : 0);
 	sbuf_str(sb, ins);
 	sbuf_str(sb, end && end[0] ? end : "\n");
 	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);

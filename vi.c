@@ -252,6 +252,36 @@ static void vi_back(int c)
 		vi_buf[vi_buflen++] = c;
 }
 
+static int vi_skipesc(void)
+{
+	/*
+	 * Skip known terminal input escape sequences. There are four cases:
+	 *
+	 * xterm sequences: \33[A     ...  \33[Z
+	 *    vt sequences: \33[1~    ...  \33[35~
+	 *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
+	 *                  \33[0;1~  ...  \33[1114111;8~
+	 */
+	int k;
+	k = vi_read();
+	if (k != '\33') {
+		vi_back(k);
+		return 0;
+	}
+	k = vi_read();
+	if (k != '[') {
+		vi_back(k);
+		vi_back('\33');
+		return 0;
+	}
+	k = vi_read();
+	if ('A' <= k && k <= 'Z')
+		return 1;
+	while (('0' <= k && k <= '9') || k == ';')
+		k = vi_read();
+	return 1;
+}
+
 /* map cursor horizontal position to terminal column number */
 static int vi_pos(char *s, int pos)
 {
@@ -2032,6 +2062,11 @@ static void vi(void)
 			case '@':
 				vc_execute();
 				break;
+			case '\33':
+				vi_back('\33');
+				if (!vi_skipesc())
+					vi_read();
+				continue;
 			default:
 				continue;
 			}

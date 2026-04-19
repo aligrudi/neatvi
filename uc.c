@@ -21,6 +21,20 @@ int uc_len(char *s)
 	return 1;
 }
 
+/* return the expected length of a utf-8 character */
+int uc_len_expect(char c)
+{
+	if (~c & 0xc0)			/* ASCII or invalid */
+		return c > 0;
+	if (~c & 0x20)
+		return 2;
+	if (~c & 0x10)
+		return 3;
+	if (~c & 0x08)
+		return 4;
+	return 1;
+}
+
 /* the unicode codepoint of the given utf-8 character */
 int uc_code(char *s)
 {

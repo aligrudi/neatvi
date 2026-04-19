@@ -527,7 +527,7 @@ static char *vi_char(int (*next)(void), int kmap)
 		return NULL;
 	if ((c & 0xc0) == 0xc0) {
 		buf[0] = c;
-		n = uc_len(buf);
+		n = uc_len_expect(c);
 		for (i = 1; i < n; i++)
 			buf[i] = next();
 		buf[n] = '\0';

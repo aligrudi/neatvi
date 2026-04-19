@@ -98,6 +98,7 @@ void reg_done(void);
 
 /* utf-8 helper functions */
 int uc_len(char *s);
+int uc_len_expect(char c);
 int uc_wid(char *s);
 int uc_slen(char *s);
 int uc_code(char *s);

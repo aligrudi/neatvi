@@ -17,6 +17,7 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,6 +251,65 @@ static void vi_back(int c)
 {
 	if (vi_buflen < sizeof(vi_buf))
 		vi_buf[vi_buflen++] = c;
+}
+
+static int vi_skipesc(void)
+{
+	/*
+	 * Skip known terminal input escape sequences. There are four cases:
+	 *
+	 * xterm sequences: \33[A     ...  \33[Z
+	 *    vt sequences: \33[1~    ...  \33[35~
+	 *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
+	 *                  \33[0;1~  ...  \33[1114111;8~
+	 */
+	int k;
+	k = vi_read();
+	if (k != '\33') {
+		vi_back(k);
+		return 0;
+	}
+	k = vi_read();
+	if (k != '[') {
+		vi_back(k);
+		vi_back('\33');
+		return 0;
+	}
+	k = vi_read();
+	if ('A' <= k && k <= 'Z')
+		return 1;
+	while (('0' <= k && k <= '9') || k == ';')
+		k = vi_read();
+	return 1;
+}
+
+static int match_key(char *fmt, ...)
+{
+	char w[16], b[16];
+	va_list ap;
+	int i;
+	va_start(ap, fmt);
+	vsnprintf(w, sizeof(w), fmt, ap);
+	va_end(ap);
+	for (i = 0; w[i]; i++) {
+		b[i] = vi_read();
+		if (b[i] != w[i]) {
+			while (i >= 0)
+				vi_back(b[i--]);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int xt_key(int c)
+{
+	return match_key("\33[%c", c);
+}
+
+static int vt_key(int c)
+{
+	return match_key("\33[%d~", c);
 }
 
 /* map cursor horizontal position to terminal column number */
@@ -543,13 +603,6 @@ static int vi_motionln(int *row, int cmd)
 	int c = vi_read();
 	int mark, mark_row, mark_off;
 	switch (c) {
-	case '\n':
-	case '+':
-		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
-		break;
-	case '-':
-		*row = MAX(*row - cnt, 0);
-		break;
 	case '_':
 		*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
 		break;
@@ -561,13 +614,25 @@ static int vi_motionln(int *row, int cmd)
 		*row = mark_row;
 		break;
 	case 'j':
-		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
+	case '+':
+	case '\n':
+j:		*row = MIN(*row + cnt, lbuf_len(xb) - 1);
 		break;
 	case 'k':
-		*row = MAX(*row - cnt, 0);
+	case '-':
+k:		*row = MAX(*row - cnt, 0);
 		break;
 	case 'G':
-		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
+G:		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : lbuf_len(xb) - 1;
+		break;
+	case 'g':
+		c = vi_read();
+		if (c != 'g') {
+			vi_back(c);
+			vi_back('g');
+			return 0;
+		}
+gg:		*row = (vi_arg1 || vi_arg2) ? cnt - 1 : 0;
 		break;
 	case 'H':
 		*row = MIN(xtop + cnt - 1, lbuf_len(xb) - 1);
@@ -578,6 +643,17 @@ static int vi_motionln(int *row, int cmd)
 	case 'M':
 		*row = MIN(xtop + xrows / 2, lbuf_len(xb) - 1);
 		break;
+	case '\33':
+		vi_back('\33');
+		if (xt_key('A')) { c = 'k'; goto k; }	/* arrow up */
+		if (xt_key('B')) { c = 'j'; goto j; }	/* arrow down */
+		if (xt_key('H') ||
+		    vt_key(1)   ||
+		    vt_key(7))   { c = 'g'; goto gg; }	/* home */
+		if (xt_key('F') ||
+		    vt_key(4)   ||
+		    vt_key(8))   { c = 'G'; goto G; }	/* end */
+		return 0;
 	default:
 		if (c == cmd) {
 			*row = MIN(*row + cnt - 1, lbuf_len(xb) - 1);
@@ -660,12 +736,12 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case 'h':
-		for (i = 0; i < cnt; i++)
+h:		for (i = 0; i < cnt; i++)
 			if (vi_nextcol(xb, -1 * dir, row, off))
 				break;
 		break;
 	case 'l':
-		for (i = 0; i < cnt; i++)
+l:		for (i = 0; i < cnt; i++)
 			if (vi_nextcol(xb, +1 * dir, row, off))
 				break;
 		break;
@@ -796,6 +872,11 @@ static int vi_motion(int *row, int *off)
 		if (lbuf_pair(xb, row, off))
 			return -1;
 		break;
+	case '\33':
+		vi_back('\33');
+		if (xt_key('C')) { mv = 'l'; goto l; }	/* arrow right */
+		if (xt_key('D')) { mv = 'h'; goto h; }	/* arrow left */
+		return 0;
 	default:
 		vi_back(mv);
 		return 0;
@@ -1760,13 +1841,13 @@ static void vi(void)
 			lbuf_mark(xb, '^', xrow, xoff);
 			switch (c) {
 			case TK_CTL('b'):
-				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
+ctl_b:				if (vi_scrollbackward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
 				mod = VC_COL;
 				break;
 			case TK_CTL('f'):
-				if (vi_scrollforward(MAX(1, vi_arg1) * (xrows - 1)))
+ctl_f:				if (vi_scrollforward(MAX(1, vi_arg1) * (xrows - 1)))
 					break;
 				xoff = lbuf_indents(xb, xrow);
 				mod = VC_COL;
@@ -2032,6 +2113,13 @@ static void vi(void)
 			case '@':
 				vc_execute();
 				break;
+			case '\33':
+				vi_back('\33');
+				if (vt_key(5)) goto ctl_b;	/* page up */
+				if (vt_key(6)) goto ctl_f;	/* page down */
+				if (!vi_skipesc())
+					vi_read();
+				continue;
 			default:
 				continue;
 			}

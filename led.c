@@ -57,7 +57,7 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 	int out_att = 0;
 	int old_len = old && *old ? strlen(*old) : 0;
 	chrs = uc_chop(s0, &n);
-	pos = ren_position(s0);
+	pos = ren_position(s0, n);
 	off = malloc((cend - cbeg) * sizeof(off[0]));
 	memset(off, 0xff, (cend - cbeg) * sizeof(off[0]));
 	/* initialise off[] using pos[] */

@@ -21,15 +21,6 @@ int uc_len(char *s)
 	return 1;
 }
 
-/* the number of utf-8 characters in s */
-int uc_slen(char *s)
-{
-	int n;
-	for (n = 0; *s; n++)
-		s = uc_end(s) + 1;
-	return n;
-}
-
 /* the unicode codepoint of the given utf-8 character */
 int uc_code(char *s)
 {
@@ -53,29 +44,26 @@ char *uc_beg(char *beg, char *s)
 	return s;
 }
 
-/* find the end of the character at s[i] */
-char *uc_end(char *s)
-{
-	if (!*s || !((unsigned char) *s & 0x80))
-		return s;
-	if (((unsigned char) *s & 0xc0) == 0xc0)
-		s++;
-	while (((unsigned char) *s & 0xc0) == 0x80)
-		s++;
-	return s - 1;
-}
-
 /* return a pointer to the character following s */
 char *uc_next(char *s)
 {
-	s = uc_end(s);
-	return *s ? s + 1 : s;
+	int l = uc_len(s);
+	return l > 0 ? s + l : s;
 }
 
 /* return a pointer to the character preceding s */
 char *uc_prev(char *beg, char *s)
 {
 	return s == beg ? beg : uc_beg(beg, s - 1);
+}
+
+/* the number of utf-8 characters in s */
+int uc_slen(char *s)
+{
+	int n;
+	for (n = 0; *s; n++)
+		s += uc_len(s);
+	return n;
 }
 
 char *uc_lastline(char *s)

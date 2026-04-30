@@ -2110,20 +2110,28 @@ int main(int argc, char *argv[])
 	char *prog = strchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
 	xvis = strcmp("ex", prog) && strcmp("neatex", prog);
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
-		if (argv[i][1] == 's')
-			xled = 0;
-		if (argv[i][1] == 'e')
-			xvis = 0;
-		if (argv[i][1] == 'v')
-			xvis = 1;
-		if (argv[i][1] == 'h') {
-			printf("usage: %s [options] [file...]\n\n", argv[0]);
-			printf("options:\n");
-			printf("  -v    start in vi mode\n");
-			printf("  -e    start in ex mode\n");
-			printf("  -s    silent mode (for ex mode only)\n");
-			return 0;
+		if (!argv[i][2]) {
+			switch (argv[i][1]) {
+			case 's':
+				xled = 0;
+				continue;
+			case 'e':
+				xvis = 0;
+				continue;
+			case 'v':
+				xvis = 1;
+				continue;
+			case 'h':
+				printf("usage: %s [options] [file...]\n\n", argv[0]);
+				printf("options:\n");
+				printf("  -v    start in vi mode\n");
+				printf("  -e    start in ex mode\n");
+				printf("  -s    silent mode (for ex mode only)\n");
+				return 0;
+			}
 		}
+		fprintf(stderr, "%s: unknown option: %s\n", argv[0], argv[i]);
+		return 1;
 	}
 	dir_init();
 	syn_init();

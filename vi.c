@@ -2127,11 +2127,11 @@ int main(int argc, char *argv[])
 				printf("  -v    start in vi mode\n");
 				printf("  -e    start in ex mode\n");
 				printf("  -s    silent mode (for ex mode only)\n");
-				return 0;
+				return EXIT_SUCCESS;
 			}
 		}
 		fprintf(stderr, "%s: unknown option: %s\n", argv[0], argv[i]);
-		return 1;
+		return EXIT_FAILURE;
 	}
 	dir_init();
 	syn_init();

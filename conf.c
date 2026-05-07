@@ -237,8 +237,9 @@ static struct mapch {
 	int wid;	/* the width of the placeholder */
 } mapch[64];
 
-#define MCH_IDX(i)	((i) >> (sizeof(unsigned long) + 3))
-#define MCH_BIT(i)	((i) & ((1 << (sizeof(unsigned long) + 3)) - 1))
+#define MCH_SHBITS	(sizeof(mapch_map[0]) == 4 ? 5 : 6)
+#define MCH_IDX(i)	((i) >> MCH_SHBITS)
+#define MCH_BIT(i)	((i) & ((1 << MCH_SHBITS) - 1))
 
 static int mapch_cnt;
 static unsigned long mapch_map[32 / sizeof(unsigned long)];

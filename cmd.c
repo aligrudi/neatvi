@@ -83,7 +83,8 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 		signal(SIGINT, SIG_IGN);
 		term_done();
 	}
-	fcntl(ifd, F_SETFL, fcntl(ifd, F_GETFL, 0) | O_NONBLOCK);
+	if (ifd >= 0)
+		fcntl(ifd, F_SETFL, fcntl(ifd, F_GETFL, 0) | O_NONBLOCK);
 	fds[0].fd = ofd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ifd;

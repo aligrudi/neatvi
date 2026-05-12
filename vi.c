@@ -248,7 +248,7 @@ static int vi_read(void)
 
 static void vi_back(int c)
 {
-	if (vi_buflen < sizeof(vi_buf))
+	if (vi_buflen < LEN(vi_buf))
 		vi_buf[vi_buflen++] = c;
 }
 
@@ -1545,7 +1545,7 @@ static int vc_ecmd(int c, int newwin)
 	return VC_ALL;
 }
 
-/* format a quick leap item */
+/* format a quick leap item; modifies ln and returns a static buffer */
 static char *vi_leapfmt(int id, char *ln)
 {
 	static char out[128];

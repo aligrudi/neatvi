@@ -113,7 +113,8 @@ char *uc_sub(char *s, int beg, int end)
 	char *send = uc_chr(s, end);
 	int len = sbeg && send && sbeg <= send ? send - sbeg : 0;
 	char *r = malloc(len + 1);
-	memcpy(r, sbeg, len);
+	if (len > 0)
+		memcpy(r, sbeg, len);
 	r[len] = '\0';
 	return r;
 }

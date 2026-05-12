@@ -237,11 +237,8 @@ static struct mapch {
 	int wid;	/* the width of the placeholder */
 } mapch[64];
 
-#define MCH_IDX(i)	((i) >> (sizeof(unsigned long) + 3))
-#define MCH_BIT(i)	((i) & ((1 << (sizeof(unsigned long) + 3)) - 1))
-
 static int mapch_cnt;
-static unsigned long mapch_map[32 / sizeof(unsigned long)];
+static char mapch_map[256];
 
 static void mapch_init(void)
 {
@@ -278,7 +275,7 @@ void mapch_def(char *s, char *d, int wid)
 		snprintf(mc->s, sizeof(mc->s), "%s", d[0] ? s : "");
 		snprintf(mc->d, sizeof(mc->d), "%s", d);
 		mc->wid = wid >= 0 ? wid : ren_wid(d);
-		mapch_map[MCH_IDX(c)] |= 1 << MCH_BIT(c);
+		mapch_map[c] = 1;
 		mapch_cnt = MAX(mapch_cnt, i + 1);
 	}
 }
@@ -289,7 +286,7 @@ char *mapch_get(char *s, int *wid)
 	int i;
 	if (!mapch_cnt)
 		mapch_init();
-	if (!!(mapch_map[MCH_IDX(c)] & (1 << MCH_BIT(c)))) {
+	if (mapch_map[c]) {
 		for (i = 0; i < mapch_cnt; i++) {
 			struct mapch *mc = &mapch[i];
 			if (s[0] == mc->s[0] && uc_code(s) == uc_code(mc->s)) {

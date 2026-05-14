@@ -2110,7 +2110,7 @@ int main(int argc, char *argv[])
 	char *prog = strchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
 	xvis = strcmp("ex", prog) && strcmp("neatex", prog);
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
-		if (!argv[i][2]) {
+		if (argv[i][1] && !argv[i][2]) {
 			switch (argv[i][1]) {
 			case 's':
 				xled = 0;

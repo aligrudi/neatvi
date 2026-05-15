@@ -96,6 +96,7 @@ New key mappings:
 - ^] and ^t in normal mode: jumps to tag and pops tag stack.
 - gf in normal mode: edits the file whose address is under the cursor.
 - gl in normal mode: like gf, but it reads line and column numbers too.
+- gd in normal mode: go to definition based on filetype->def (see conf.h).
 - ^ws, ^wo, ^wc, ^wj, ^wk, ^wx in normal mode: manages windows.
 - ^wgf, ^wgl, ^w^] in normal mode: executes gf, gl, ^] in a new window.
 - zj, zk, zD: equivalent to :b+, :b-, :b !.

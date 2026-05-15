@@ -252,28 +252,23 @@ static void vi_back(int c)
 		vi_buf[vi_buflen++] = c;
 }
 
-static int vi_skipesc(void)
+/*
+ * Skip known terminal input escape sequences. There are four cases:
+ *
+ * xterm sequences: \33[A     ...  \33[Z
+ *    vt sequences: \33[1~    ...  \33[35~
+ *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
+ *                  \33[0;1~  ...  \33[1114111;8~
+ */
+static int vi_skipiseq(void)
 {
-	/*
-	 * Skip known terminal input escape sequences. There are four cases:
-	 *
-	 * xterm sequences: \33[A     ...  \33[Z
-	 *    vt sequences: \33[1~    ...  \33[35~
-	 *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
-	 *                  \33[0;1~  ...  \33[1114111;8~
-	 */
-	int k;
-	k = vi_read();
-	if (k != '\33') {
-		vi_back(k);
-		return 0;
-	}
-	k = vi_read();
+	int k = vi_read();
 	if (k != '[') {
 		vi_back(k);
-		vi_back('\33');
 		return 0;
 	}
+	if (k == '[')
+		k = vi_read();
 	k = vi_read();
 	if ('A' <= k && k <= 'Z')
 		return 1;
@@ -1259,6 +1254,8 @@ static int vc_insertcmd(void)
 		}
 		return VC_OK;
 	default:
+		if (c == TK_ESC)
+			vi_skipiseq();
 		if (TK_INT(c)) {
 			char *ln = lbuf_get(xb, xrow);
 			if (xai && ln[lbuf_indents(xb, xrow)] == '\n') {
@@ -2062,10 +2059,8 @@ static void vi(void)
 			case '@':
 				vc_execute();
 				break;
-			case '\33':
-				vi_back('\33');
-				if (!vi_skipesc())
-					vi_read();
+			case TK_ESC:
+				vi_skipiseq();
 				continue;
 			default:
 				continue;

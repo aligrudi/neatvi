@@ -243,12 +243,12 @@ static int vi_buflen;
 
 static int vi_read(void)
 {
-	return vi_buflen ? vi_buf[--vi_buflen] : term_read();
+	return vi_buflen ? vi_buf[--vi_buflen] : term_read(0);
 }
 
 static void vi_back(int c)
 {
-	if (vi_buflen < LEN(vi_buf))
+	if (vi_buflen < LEN(vi_buf) && c >= 0)
 		vi_buf[vi_buflen++] = c;
 }
 
@@ -260,16 +260,16 @@ static void vi_back(int c)
  *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
  *                  \33[0;1~  ...  \33[1114111;8~
  */
-static int vi_skipiseq(void)
+static int vi_readiseq(void)
 {
-	int k = vi_read();
+	int k = vi_buflen ? vi_read() : term_read(1);
 	if (k != '[') {
 		vi_back(k);
 		return 0;
 	}
+	k = vi_read();
 	if (k == '[')
 		k = vi_read();
-	k = vi_read();
 	if ('A' <= k && k <= 'Z')
 		return 1;
 	while (('0' <= k && k <= '9') || k == ';')
@@ -1255,7 +1255,7 @@ static int vc_insertcmd(void)
 		return VC_OK;
 	default:
 		if (c == TK_ESC)
-			vi_skipiseq();
+			vi_readiseq();
 		if (TK_INT(c)) {
 			char *ln = lbuf_get(xb, xrow);
 			if (xai && ln[lbuf_indents(xb, xrow)] == '\n') {
@@ -2060,7 +2060,7 @@ static void vi(void)
 				vc_execute();
 				break;
 			case TK_ESC:
-				vi_skipiseq();
+				vi_readiseq();
 				continue;
 			default:
 				continue;

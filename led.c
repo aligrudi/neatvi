@@ -194,17 +194,17 @@ static char *led_readchar(int c, int kmap)
 	int c1, c2;
 	int i, n;
 	if (c == TK_CTL('v')) {		/* literal character */
-		buf[0] = term_read();
+		buf[0] = term_read(0);
 		buf[1] = '\0';
 		return buf;
 	}
 	if (c == TK_CTL('k')) {		/* digraph */
-		c1 = term_read();
+		c1 = term_read(0);
 		if (TK_INT(c1))
 			return NULL;
 		if (c1 == TK_CTL('k'))
 			return "";
-		c2 = term_read();
+		c2 = term_read(0);
 		if (TK_INT(c2))
 			return NULL;
 		return conf_digraph(c1, c2);
@@ -213,7 +213,7 @@ static char *led_readchar(int c, int kmap)
 		buf[0] = c;
 		n = uc_len(buf);
 		for (i = 1; i < n; i++)
-			buf[i] = term_read();
+			buf[i] = term_read(0);
 		buf[n] = '\0';
 		return buf;
 	}
@@ -261,7 +261,7 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 		if (hist != NULL)
 			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
 		led_printparts(pref, sbuf_buf(sb), post, left, *kmap, syn, &led_old);
-		c = term_read();
+		c = term_read(0);
 		switch (c) {
 		case TK_CTL('f'):
 			*kmap = xkmap_alt;
@@ -286,7 +286,7 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 				sbuf_str(sb, reg_get(0, &lnmode));
 			break;
 		case TK_CTL('r'):
-			y = term_read();
+			y = term_read(0);
 			if (y > 0 && reg_get(y, &lnmode))
 				sbuf_str(sb, reg_get(y, &lnmode));
 			break;

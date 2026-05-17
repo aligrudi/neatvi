@@ -313,7 +313,9 @@ static int ex_lineno(char **num)
 		}
 	}
 	while (**num == '-' || **num == '+') {
-		n += atoi((*num)++);
+		int neg = *(*num)++ == '-';
+		int val = isdigit((unsigned char) **num) ? atoi(*num) : 1;
+		n += neg ? -val : val;
 		while (isdigit((unsigned char) **num))
 			(*num)++;
 	}

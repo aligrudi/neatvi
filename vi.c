@@ -243,13 +243,38 @@ static int vi_buflen;
 
 static int vi_read(void)
 {
-	return vi_buflen ? vi_buf[--vi_buflen] : term_read();
+	return vi_buflen ? vi_buf[--vi_buflen] : term_read(0);
 }
 
 static void vi_back(int c)
 {
-	if (vi_buflen < LEN(vi_buf))
+	if (vi_buflen < LEN(vi_buf) && c >= 0)
 		vi_buf[vi_buflen++] = c;
+}
+
+/*
+ * Skip known terminal input escape sequences. There are four cases:
+ *
+ * xterm sequences: \33[A     ...  \33[Z
+ *    vt sequences: \33[1~    ...  \33[35~
+ *    direct UTF-8: \33[0;1u  ...  \33[1114111;8u
+ *                  \33[0;1~  ...  \33[1114111;8~
+ */
+static int vi_readiseq(void)
+{
+	int k = vi_buflen ? vi_read() : term_read(1);
+	if (k != '[') {
+		vi_back(k);
+		return 0;
+	}
+	k = vi_read();
+	if (k == '[')
+		k = vi_read();
+	if ('A' <= k && k <= 'Z')
+		return 1;
+	while (('0' <= k && k <= '9') || k == ';')
+		k = vi_read();
+	return 1;
 }
 
 /* map cursor horizontal position to terminal column number */
@@ -527,7 +552,7 @@ static char *vi_char(int (*next)(void), int kmap)
 		return NULL;
 	if ((c & 0xc0) == 0xc0) {
 		buf[0] = c;
-		n = uc_len(buf);
+		n = uc_len_expect(c);
 		for (i = 1; i < n; i++)
 			buf[i] = next();
 		buf[n] = '\0';
@@ -1229,6 +1254,8 @@ static int vc_insertcmd(void)
 		}
 		return VC_OK;
 	default:
+		if (c == TK_ESC)
+			vi_readiseq();
 		if (TK_INT(c)) {
 			char *ln = lbuf_get(xb, xrow);
 			if (xai && ln[lbuf_indents(xb, xrow)] == '\n') {
@@ -2032,6 +2059,9 @@ static void vi(void)
 			case '@':
 				vc_execute();
 				break;
+			case TK_ESC:
+				vi_readiseq();
+				continue;
 			default:
 				continue;
 			}
@@ -2110,7 +2140,7 @@ int main(int argc, char *argv[])
 	char *prog = strchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
 	xvis = strcmp("ex", prog) && strcmp("neatex", prog);
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
-		if (!argv[i][2]) {
+		if (argv[i][1] && !argv[i][2]) {
 			switch (argv[i][1]) {
 			case 's':
 				xled = 0;

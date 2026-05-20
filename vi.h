@@ -98,6 +98,7 @@ void reg_done(void);
 
 /* utf-8 helper functions */
 int uc_len(char *s);
+int uc_len_expect(char c);
 int uc_wid(char *s);
 int uc_slen(char *s);
 int uc_code(char *s);
@@ -137,7 +138,7 @@ void term_window(int row, int cnt);
 int term_rows(void);
 int term_cols(void);
 int term_rowx(void);
-int term_read(void);
+int term_read(int buffered);
 void term_commit(void);
 char *term_seqattr(int att, int old);
 char *term_seqkill(void);

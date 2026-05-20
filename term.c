@@ -149,9 +149,12 @@ static int icmd_pos;		/* icmd[] position */
 /* read s before reading from the terminal */
 void term_push(char *s, int n)
 {
-	n = MIN(n, sizeof(ibuf) - ibuf_cnt);
-	memcpy(ibuf + ibuf_cnt, s, n);
-	ibuf_cnt += n;
+	int cur = ibuf_cnt - ibuf_pos;
+	n = MIN(n, sizeof(ibuf) - cur);
+	memmove(ibuf + n, ibuf + ibuf_pos, cur);
+	memcpy(ibuf, s, n);
+	ibuf_pos = 0;
+	ibuf_cnt = cur + n;
 }
 
 /* return a static buffer containing inputs read since the last term_cmd() */
@@ -162,17 +165,16 @@ char *term_cmd(int *n)
 	return icmd;
 }
 
-int term_read(void)
+int term_read(int buffered)
 {
 	struct pollfd ufds[1];
 	int n, c;
-	if (ibuf_pos >= ibuf_cnt) {
+	if (!buffered && ibuf_pos >= ibuf_cnt) {
 		ufds[0].fd = 0;
 		ufds[0].events = POLLIN;
 		if (poll(ufds, 1, -1) <= 0)
 			return -1;
-		/* read a single input character */
-		if ((n = read(0, ibuf, 1)) <= 0)
+		if ((n = read(0, ibuf, sizeof(ibuf))) <= 0)
 			return -1;
 		ibuf_cnt = n;
 		ibuf_pos = 0;

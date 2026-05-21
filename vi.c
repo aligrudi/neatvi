@@ -143,7 +143,7 @@ static void vi_drawfix(int r1, int del, int ins)
 	/* new lines are visible */
 	if (del > ins && r1 + ins < xtop + xrows) {
 		for (i = xtop + xrows - del + ins; i < xtop + xrows; i++)
-			if (i >= r1 + ins)
+			if (i >= r1 + ins && i > xtop)
 				vi_drawrow(i);
 	}
 	/* draw replaced lines */

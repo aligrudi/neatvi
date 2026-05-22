@@ -711,7 +711,7 @@ int regexec(regex_t *preg, char *s, int nsub, regmatch_t psub[], int flg)
 		psub[i].rm_so = -1;
 		psub[i].rm_eo = -1;
 	}
-	while (*o) {
+	while (*o && !((flg & REG_EOLSTOP) && o != rs.o && *o == '\n')) {
 		rs.s = o = s;
 		s += uc_len(s);
 		if (!re_recmatch(re, &rs)) {

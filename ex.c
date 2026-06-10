@@ -364,7 +364,7 @@ static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force,
 	int fd;
 	if (end < 0)
 		end = lbuf_len(lb);
-	if (!force && mtime > 0 && mtime(path) > ts) {
+	if (!force && ts > 0 && mtime(path) > ts) {
 		return "write failed: file changed";
 	} else if (!force && ts <= 0 && mtime(path) >= 0) {
 		return "write failed: file exists";

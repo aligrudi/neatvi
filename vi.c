@@ -458,7 +458,7 @@ static int vi_findchar(struct lbuf *lb, char *cs, int cmd, int n, int *row, int 
 	return lbuf_findchar(lb, cs, cmd, n, row, off);
 }
 
-static int vi_search(int cmd, int cnt, int *row, int *off)
+static int vi_next(int cmd, int cnt, int *row, int *off)
 {
 	char *kwd;
 	int r = *row;
@@ -466,32 +466,6 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	char *failed = NULL;
 	int len = 0;
 	int i, dir;
-	if (cmd == '/' || cmd == '?') {
-		char sign[4] = {cmd};
-		struct sbuf *sb;
-		char *kw = vi_prompt(sign, &xkmap, reg_getln('/'));
-		char *re;
-		if (!kw)
-			return 1;
-		sb = sbuf_make();
-		sbuf_chr(sb, cmd);
-		sbuf_str(sb, kw);
-		free(kw);
-		kw = sbuf_buf(sb);
-		if ((re = re_read(&kw))) {
-			ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
-			if (re[0]) {
-				reg_putln('/', re);
-				reg_put('/', re, 0);
-			}
-			while (isspace(*kw))
-				kw++;
-			vi_soset = !!kw[0];
-			vi_so = atoi(kw);
-			free(re);
-		}
-		sbuf_free(sb);
-	}
 	if (!lbuf_len(xb) || ex_kwd(&kwd, &dir))
 		return 1;
 	dir = cmd == 'N' ? -dir : dir;
@@ -518,6 +492,55 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 	if (failed != NULL)
 		snprintf(vi_msg, sizeof(vi_msg), "/%s/%s", kwd, failed ? failed : "");
 	return failed != NULL;
+}
+
+static int vi_search(int cmd, int cnt, int *row, int *off)
+{
+	char sign[4] = {cmd};
+	struct sbuf *sb;
+	char *kw = vi_prompt(sign, &xkmap, reg_getln('/'));
+	char *re;
+	int ret = 0;
+	if (!kw)
+		return 1;
+	sb = sbuf_make();
+	sbuf_chr(sb, cmd);
+	sbuf_str(sb, kw);
+	free(kw);
+	kw = sbuf_buf(sb);
+	while ((re = re_read(&kw))) {
+		ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
+		if (re[0]) {
+			reg_putln('/', re);
+			reg_put('/', re, 0);
+		}
+		while (isspace((unsigned char) *kw))
+			kw++;
+		vi_soset = (kw[0] >= '0' && kw[0] <= '9') || kw[0] == '+' || kw[0] == '-';
+		vi_so = 0;
+		if (vi_soset) {
+			while (kw[0] == '+' || kw[0] == '-')
+				vi_so += *kw++ == '+' ? +1 : -1;
+			if (kw[0] >= '0' && kw[0] < '9')
+				vi_so = kw[-1] == '-' ? -atoi(kw) : atoi(kw);
+			while (kw[0] >= '0' && kw[0] < '9')
+				kw++;
+		}
+		free(re);
+		if ((ret = vi_next(cmd, cnt, row, off)))
+			break;
+		while (isspace((unsigned char) *kw))
+			kw++;
+		if (!*kw || *kw != ';')
+			break;
+		kw++;
+		while (isspace((unsigned char) *kw))
+			kw++;
+		if (!*kw || (*kw != '/' && *kw != '?'))
+			break;
+	}
+	sbuf_free(sb);
+	return ret;
 }
 
 static char *vi_char(int (*next)(void), int kmap)
@@ -782,11 +805,11 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case 'n':
-		if (vi_search(mv, cnt, row, off))
+		if (vi_next(mv, cnt, row, off))
 			return -1;
 		break;
 	case 'N':
-		if (vi_search(mv, cnt, row, off))
+		if (vi_next(mv, cnt, row, off))
 			return -1;
 		break;
 	case TK_CTL('a'):
@@ -795,7 +818,7 @@ static int vi_motion(int *row, int *off)
 		snprintf(kw, sizeof(kw), "\\<%s\\>", cw);
 		ex_kwdset(kw, +1);
 		vi_soset = 0;
-		if (vi_search('n', cnt, row, off))
+		if (vi_next('n', cnt, row, off))
 			return -1;
 		break;
 	case ' ':

@@ -10,8 +10,8 @@
 
 /* line operations */
 struct lopt {
-	char *ins;		/* inserted text */
-	char *del;		/* deleted text */
+	char *ins, *del;	/* inserted/deleted text */
+	long ins_len, del_len;	/* number of bytes in ins/del */
 	int pos, n_ins, n_del;	/* modification location */
 	int pos_off;		/* cursor line offset */
 	int seq;		/* operation number */
@@ -23,6 +23,7 @@ struct lbuf {
 	int mark[NMARKS];	/* mark lines */
 	int mark_off[NMARKS];	/* mark line offsets */
 	char **ln;		/* buffer lines */
+	long *ln_len;		/* buffer lines */
 	char *ln_glob;		/* line global mark */
 	int ln_n;		/* number of lines in ln[] */
 	int ln_sz;		/* size of ln[] */
@@ -121,39 +122,45 @@ void lbuf_free(struct lbuf *lb)
 		lopt_done(&lb->hist[i]);
 	free(lb->hist);
 	free(lb->ln);
+	free(lb->ln_len);
 	free(lb->ln_glob);
 	free(lb);
 }
 
-static int linelength(char *s)
+static long linelength(char *s, long slen)
 {
-	char *r = strchr(s, '\n');
-	return r ? r - s + 1 : strlen(s);
+	char *r = memchr(s, '\n', slen);
+	return r ? r - s + 1 : slen;
 }
 
-static int linecount(char *s)
+static int linecount(char *s, long slen)
 {
+	char *e = s + slen;
 	int n;
-	for (n = 0; s && *s; n++)
-		s += linelength(s);
+	for (n = 0; s && s < e; n++)
+		s += linelength(s, e - s);
 	return n;
 }
 
-
 /* low-level line replacement */
-static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
+static void lbuf_replace(struct lbuf *lb, char *s, long slen, int pos, int n_del)
 {
-	int n_ins = linecount(s);
+	int n_ins = linecount(s, slen);
+	char *e = s + slen;
 	int i;
 	while (lb->ln_n + n_ins - n_del >= lb->ln_sz) {
 		int nsz = lb->ln_sz + (lb->ln_sz ? lb->ln_sz : 512);
 		char **nln = malloc(nsz * sizeof(nln[0]));
+		long *nln_len = malloc(nsz * sizeof(nln_len[0]));
 		char *nln_glob = malloc(nsz * sizeof(nln_glob[0]));
 		memcpy(nln, lb->ln, lb->ln_n * sizeof(lb->ln[0]));
+		memcpy(nln_len, lb->ln_len, lb->ln_n * sizeof(lb->ln_len[0]));
 		memcpy(nln_glob, lb->ln_glob, lb->ln_n * sizeof(lb->ln_glob[0]));
 		free(lb->ln);
+		free(lb->ln_len);
 		free(lb->ln_glob);
 		lb->ln = nln;
+		lb->ln_len = nln_len;
 		lb->ln_glob = nln_glob;
 		lb->ln_sz = nsz;
 	}
@@ -162,18 +169,21 @@ static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 	if (n_ins != n_del) {
 		memmove(lb->ln + pos + n_ins, lb->ln + pos + n_del,
 			(lb->ln_n - pos - n_del) * sizeof(lb->ln[0]));
+		memmove(lb->ln_len + pos + n_ins, lb->ln_len + pos + n_del,
+			(lb->ln_n - pos - n_del) * sizeof(lb->ln_len[0]));
 		memmove(lb->ln_glob + pos + n_ins, lb->ln_glob + pos + n_del,
 			(lb->ln_n - pos - n_del) * sizeof(lb->ln_glob[0]));
 	}
 	lb->ln_n += n_ins - n_del;
 	for (i = 0; i < n_ins; i++) {
-		int l = s ? linelength(s) : 0;
-		int l_nonl = l - (s[l - 1] == '\n');
+		long l = s ? linelength(s, e - s) : 0;
+		long l_nonl = l - (l > 0 && s[l - 1] == '\n');
 		char *n = malloc(l_nonl + 2);
 		memcpy(n, s, l_nonl);
 		n[l_nonl + 0] = '\n';
 		n[l_nonl + 1] = '\0';
 		lb->ln[pos + i] = n;
+		lb->ln_len[pos + i] = l;
 		s += l;
 	}
 	for (i = n_del; i < n_ins; i++)
@@ -190,8 +200,20 @@ static void lbuf_replace(struct lbuf *lb, char *s, int pos, int n_del)
 	lbuf_mark(lb, ']', pos + (n_ins ? n_ins - 1 : 0), 0);
 }
 
+static char *lbuf_copy(struct lbuf *lb, int beg, int end, long *len)
+{
+	struct sbuf *sb = sbuf_make();
+	int i;
+	for (i = beg; i < end; i++)
+		if (i < lb->ln_n)
+			sbuf_mem(sb, lb->ln[i], lb->ln_len[i]);
+	if (len)
+		*len = sbuf_len(sb);
+	return sbuf_done(sb);
+}
+
 /* append undo/redo history */
-static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
+static void lbuf_opt(struct lbuf *lb, char *s, long slen, int pos, int n_del)
 {
 	struct lopt *lo;
 	int i;
@@ -201,9 +223,12 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	lo = &lb->hist[lb->hist_n - 1];
 	/* merging changes to the same line */
 	if (lb->hist_n > 0 && lo->seq == lb->useq && lo->pos == pos) {
-		if (lo->n_ins == 1 && n_del == 1 && linecount(buf) == 1) {
+		if (lo->n_ins == 1 && n_del == 1 && linecount(s, slen) == 1) {
 			free(lo->ins);
-			lo->ins = buf ? uc_dup(buf) : NULL;
+			lo->ins = s ? malloc(slen) : NULL;
+			if (lo->ins)
+				memcpy(lo->ins, s, slen);
+			lo->ins_len = slen;
 			lb->hist_u = lb->hist_n;
 			lbuf_savepos(lb, lo);
 			return;
@@ -223,14 +248,34 @@ static void lbuf_opt(struct lbuf *lb, char *buf, int pos, int n_del)
 	memset(lo, 0, sizeof(*lo));
 	lo->pos = pos;
 	lo->n_del = n_del;
-	lo->del = n_del ? lbuf_cp(lb, pos, pos + n_del) : NULL;
-	lo->n_ins = buf ? linecount(buf) : 0;
-	lo->ins = buf ? uc_dup(buf) : NULL;
+	lo->del_len = 0;
+	lo->del = n_del ? lbuf_copy(lb, pos, pos + n_del, &lo->del_len) : NULL;
+	lo->n_ins = s ? linecount(s, slen) : 0;
+	lo->ins = s ? uc_dup(s) : NULL;
+	lo->ins_len = slen;
 	lo->seq = lb->useq;
 	lbuf_savepos(lb, lo);
 	for (i = 0; i < NMARKS_BASE; i++)
 		if (lb->mark[i] >= pos && lb->mark[i] < pos + n_del)
 			lbuf_savemark(lb, lo, i);
+}
+
+static void lbuf_editraw(struct lbuf *lb, char *s, long slen, int beg, int end)
+{
+	if (beg > lb->ln_n)
+		beg = lb->ln_n;
+	if (end > lb->ln_n)
+		end = lb->ln_n;
+	if (beg == end && !s)
+		return;
+	lbuf_opt(lb, s, slen, beg, end - beg);
+	lbuf_replace(lb, s, slen, beg, end - beg);
+}
+
+/* replace lines beg through end with s */
+void lbuf_edit(struct lbuf *lb, char *s, int beg, int end)
+{
+	lbuf_editraw(lb, s, s ? strlen(s) : 0, beg, end);
 }
 
 int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
@@ -242,7 +287,7 @@ int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(sb, buf, nr);
 	if (!nr)
-		lbuf_edit(lbuf, sbuf_buf(sb), beg, end);
+		lbuf_editraw(lbuf, sbuf_buf(sb), sbuf_len(sb), beg, end);
 	sbuf_free(sb);
 	return nr != 0;
 }
@@ -262,7 +307,7 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 	int i;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf->ln[i];
-		long nl = strlen(ln);
+		long nl = lbuf->ln_len[i];
 		if (buf_len > 0 && buf_len + nl > sizeof(buf)) {
 			if (write_fully(fd, buf, buf_len) < 0)
 				return 1;
@@ -283,28 +328,9 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 	return 0;
 }
 
-/* replace lines beg through end with buf */
-void lbuf_edit(struct lbuf *lb, char *buf, int beg, int end)
-{
-	if (beg > lb->ln_n)
-		beg = lb->ln_n;
-	if (end > lb->ln_n)
-		end = lb->ln_n;
-	if (beg == end && !buf)
-		return;
-	lbuf_opt(lb, buf, beg, end - beg);
-	lbuf_replace(lb, buf, beg, end - beg);
-}
-
 char *lbuf_cp(struct lbuf *lb, int beg, int end)
 {
-	struct sbuf *sb;
-	int i;
-	sb = sbuf_make();
-	for (i = beg; i < end; i++)
-		if (i < lb->ln_n)
-			sbuf_str(sb, lb->ln[i]);
-	return sbuf_done(sb);
+	return lbuf_copy(lb, beg, end, NULL);
 }
 
 char *lbuf_get(struct lbuf *lb, int pos)
@@ -344,7 +370,7 @@ int lbuf_undo(struct lbuf *lb)
 	useq = lb->hist[lb->hist_u - 1].seq;
 	while (lb->hist_u && lb->hist[lb->hist_u - 1].seq == useq) {
 		struct lopt *lo = &lb->hist[--(lb->hist_u)];
-		lbuf_replace(lb, lo->del, lo->pos, lo->n_ins);
+		lbuf_replace(lb, lo->del, lo->del_len, lo->pos, lo->n_ins);
 		lbuf_loadpos(lb, lo);
 		for (i = 0; i < LEN(lb->mark); i++)
 			lbuf_loadmark(lb, lo, i);
@@ -360,7 +386,7 @@ int lbuf_redo(struct lbuf *lb)
 	useq = lb->hist[lb->hist_u].seq;
 	while (lb->hist_u < lb->hist_n && lb->hist[lb->hist_u].seq == useq) {
 		struct lopt *lo = &lb->hist[lb->hist_u++];
-		lbuf_replace(lb, lo->ins, lo->pos, lo->n_del);
+		lbuf_replace(lb, lo->ins, lo->ins_len, lo->pos, lo->n_del);
 		lbuf_loadpos(lb, lo);
 	}
 	return 0;
@@ -407,7 +433,7 @@ void lbuf_globset(struct lbuf *lb, int pos, int dep)
 /* return and clear ex global command mark */
 int lbuf_globget(struct lbuf *lb, int pos, int dep)
 {
-	int o = lb->ln_glob[pos] & (1 << dep);
+	int o = lb->ln_glob ? lb->ln_glob[pos] & (1 << dep) : 0;
 	lb->ln_glob[pos] &= ~(1 << dep);
 	return o > 0;
 }

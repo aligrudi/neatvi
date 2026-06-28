@@ -976,11 +976,10 @@ static int vi_indents(char *ln, char *in, int size)
 
 static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 {
-	char *region;
 	struct sbuf *sb = sbuf_make();
 	char *s1 = lbuf_get(xb, r1);
 	char *s2 = lbuf_get(xb, r2);
-	region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
+	char *region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
 	reg_put(vi_ybuf, region, lnmode);
 	free(region);
 	if (xai && lnmode)
@@ -1005,9 +1004,8 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 
 static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 {
-	char *region, *s;
-	region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
-	s = region;
+	char *region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
+	char *s = region;
 	while (*s) {
 		int c = (unsigned char) s[0];
 		if (c <= 0x7f) {

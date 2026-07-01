@@ -100,7 +100,7 @@ static int bufs_open(char *path)
 	return idx;
 }
 
-static void bufs_save(void)
+static void bufs_store(void)
 {
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
@@ -130,7 +130,7 @@ static void bufs_shift(void)
 static void bufs_switch(int idx)
 {
 	struct buf tmp;
-	bufs_save();
+	bufs_store();
 	memcpy(&tmp, &bufs[idx], sizeof(tmp));
 	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
 	memcpy(&bufs[0], &tmp, sizeof(tmp));
@@ -359,7 +359,7 @@ static int ex_region(char *loc, int *beg, int *end)
 	return 0;
 }
 
-static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force, long ts)
+static char *lbuf_write(struct lbuf *lb, int beg, int end, char *path, int force, long ts)
 {
 	int fd;
 	if (end < 0)
@@ -377,13 +377,24 @@ static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force,
 	return NULL;
 }
 
+static char *bufs_save(int idx, int force)
+{
+	struct buf *b = &bufs[idx];
+	char *err = lbuf_write(b->lb, 0, -1, b->path, force, b->mtime);
+	if (err)
+		return err;
+	lbuf_saved(b->lb, 0);
+	b->mtime = mtime(b->path);
+	return NULL;
+}
+
 static int bufs_modified(int idx, char *msg)
 {
 	struct buf *b = &bufs[idx];
 	if (!b->lb || !lbuf_modified(b->lb))
 		return 0;
 	if (xaw && b->path[0])
-		return lbuf_save(b->lb, 0, -1, b->path, 0, b->mtime) != NULL;
+		return bufs_save(idx, 0) != NULL;
 	if (msg)
 		ex_show(msg);
 	return 1;
@@ -591,7 +602,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		free(ibuf);
 	} else {
 		long ts = !strcmp(ex_path(), path) ? bufs[0].mtime : 0;
-		char *err = lbuf_save(xb, beg, end, path, !!strchr(cmd, '!'), ts);
+		char *err = lbuf_write(xb, beg, end, path, !!strchr(cmd, '!'), ts);
 		if (err != NULL) {
 			ex_show(err);
 			return 1;
@@ -626,9 +637,7 @@ static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
 				}
 			}
 			if (strchr(cmd, 'a')) {
-				struct buf *b = &bufs[i];
-				char *err = lbuf_save(b->lb, 0, -1, b->path,
-						!!strchr(cmd, '!'), b->mtime);
+				char *err = bufs_save(i, !!strchr(cmd, '!'));
 				if (err) {
 					bufs_switch(i);
 					ex_show(err);

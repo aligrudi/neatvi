@@ -47,8 +47,8 @@ static void reg_putraw(int c, char *s, int ln)
 	char *buf = malloc(strlen(pre) + strlen(s) + 1);
 	strcpy(buf, pre);
 	strcat(buf, s);
-	free(bufs[tolower(c)]);
-	bufs[tolower(c)] = buf;
+	free(bufs[(unsigned char) tolower(c)]);
+	bufs[(unsigned char) tolower(c)] = buf;
 	lnmode[tolower(c)] = ln;
 }
 

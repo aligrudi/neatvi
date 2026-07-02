@@ -1,0 +1,728 @@
+.TH NEATVI 1 "2024" "neatvi" "User Commands"
+.SH NAME
+neatvi \- a small vi/ex editor for UTF-8 text
+.SH SYNOPSIS
+.B neatvi
+.RI [ options ]
+.RI [ file ...]
+.SH DESCRIPTION
+.B neatvi
+is a small vi/ex editor for editing UTF-8 text.
+It supports syntax highlighting, multiple windows,
+right-to-left languages, and keymaps.
+.PP
+neatvi intentionally avoids plugins and scripting languages.
+Configuration is minimal and focused on core editing features.
+Filetype detection and syntax highlighting are compiled into the editor
+via
+.IR conf.h .
+Search patterns use POSIX ERE, not traditional vi BRE.
+Paths starting with
+.B =
+are relative to the directory of the current file.
+.SH OPTIONS
+.TP
+.B \-v
+Start in vi mode.
+.TP
+.B \-e
+Start in ex mode.
+.TP
+.B \-s
+Silent mode (for ex mode only).
+.SH MODES
+.TP
+.B ESC
+Return to normal mode.
+.TP
+.BR i ", " a ", " o
+Enter insert mode.
+.TP
+.B :
+Enter ex mode.
+.PP
+The status line shows the current mode and line number:
+.PP
+.RS
+.nf
+N0103 file.c    (normal mode, line 103)
+I0103 file.c    (insert mode, line 103)
+.fi
+.RE
+.SH MOVEMENT
+.TP
+.BR h " / " l
+Move left / right.
+.TP
+.BR j " / " k
+Move down / up.
+.TP
+.BR w " / " b
+Next / previous word.
+.TP
+.B 0
+Beginning of line.
+.TP
+.B ^
+First non-blank character.
+.TP
+.B $
+End of line.
+.TP
+.B G
+Go to last line.
+.TP
+.BR nG " or " :n
+Go to line number n.
+.SH EDITING
+.TP
+.B x
+Delete character.
+.TP
+.B dd
+Delete line.
+.TP
+.B dw
+Delete word.
+.TP
+.B d$
+Delete to end of line.
+.TP
+.B J
+Join next line to current line.
+.TP
+.B u
+Undo last change.
+.TP
+.B Ctrl\-r
+Redo.
+.TP
+.B \&.
+Repeat last change.
+.PP
+Counts work as in standard vi:
+.B 3dd
+deletes 3 lines,
+.B 5dw
+deletes 5 words.
+.SH COPY AND PASTE
+.TP
+.B yy
+Yank (copy) line.
+.TP
+.BR p " / " P
+Paste after / before cursor.
+.TP
+.B \(dqayy
+Yank into register a.
+.TP
+.B \(dqap
+Paste from register a.
+.SH SEARCH AND REPLACE
+.TP
+.B /pattern
+Search forward.
+.TP
+.B ?pattern
+Search backward.
+.TP
+.BR n " / " N
+Next / previous match.
+.TP
+.B Ctrl\-a
+Search for word under cursor (normal mode).
+.PP
+neatvi uses POSIX extended regular expressions (ERE) in search patterns.
+.PP
+Replace via ex mode:
+.TP
+.B :%s/old/new/g
+Replace in entire file.
+.TP
+.B :s/old/new/g
+Replace on current line.
+.SH FILES AND BUFFERS
+.TP
+.BI :e " file"
+Open another file.
+.TP
+.B :e #
+Switch to previous file.
+.TP
+.B :w
+Write file.
+.TP
+.B :q
+Quit.
+.TP
+.B :q!
+Quit without saving.
+.TP
+.B :wq
+Write and quit.
+.TP
+.B ZZ
+Write and quit.
+.PP
+Buffer navigation:
+.TP
+.B :b
+List open buffers.
+.TP
+.BI :b " N"
+Switch to buffer N.
+.TP
+.B :b \-
+Switch to previous buffer.
+.TP
+.B :b +
+Switch to next buffer.
+.TP
+.B :b !
+Delete current buffer.
+.TP
+.B :b ~
+Renumber buffers.
+.TP
+.BR zj " / " zk
+Switch to next / previous buffer.
+.TP
+.BR zJ " / " zK
+Equivalent to :next / :prev.
+.TP
+.B zD
+Equivalent to :b !
+.SH WINDOW SPLITS
+.TP
+.B Ctrl\-w s
+Split window.
+.TP
+.B Ctrl\-w o
+Close other windows.
+.TP
+.B Ctrl\-w c
+Close current window.
+.TP
+.B Ctrl\-w j/k
+Move between windows.
+.TP
+.B Ctrl\-w x
+Swap windows.
+.TP
+.B Ctrl\-w gf
+Edit file under cursor in new window.
+.TP
+.B Ctrl\-w gl
+Like gf, also reads line and column numbers.
+.TP
+.B Ctrl\-w ^]
+Jump to tag under cursor in new window.
+.SH TAGS
+.TP
+.BI :tag " word"
+Jump to tag.
+.TP
+.B :tnext
+Next matching tag.
+.TP
+.B :tprev
+Previous matching tag.
+.TP
+.B :pop
+Pop tag stack.
+.TP
+.B Ctrl\-]
+Jump to tag under cursor.
+.TP
+.B Ctrl\-t
+Pop tag stack.
+.PP
+Tags file is read from the
+.B TAGPATH
+environment variable or
+.IR ./tags .
+.SH MARKS
+Set a mark:
+.B mx
+(where x is any letter).
+Jump to a mark:
+.BI ` x\fR.
+.PP
+Special marks:
+.TP
+.B *
+Position of the previous change.
+.TP
+.B [
+First line of the previous change.
+.TP
+.B ]
+Last line of the previous change.
+.SH CASE SWITCHING
+.TP
+.B gu
+Switch selection to lowercase.
+.TP
+.B gU
+Switch selection to uppercase.
+.TP
+.B g~
+Toggle case.
+.SH CURSOR FILE NAVIGATION
+.TP
+.B gf
+Edit the file whose address is under the cursor.
+.TP
+.B gl
+Like gf, but also reads line and column numbers.
+.PP
+Files whose names end with
+.B ls
+are highlighted as directory listings. Combined with
+.BR gl ,
+this allows exploring and editing files under a directory:
+.PP
+.RS
+git ls-files >ls && neatvi ls
+.RE
+.SH INSERT MODE
+.TP
+.B Ctrl\-p
+Insert contents of the default yank buffer.
+.TP
+.BI Ctrl\-r " X"
+Insert contents of yank buffer X.
+.TP
+.B Ctrl\-a
+Trigger insert-mode auto-completion.
+.TP
+.B Ctrl\-e
+Switch to English keymap.
+.TP
+.B Ctrl\-f
+Switch to alternate keymap.
+.SH TERMINAL
+.TP
+.B Ctrl\-l
+Update terminal dimensions after resizing.
+.SH EXTENDED EX COMMANDS
+Commands not available in standard ex(1):
+.TP
+.BI :cm[ap][!] " [kmap]"
+Without argument, prints the current keymap name. When
+.I kmap
+is given, sets the alternate keymap and switches to it (unless
+.B !
+is given).
+.TP
+.BI :ft " [filetype]"
+Without argument, prints the current file type. When
+.I filetype
+is specified, sets the file type of the current buffer.
+.TP
+.BI :tag " tag"
+Jumps to tag (tags file:
+.B TAGPATH
+env var or
+.IR ./tags ).
+.TP
+.B :tnext
+Jumps to the next matching tag.
+.TP
+.B :tprev
+Jumps to the previous matching tag.
+.TP
+.B :pop
+Pops the tag stack.
+.TP
+.BI :b[uffer] " [buf]"
+Without argument, prints the buffer list. Switches to the given buffer
+if
+.I buf
+is a number or alias. Special values:
+.B \-
+(previous),
+.B +
+(next),
+.B !
+(delete current),
+.B ~
+(renumber).
+.TP
+.BI :rs " reg"
+Reads dot-terminated lines from ex input and copies them to the given
+yank buffer.
+.TP
+.BI :rx " reg cmd"
+Like
+.BR :! ,
+executes
+.IR cmd ,
+passing the buffer contents as stdin and writing stdout back to the buffer.
+.TP
+.BI :rk " reg path"
+Connects to a unix socket, writes the buffer contents to it, and reads
+the response back into the buffer.
+.TP
+.BI :ra " reg"
+Like
+.BR :@ ,
+executes the buffer contents, replacing
+.BI ^ rx
+with the contents of buffer
+.I x
+first.
+.TP
+.BI :ec[ho] " msg"
+Prints the given message. Useful in ex scripts or q-commands.
+.TP
+.BI :hl " name [flags] [fg] [bg]"
+Specifies syntax highlighting colours. Flags:
+.B b
+(bold),
+.B i
+(italic),
+.B r
+(reversed).
+Colours are numbers 0\[en]255; values above 15 require a 256-colour terminal.
+.TP
+.BI :mk " key [def]"
+Maps a key to the given character in the current keymap. If
+.I def
+is missing, the mapping is reset.
+.TP
+.BI :mc " ch [def]"
+Defines a character placeholder for UTF-8 character
+.IR ch .
+.SH QUICK ACCESS
+Press
+.B q
+in normal mode, then a key:
+.TP
+.I digit
+Switch to that buffer number.
+.TP
+.B Enter
+Switch to first buffer.
+.TP
+.B q;
+List and filter buffers.
+.TP
+.B q,
+List and filter files in ./ls.
+.TP
+.B q=
+List and filter tags in ./tags.
+.TP
+.I letter
+Run extended buffer \eX, or call ECMD.
+.PP
+When a letter is pressed and no extended buffer
+.BI \e X
+is defined, neatvi calls
+.B ECMD
+(defined at compile time in
+.IR conf.h )
+with the current letter, file, line number, and column as arguments.
+Whatever
+.B ECMD
+writes to stdout is executed as ex commands.
+.PP
+Example q-commands via
+.IR neatvi.sh :
+.TP
+.B qa
+Git add current file.
+.TP
+.B qq
+Switch to previous file.
+.TP
+.B ql
+Open directory listing.
+.TP
+.B qo
+Show code outline.
+.SH AUTO-COMPLETION
+.SS History Completion
+When
+.B hist
+is nonzero, neatvi suggests the most recent matching entry at
+.BR : ,
+.BR / ,
+and
+.B !
+prompts.
+.B Ctrl\-a
+completes the input using the suggestion.
+.SS Insert Mode Completion
+In insert mode,
+.B Ctrl\-a
+sets the
+.B ~
+buffer to the current line up to the cursor, then executes the
+.B \e~
+buffer as ex commands. The
+.B \e~
+buffer can use
+.B :ec
+to display suggestions and update
+.B ~
+with a completion candidate; a second
+.B Ctrl\-a
+inserts it. External commands can compute completions via
+.B :rx
+or
+.BR :rk .
+.SH SYNTAX HIGHLIGHTING
+Syntax highlighting rules and supported filetypes are compiled into the
+editor via
+.IR conf.h .
+Supported languages include C, Shell, Go, Python, Makefiles, diff,
+roff, and TeX.
+.PP
+Enable or disable at runtime:
+.PP
+.RS
+.nf
+:set hl
+:set nohl
+.fi
+.RE
+.PP
+Change colours with the
+.B :hl
+command:
+.PP
+.RS
+:hl name [flags] [fg] [bg]
+.RE
+.PP
+Flags:
+.B b
+= bold,
+.B i
+= italic,
+.B r
+= reversed.
+Colours are numbers 0\[en]255 (256-colour palette requires terminal support).
+.SH KEY MAPPING
+The
+.B :mk
+.RB ( :mapkey )
+command maps keys in the current keymap. Example
+.I ~/.neatvi
+entries:
+.PP
+.RS
+.nf
+mk H ^
+mk L $
+mk J 5j
+mk K 5k
+.fi
+.RE
+.PP
+Switch keymaps:
+.TP
+.BI :cm " kmap"
+Set alternate keymap and switch to it.
+.TP
+.BR ze " / " zf
+Switch to English / alternate keymap (normal mode).
+.TP
+.B Ctrl\-e
+Switch to English keymap (insert mode).
+.TP
+.B Ctrl\-f
+Switch to alternate keymap (insert mode).
+.SH CONFIGURATION
+If the
+.B EXINIT
+environment variable is defined, neatvi executes its contents as ex
+commands at startup. Otherwise, it reads
+.IR $HOME/.neatvi ,
+if present.
+These can set options, change syntax highlighting colours, define
+keymaps, or define q-commands.
+To change syntax highlighting patterns or text direction rules,
+.I conf.h
+must be modified and neatvi recompiled.
+.PP
+.B Note:
+VTE-based terminals (GNOME Terminal, Tilix, etc.) use a
+non-standard extension for bidirectional text. Add
+.B set vte=1
+to your configuration when using these terminals.
+.SS Options Reference
+.TP
+.BR ai ", " autoindent
+Auto-indent new lines. As in vi(1).
+.TP
+.BR aw ", " autowrite
+Write file before switching buffers. As in vi(1).
+.TP
+.BR ic ", " ignorecase
+Ignore case in search patterns. As in vi(1).
+.TP
+.BR ts ", " tabstop
+Tab width (default: 8). As in vi(1).
+.TP
+.BR wa ", " writeany
+Allow writing to any file. As in vi(1).
+.TP
+.BR hl ", " highlight
+Enable syntax highlighting.
+.TP
+.BR hll ", " highlightline
+Highlight the current line.
+.TP
+.BR lim ", " linelimit
+Skip highlighting and reordering for lines longer than this value.
+.TP
+.BR ru ", " ruler
+When to redraw the status line:
+0 = never, 1 = always, 2 = multiple windows only, 4 = on file change.
+.TP
+.BR td ", " textdirection
+Direction context: +2 = always LTR, +1 = LTR default, \-1 = RTL default,
+\-2 = always RTL, 0 = auto-detect (default).
+.TP
+.B shape
+Enable Arabic/Farsi letter shaping (does not affect UTF-8 support).
+.TP
+.B order
+Character reordering: 1 = only lines with multi-byte UTF-8 chars, 2 = all lines.
+.TP
+.BR hist ", " history
+Number of lines remembered for ex, search, and pipe prompts. 0 disables history.
+.TP
+.B vte
+Set to 1 when using VTE-based terminals (GNOME Terminal, Tilix, etc.).
+.SS Minimal Configuration Example
+.PP
+.RS
+.nf
+set ai
+set ic
+set ts=4
+set ru=1
+set hll
+set hist=100
+.fi
+.RE
+.SS Performance Configuration
+To disable shaping, reordering, and syntax highlighting for maximum
+performance (useful for large files or low-resource environments):
+.PP
+.RS
+export EXINIT="set noshape | set noorder | set nohl | set td=+2"
+.RE
+.PP
+Or in
+.IR ~/.neatvi :
+.PP
+.RS
+.nf
+set noshape
+set noorder
+set nohl
+set td=+2
+.fi
+.RE
+.SH MARKS AND BUFFERS
+Special marks:
+.TP
+.B *
+Position of the previous change.
+.TP
+.B [
+First line of the previous change.
+.TP
+.B ]
+Last line of the previous change.
+.PP
+Special yank buffers:
+.TP
+.B /
+Previous search keyword.
+.TP
+.B :
+Previous ex command.
+.TP
+.B !
+Previous pipe command.
+.TP
+.B %
+Name of the current file.
+.TP
+.B \(dq
+Default yank buffer.
+.TP
+.B ;
+Current line.
+.TP
+.B \&.
+Last vi command.
+.TP
+.B #
+Cursor line number.
+.TP
+.B ^
+Cursor line offset.
+.TP
+.B \e/
+Search history.
+.TP
+.B \e:
+Ex command history.
+.TP
+.B \e!
+Pipe command history.
+.PP
+In addition to single-letter yank buffers, neatvi supports extended
+two-letter buffers whose names begin with
+.B \e
+(e.g.\&
+.BR \ex ).
+.SH ENVIRONMENT
+.TP
+.B EXINIT
+If set, its contents are executed as ex commands at startup, taking
+priority over
+.IR $HOME/.neatvi .
+Example:
+.RS
+export EXINIT="set ai | set ic | set ts=4"
+.RE
+.TP
+.B HOME
+Used to locate
+.IR $HOME/.neatvi .
+.TP
+.B TAGPATH
+Path to the tags file. Defaults to
+.IR ./tags .
+.SH FILES
+.TP
+.I $HOME/.neatvi
+User configuration file (ex commands). Used only if
+.B EXINIT
+is not set.
+.TP
+.I conf.h
+Compile-time configuration: syntax highlighting patterns, file type
+mappings, direction rules, and ECMD path.
+.TP
+.I ./tags
+Default tags file.
+.TP
+.I ./ls
+Directory listing file used by quick access.
+.SH SEE ALSO
+.BR vi (1),
+.BR ex (1),
+.BR ctags (1)
+.SH AUTHORS
+Ali Gholami Rudi and contributors.
+.br
+Source: https://github.com/aligrudi/neatvi

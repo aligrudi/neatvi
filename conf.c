@@ -55,6 +55,7 @@ static int conf_hldefs[384] = {
 	['s'] = 5,		/* string literals */
 	['v'] = 3,		/* macros */
 	['i'] = 0,		/* identifiers */
+	['x'] = 6,		/* identifier context */
 	/* ex-mode and status line */
 	['_'] = SYN_BGMK(0) | 7,	/* status line */
 	['Z'] = SYN_BGMK(0) | 7,	/* status line of inactive windows */

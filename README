@@ -266,6 +266,7 @@ hl h - 5	" character constants
 hl s - 5	" string literals
 hl v - 3	" macros
 hl i -		" identifiers
+hl x - 6	" identifier context
 
 " ex-mode and status line
 hl _ - 7 0	" status line

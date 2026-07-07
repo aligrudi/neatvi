@@ -1070,7 +1070,14 @@ static int tag_goto(char *cw, int dir)
 	char path[120], cmd[120];
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
-	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
+	int drow, doff;
+	if (lsp_on()) {
+		if (!ex_path() || lsp_definition(ex_path(), xrow, xoff, ex_filetype(),
+						path, sizeof(path), &drow, &doff)) {
+			ex_show("tag not found");
+			return 1;
+		}
+	} else if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
 		ex_show("tag not found");
 		return 1;
 	}
@@ -1085,6 +1092,11 @@ static int tag_goto(char *cw, int dir)
 		if (ec_edit("", "e", path, NULL) != 0)
 			return 1;
 	}
+	if (lsp_on()) {
+		xrow = drow;
+		xoff = doff;
+		return 0;
+	}
 	xrow = 0;
 	xoff = 0;
 	ex_command(cmd);
@@ -1097,6 +1109,53 @@ static int tag_goto(char *cw, int dir)
 static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 {
 	return tag_goto(arg, 0);
+}
+
+static void cmd_args(char *src, char *args[], int sz)
+{
+	int i;
+	for (i = 0; i < sz - 1 && *src; i++) {
+		while (isspace((unsigned char) *src))
+			src++;
+		args[i] = src;
+		for (; *src && !isspace((unsigned char) *src); src++) {
+			if (*src == '\\' && src[1])
+				src++;
+		}
+		if (*src)
+			*src++ = '\0';
+	}
+	args[i] = NULL;
+}
+
+static int ec_lsp(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *lcmd[16];
+	cmd_args(arg && arg[0] ? arg : "clangd", lcmd, LEN(lcmd));
+	if (!lsp_init(lcmd)) {
+		ex_show("LSP server connected");
+		return 0;
+	}
+	ex_show("failed to connect to the LSP server");
+	return 1;
+}
+
+static int ec_lspclose(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_show("LSP server disconnected");
+	lsp_done();
+	return 0;
+}
+
+static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *res = lsp_find(ex_path(), xrow, xoff, ex_filetype());
+	if (res)
+		reg_put('*', res, 1);
+	else
+		ex_show("not found");
+	free(res);
+	return !res;
 }
 
 static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
@@ -1340,6 +1399,9 @@ static struct excmd {
 	{"hl", "highlight", ec_highlight},
 	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
+	{"lsp", "lspopen", ec_lsp},
+	{"lspc", "lspclose", ec_lspclose},
+	{"lspf", "lspfind", ec_lspfind},
 	{"make", "make", ec_make},
 	{"mk", "mapkey", ec_mapkey},
 	{"n", "next", ec_next},
@@ -1583,6 +1645,7 @@ int ex_init(char **files)
 void ex_done(void)
 {
 	int i;
+	lsp_done();
 	for (i = 0; i < LEN(bufs); i++)
 		bufs_free(i);
 }

@@ -264,3 +264,9 @@ int qfix_current(char *dst, int dstlen, int *row, int *off);
 int qfix_next(void);
 int qfix_prev(void);
 void qfix_reset(void);
+/* LSP client */
+int lsp_init(char *cmd[]);
+void lsp_done(void);
+int lsp_on(void);
+int lsp_definition(char *path, int row, int off, char *ft, char *dst, int dstlen, int *drow, int *doff);
+char *lsp_find(char *path, int row, int off, char *ft);

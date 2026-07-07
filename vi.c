@@ -1499,9 +1499,15 @@ static int vc_openpath(char *ln, int off, int num, int newwin)
 	return newwin ? VC_ALL : VC_WIN;
 }
 
-static int vc_tag(char *ln, int off, int newwin)
+static int vc_tag(char *ln, int off, int newwin, int lsp)
 {
 	char cw[120], ex[128];
+	if (lsp && lsp_on()) {
+		if (newwin)
+			vi_wmirror();
+		ex_command("lspg");
+		return newwin ? VC_ALL : VC_WIN;
+	}
 	if (uc_word(ln, cw, sizeof(cw), ren_noeol(ln, off), ""))
 		return 0;
 	snprintf(ex, sizeof(ex), "ta %s", cw);
@@ -1698,7 +1704,7 @@ static int vc_quick(int newwin)
 	if (tls)
 		tlist_free(tls);
 	if (cmd[0] && mod == '=')
-		return vc_tag(cmd, 0, newwin) | VC_WIN;
+		return vc_tag(cmd, 0, newwin, 0) | VC_WIN;
 	if (cmd[0])
 		return vc_openpath(cmd, 0, 1, newwin) | VC_WIN;
 	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
@@ -1874,7 +1880,7 @@ static void vi(void)
 				mod = VC_WIN;
 				break;
 			case TK_CTL(']'):
-				mod = vc_tag(lbuf_get(xb, xrow), xoff, 0);
+				mod = vc_tag(lbuf_get(xb, xrow), xoff, 0, 1);
 				break;
 			case TK_CTL('t'):
 				if (!ex_command("pop")) {
@@ -1903,7 +1909,7 @@ static void vi(void)
 					if (!vi_wswap())
 						mod = VC_ALL;
 				if (k == TK_CTL(']') || k == ']')
-					mod = vc_tag(lbuf_get(xb, xrow), xoff, 1);
+					mod = vc_tag(lbuf_get(xb, xrow), xoff, 1, 1);
 				if (k == 'g') {
 					char *ln = lbuf_get(xb, xrow);
 					int j = vi_read();

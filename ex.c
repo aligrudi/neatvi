@@ -385,6 +385,7 @@ static char *bufs_save(int idx, int force)
 		return err;
 	lbuf_saved(b->lb, 0);
 	b->mtime = mtime(b->path);
+	lsp_modified(b->path, b->ft);
 	return NULL;
 }
 
@@ -446,11 +447,11 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 		}
 		if (idx >= 0 && idx < LEN(bufs) && bufs[idx].lb) {
 			if (!xwa && strchr(cmd, '!') == NULL)
-				if (bufs_modified(0, "buffer modified"))
+				if (bufs_modified(0, "b: buffer modified"))
 					return 1;
 			bufs_switch(idx);
 		} else {
-			ex_show("no such buffer");
+			ex_show("b: no such buffer");
 			return 1;
 		}
 	}
@@ -470,7 +471,7 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 	char *path, *pls;
 	int fd;
 	if (!strchr(cmd, '!'))
-		if (xb && !xwa && bufs_modified(0, "buffer modified"))
+		if (xb && !xwa && bufs_modified(0, "e: buffer modified"))
 			return 1;
 	pls = ex_plus(&arg);
 	if (!pls || !(path = ex_pathexpand(arg, 0)))
@@ -492,7 +493,7 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
 		if (rd)
-			ex_show("read failed");
+			ex_show("e: read failed");
 		else
 			ex_show("R%04d <%s", lbuf_len(xb), ex_path());
 	}
@@ -515,7 +516,7 @@ static int ex_next(char *cmd, int dis)
 	char *r = path != NULL ? path : "";
 	fbuf_init(&fb);
 	if (dis && path == NULL) {
-		ex_show("no more files");
+		ex_show("n: no more files");
 		return 1;
 	}
 	while (*r) {
@@ -559,11 +560,11 @@ static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 	} else {
 		int fd = open(path, O_RDONLY);
 		if (fd < 0) {
-			ex_show("open failed for %s", path);
+			ex_show("r: open failed for %s", path);
 			return 1;
 		}
 		if (lbuf_rd(xb, fd, pos, pos)) {
-			ex_show("read failed for %s", path);
+			ex_show("r: read failed for %s", path);
 			close(fd);
 			return 1;
 		}
@@ -613,6 +614,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		lbuf_saved(xb, 0);
 	if (!strcmp(ex_path(), path))
 		bufs[0].mtime = mtime(path);
+	lsp_modified(path, bufs[0].ft);
 	return 0;
 }
 
@@ -625,7 +627,7 @@ static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
 	for (i = 0; i < LEN(bufs); i++) {
 		if (bufs[i].lb) {
 			if (!strchr(cmd, 'a') && !strchr(cmd, '!')) {
-				if (bufs_modified(i, "buffer modified")) {
+				if (bufs_modified(i, "q: buffer modified")) {
 					bufs_switch(i);
 					return 0;
 				}
@@ -894,7 +896,7 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
 	char *target;
-	if (!xwa && bufs_modified(0, "buffer modified"))
+	if (!xwa && bufs_modified(0, "ma: buffer modified"))
 		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
@@ -1045,11 +1047,12 @@ static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 
 #define TAGCNT		32
 #define TAGLEN		128
+#define TAGLOC		256
 
 static int tag_row[TAGCNT];
 static int tag_off[TAGCNT];
 static int tag_pos[TAGCNT];
-static char tag_path[TAGCNT][TAGLEN];
+static char tag_path[TAGCNT][TAGLOC];
 static char tag_name[TAGCNT][TAGLEN];
 static int tag_cnt = 0;
 
@@ -1058,8 +1061,8 @@ static void ex_tagput(char *name)
 	if (tag_cnt < TAGCNT) {
 		tag_row[tag_cnt] = xrow;
 		tag_off[tag_cnt] = xoff;
-		snprintf(tag_path[tag_cnt], TAGLEN, "%s", ex_path());
-		snprintf(tag_name[tag_cnt], TAGLEN, "%s", name);
+		snprintf(tag_path[tag_cnt], sizeof(tag_path[tag_cnt]), "%s", ex_path());
+		snprintf(tag_name[tag_cnt], sizeof(tag_name[tag_cnt]), "%s", name);
 		tag_cnt++;
 	}
 }
@@ -1067,11 +1070,11 @@ static void ex_tagput(char *name)
 /* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
 static int tag_goto(char *cw, int dir)
 {
-	char path[120], cmd[120];
+	char path[TAGLOC], cmd[TAGLEN];
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
 	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
-		ex_show("tag not found");
+		ex_show("ta: tag not found");
 		return 1;
 	}
 	if (dir == 0)
@@ -1079,7 +1082,7 @@ static int tag_goto(char *cw, int dir)
 	tag_pos[tag_cnt - 1] = pos;
 	if (strcmp(path, ex_path()) != 0) {
 		if (access(path, R_OK) != 0) {
-			ex_show("cannot open %s", path);
+			ex_show("ta: cannot open %s", path);
 			return 1;
 		}
 		if (ec_edit("", "e", path, NULL) != 0)
@@ -1099,6 +1102,81 @@ static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 	return tag_goto(arg, 0);
 }
 
+static void cmd_args(char *src, char *args[], int sz)
+{
+	int i;
+	for (i = 0; i < sz - 1 && *src; i++) {
+		while (isspace((unsigned char) *src))
+			src++;
+		args[i] = src;
+		for (; *src && !isspace((unsigned char) *src); src++) {
+			if (*src == '\\' && src[1])
+				src++;
+		}
+		if (*src)
+			*src++ = '\0';
+	}
+	args[i] = NULL;
+}
+
+static int ec_lsp(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *lcmd[16];
+	cmd_args(arg && arg[0] ? arg : "clangd", lcmd, LEN(lcmd));
+	if (!lsp_init(lcmd)) {
+		ex_show("LSP server connected");
+		return 0;
+	}
+	ex_show("lsp: failed to connect to the LSP server");
+	return 1;
+}
+
+static int ec_lspclose(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_show("LSP server disconnected");
+	lsp_done();
+	return 0;
+}
+
+static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
+{
+	char path[TAGLOC];
+	int drow, doff;
+	if (!xwa && bufs_modified(0, "lspg: buffer modified"))
+		return 1;
+	if (!ex_path() || lsp_definition(ex_path(), xrow, xoff, ex_filetype(),
+					path, sizeof(path), &drow, &doff)) {
+		ex_show("lspg: definition not found");
+		return 1;
+	}
+	ex_tagput("lspgoto");
+	if (strcmp(path, ex_path()) != 0) {
+		if (access(path, R_OK) != 0) {
+			ex_show("lspg: cannot open %s", path);
+			return 1;
+		}
+		if (ec_edit("", "e", path, NULL) != 0)
+			return 1;
+	}
+	xrow = drow;
+	xoff = doff;
+	return 0;
+}
+
+static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *res;
+	if (!xwa && bufs_modified(0, "lspf: buffer modified"))
+		return 1;
+	res = lsp_find(ex_path(), xrow, xoff, ex_filetype());
+	if (res)
+		reg_put('*', res, 1);
+	else
+		ex_show("lspf: identifier not found");
+	free(res);
+	return !res;
+}
+
 static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
@@ -1116,7 +1194,7 @@ static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 		xoff = tag_off[tag_cnt];
 		return 0;
 	} else {
-		ex_show("tag stack empty");
+		ex_show("po: tag stack empty");
 	}
 	return 1;
 }
@@ -1131,7 +1209,7 @@ static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], +1))
 		return 0;
-	ex_show("no more tags");
+	ex_show("tn: no more tags");
 	return 1;
 }
 
@@ -1139,7 +1217,7 @@ static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], -1))
 		return 0;
-	ex_show("no more tags");
+	ex_show("tp: no more tags");
 	return 1;
 }
 
@@ -1148,11 +1226,11 @@ static int ex_cjump(void)
 	char path[1024];
 	int row, off;
 	if (qfix_current(path, sizeof(path), &row, &off)) {
-		ex_show("no more items");
+		ex_show("cn: no more items");
 		return 1;
 	}
 	if (access(path, R_OK)) {
-		ex_show("cannot open %s", path);
+		ex_show("cn: cannot open %s", path);
 		return 1;
 	}
 	if (ec_edit("", "e", path, NULL) != 0)
@@ -1173,7 +1251,7 @@ static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
 		qfix_next();
 	qfix_rev = 0;
 	if ((res = ex_cjump()))
-		ex_show("no more items");
+		ex_show("cn: no more items");
 	qfix_next();
 	return res;
 }
@@ -1184,7 +1262,7 @@ static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
 		qfix_prev();
 	qfix_rev = 1;
 	if (qfix_prev()) {
-		ex_show("no more items");
+		ex_show("cp: no more items");
 		return 1;
 	}
 	return ex_cjump();
@@ -1340,6 +1418,10 @@ static struct excmd {
 	{"hl", "highlight", ec_highlight},
 	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
+	{"lsp", "lspopen", ec_lsp},
+	{"lspc", "lspclose", ec_lspclose},
+	{"lspf", "lspfind", ec_lspfind},
+	{"lspg", "lspgoto", ec_lspgoto},
 	{"make", "make", ec_make},
 	{"mk", "mapkey", ec_mapkey},
 	{"n", "next", ec_next},
@@ -1583,6 +1665,7 @@ int ex_init(char **files)
 void ex_done(void)
 {
 	int i;
+	lsp_done();
 	for (i = 0; i < LEN(bufs); i++)
 		bufs_free(i);
 }

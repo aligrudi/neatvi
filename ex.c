@@ -461,7 +461,7 @@ int ex_list(char **ls, int size)
 {
 	int i;
 	for (i = 0; i < LEN(bufs) && bufs[i].lb && i < size; i++)
-		ls[i] = bufs[i].path;
+		ls[i] = bufs[i].path[0] ? bufs[i].path : "/";
 	return i;
 }
 

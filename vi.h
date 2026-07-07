@@ -41,10 +41,10 @@ char *sbuf_done(struct sbuf *sb);
 char *sbuf_buf(struct sbuf *sb);
 void sbuf_chr(struct sbuf *sb, int c);
 void sbuf_str(struct sbuf *sb, char *s);
-void sbuf_mem(struct sbuf *sb, char *s, int len);
+void sbuf_mem(struct sbuf *sb, void *s, long len);
 void sbuf_printf(struct sbuf *sbuf, char *s, ...);
-int sbuf_len(struct sbuf *sb);
-void sbuf_cut(struct sbuf *s, int len);
+long sbuf_len(struct sbuf *sb);
+void sbuf_cut(struct sbuf *s, long len);
 /* fixed-sized buffers */
 struct fbuf {
 	char buf[504];
@@ -52,9 +52,9 @@ struct fbuf {
 };
 void fbuf_init(struct fbuf *fb);
 void fbuf_chr(struct fbuf *fb, int c);
-void fbuf_mem(struct fbuf *fb, char *s, int len);
+void fbuf_mem(struct fbuf *fb, void *s, long len);
 void fbuf_str(struct fbuf *fb, char *s);
-int fbuf_len(struct fbuf *fb);
+long fbuf_len(struct fbuf *fb);
 char *fbuf_buf(struct fbuf *fb);
 
 /* regular expressions */

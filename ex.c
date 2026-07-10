@@ -1105,7 +1105,7 @@ static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 	return tag_goto(arg, 0);
 }
 
-static int ec_tfree(char *loc, char *cmd, char *arg, char *txt)
+static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
 	return 0;
@@ -1124,6 +1124,12 @@ static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 		ex_show("not found");
 	}
 	return 1;
+}
+
+static int ec_tput(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_tagput(arg[0] ? arg : "tagput");
+	return 0;
 }
 
 static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
@@ -1358,7 +1364,8 @@ static struct excmd {
 	{"ta", "tag", ec_tag},
 	{"tn", "tnext", ec_tnext},
 	{"tp", "tprev", ec_tprev},
-	{"tf", "tfree", ec_tfree},
+	{"tc", "tclose", ec_tclose},
+	{"tt", "tput", ec_tput},
 	{"u", "undo", ec_undo},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},

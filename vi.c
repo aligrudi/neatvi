@@ -1692,10 +1692,11 @@ static int vc_quick(int newwin)
 	if (cmd[0])
 		return vc_openpath(cmd, 0, 1, newwin) | VC_WIN;
 	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
-		char cmd[8] = {'@', '\\', c};
+		char cmd1[8] = {'@', '\\', c};
+		char cmd2[8] = {'r', 'a', '\\', c};
 		if (newwin)
 			vi_wmirror();
-		ex_command(cmd);
+		ex_command(islower(c) ? cmd1 : cmd2);
 		return VC_ALL;
 	}
 	if (isalpha(c))

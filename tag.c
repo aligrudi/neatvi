@@ -257,3 +257,60 @@ int tlist_top(struct tlist *tls, int *view, int view_sz)
 			view[view_n++] = i;
 	return view_n;
 }
+
+static long qfix_pos;
+
+int qfix_current(char *dst, int dstlen, int *row, int *off)
+{
+	char *qfix = reg_get('*', NULL);
+	char *pos = qfix + qfix_pos;
+	char *eol, *eop, *c1, *c2;
+	int len;
+	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
+		return 1;
+	if (!(eol = strchr(pos, '\n')))
+		return 1;
+	c1 = memchr(pos, ':', eol - pos);
+	c2 = c1 ? memchr(c1 + 1, ':', eol - c1) : NULL;
+	eop = c1 ? c1 : eol;
+	len = MIN(eop - pos, dstlen - 1);
+	memcpy(dst, pos, len);
+	dst[len] = '\0';
+	*row = c1 ? MAX(1, atoi(c1 + 1)) - 1 : 0;
+	*off = c2 ? MAX(1, atoi(c2 + 1)) - 1 : 0;
+	return 0;
+}
+
+int qfix_next(void)
+{
+	char *qfix = reg_get('*', NULL);
+	char *eol;
+	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
+		return 1;
+	while ((eol = strchr(qfix + qfix_pos, '\n'))) {
+		qfix_pos = eol + 1 - qfix;
+		if (!qfix[qfix_pos] || !strchr("# \t:", (unsigned char) qfix[qfix_pos]))
+			break;
+	}
+	return !eol || !eol[1];
+}
+
+int qfix_prev(void)
+{
+	char *qfix = reg_get('*', NULL);
+	if (!qfix || !*qfix || qfix_pos > strlen(qfix))
+		return 1;
+	while (qfix_pos > 0) {
+		qfix_pos--;
+		while (qfix_pos > 0 && qfix[qfix_pos - 1] != '\n')
+			qfix_pos--;
+		if (!strchr("# \t:", (unsigned char) qfix[qfix_pos]))
+			return 0;
+	}
+	return 1;
+}
+
+void qfix_reset(void)
+{
+	qfix_pos = 0;
+}

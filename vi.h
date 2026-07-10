@@ -259,3 +259,8 @@ char *tlist_get(struct tlist *tls, int idx);
 int tlist_cnt(struct tlist *tls);
 int tlist_matches(struct tlist *tls);
 int tlist_top(struct tlist *tls, int *view, int view_sz);
+/* quick fix list */
+int qfix_current(char *dst, int dstlen, int *row, int *off);
+int qfix_next(void);
+int qfix_prev(void);
+void qfix_reset(void);

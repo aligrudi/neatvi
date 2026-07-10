@@ -1140,6 +1140,59 @@ static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 	return 1;
 }
 
+static int ex_cjump(void)
+{
+	char path[1024];
+	int row, off;
+	if (qfix_current(path, sizeof(path), &row, &off)) {
+		ex_show("no more items");
+		return 1;
+	}
+	if (access(path, R_OK)) {
+		ex_show("cannot open");
+		return 1;
+	}
+	if (ec_edit("", "e", path, NULL) != 0)
+		return 1;
+	if (row < 0 || row >= lbuf_len(xb))
+		row = 0;
+	xrow = row;
+	xoff = off;
+	return 0;
+}
+
+static int qfix_rev;	/* the last command was ec_cprev */
+
+static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
+{
+	int res;
+	if (qfix_rev)
+		qfix_next();
+	qfix_rev = 0;
+	res = ex_cjump();
+	qfix_next();
+	return res;
+}
+
+static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
+{
+	if (!qfix_rev)
+		qfix_prev();
+	qfix_rev = 1;
+	if (qfix_prev()) {
+		ex_show("no more items");
+		return 1;
+	}
+	return ex_cjump();
+}
+
+static int ec_crewind(char *loc, char *cmd, char *arg, char *txt)
+{
+	qfix_reset();
+	qfix_rev = 0;
+	return 0;
+}
+
 static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
@@ -1269,6 +1322,9 @@ static struct excmd {
 	{"c", "change", ec_insert},
 	{"cm", "cmap", ec_cmap},
 	{"cm!", "cmap!", ec_cmap},
+	{"cn", "cnext", ec_cnext},
+	{"cp", "cprev", ec_cprev},
+	{"cr", "crewind", ec_crewind},
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
 	{"ec", "echo", ec_echo},

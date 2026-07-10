@@ -120,6 +120,7 @@ char *uc_prev(char *beg, char *s);
 char *uc_beg(char *beg, char *s);
 char *uc_shape(char *beg, char *s);
 char *uc_lastline(char *s);
+int uc_word(char *ln, char *dst, int len, int off, char *ext);
 
 /* managing the terminal */
 #define xrows		(term_rows())
@@ -251,6 +252,7 @@ void tag_done(void);
 struct tlist *tlist_make(char *ls[], int ls_n);
 struct tlist *tlist_from(char *path);
 struct tlist *tlist_tags(char *path);
+struct tlist *tlist_str(char *str);
 void tlist_free(struct tlist *tls);
 void tlist_filt(struct tlist *tls, char *kw);
 char *tlist_get(struct tlist *tls, int idx);

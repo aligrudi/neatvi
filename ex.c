@@ -1108,6 +1108,7 @@ static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
+	tag_cnt = 0;
 	return 0;
 }
 

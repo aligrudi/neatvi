@@ -1666,6 +1666,8 @@ static int vc_quick(int newwin)
 		char *name = c == ',' ? "FILE" : "BUFF";
 		if (c == '=')
 			name = "TAGS";
+		if (c == '*')
+			name = "QFIX";
 		mod = c;
 		tlist_free(tls);
 		if (mod == ';')

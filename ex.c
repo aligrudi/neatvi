@@ -461,7 +461,7 @@ int ex_list(char **ls, int size)
 {
 	int i;
 	for (i = 0; i < LEN(bufs) && bufs[i].lb && i < size; i++)
-		ls[i] = bufs[i].path;
+		ls[i] = bufs[i].path[0] ? bufs[i].path : "/";
 	return i;
 }
 
@@ -1105,9 +1105,10 @@ static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 	return tag_goto(arg, 0);
 }
 
-static int ec_tfree(char *loc, char *cmd, char *arg, char *txt)
+static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
+	tag_cnt = 0;
 	return 0;
 }
 
@@ -1126,6 +1127,12 @@ static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 	return 1;
 }
 
+static int ec_tput(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_tagput(arg[0] ? arg : "tagput");
+	return 0;
+}
+
 static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (tag_cnt > 0)
@@ -1138,6 +1145,59 @@ static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 	if (tag_cnt > 0)
 		return tag_goto(tag_name[tag_cnt - 1], -1);
 	return 1;
+}
+
+static int ex_cjump(void)
+{
+	char path[1024];
+	int row, off;
+	if (qfix_current(path, sizeof(path), &row, &off)) {
+		ex_show("no more items");
+		return 1;
+	}
+	if (access(path, R_OK)) {
+		ex_show("cannot open");
+		return 1;
+	}
+	if (ec_edit("", "e", path, NULL) != 0)
+		return 1;
+	if (row < 0 || row >= lbuf_len(xb))
+		row = 0;
+	xrow = row;
+	xoff = off;
+	return 0;
+}
+
+static int qfix_rev;	/* the last command was ec_cprev */
+
+static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
+{
+	int res;
+	if (qfix_rev)
+		qfix_next();
+	qfix_rev = 0;
+	res = ex_cjump();
+	qfix_next();
+	return res;
+}
+
+static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
+{
+	if (!qfix_rev)
+		qfix_prev();
+	qfix_rev = 1;
+	if (qfix_prev()) {
+		ex_show("no more items");
+		return 1;
+	}
+	return ex_cjump();
+}
+
+static int ec_crewind(char *loc, char *cmd, char *arg, char *txt)
+{
+	qfix_reset();
+	qfix_rev = 0;
+	return 0;
 }
 
 static int ec_at(char *loc, char *cmd, char *arg, char *txt)
@@ -1269,6 +1329,9 @@ static struct excmd {
 	{"c", "change", ec_insert},
 	{"cm", "cmap", ec_cmap},
 	{"cm!", "cmap!", ec_cmap},
+	{"cn", "cnext", ec_cnext},
+	{"cp", "cprev", ec_cprev},
+	{"cr", "crewind", ec_crewind},
 	{"e", "edit", ec_edit},
 	{"e!", "edit!", ec_edit},
 	{"ec", "echo", ec_echo},
@@ -1302,7 +1365,8 @@ static struct excmd {
 	{"ta", "tag", ec_tag},
 	{"tn", "tnext", ec_tnext},
 	{"tp", "tprev", ec_tprev},
-	{"tf", "tfree", ec_tfree},
+	{"tc", "tclose", ec_tclose},
+	{"tt", "tput", ec_tput},
 	{"u", "undo", ec_undo},
 	{"v", "vglobal", ec_glob},
 	{"w", "write", ec_write},

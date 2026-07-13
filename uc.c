@@ -620,3 +620,24 @@ int uc_iscomb(char *s)
 		return 0;
 	return uc_acomb(uc_code(s));
 }
+
+int uc_word(char *ln, char *dst, int len, int off, char *ext)
+{
+	char *beg, *end;
+	if (!ln)
+		return 1;
+	beg = uc_chr(ln, off);
+	end = beg;
+	while (*end && (uc_kind(end) == 1 ||
+			strchr(ext, (unsigned char) end[0]) != NULL))
+		end = uc_next(end);
+	while (beg > ln && (uc_kind(uc_beg(ln, beg - 1)) == 1 ||
+			strchr(ext, (unsigned char) beg[-1]) != NULL))
+		beg = uc_beg(ln, beg - 1);
+	if (beg >= end)
+		return 1;
+	len = len - 1 < end - beg ? len - 1 : end - beg;
+	memcpy(dst, beg, len);
+	dst[len] = '\0';
+	return 0;
+}

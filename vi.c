@@ -645,27 +645,6 @@ static int vi_motionln(int *row, int cmd)
 	return c;
 }
 
-static int vi_curword(char *ln, char *dst, int len, int off, char *ext)
-{
-	char *beg, *end;
-	if (!ln)
-		return 1;
-	beg = uc_chr(ln, ren_noeol(ln, off));
-	end = beg;
-	while (*end && (uc_kind(end) == 1 ||
-			strchr(ext, (unsigned char) end[0]) != NULL))
-		end = uc_next(end);
-	while (beg > ln && (uc_kind(uc_beg(ln, beg - 1)) == 1 ||
-			strchr(ext, (unsigned char) beg[-1]) != NULL))
-		beg = uc_beg(ln, beg - 1);
-	if (beg >= end)
-		return 1;
-	len = len - 1 < end - beg ? len - 1 : end - beg;
-	dst[len] = '\0';
-	memcpy(dst, beg, len);
-	return 0;
-}
-
 /* read a motion */
 static int vi_motion(int *row, int *off)
 {
@@ -813,7 +792,7 @@ static int vi_motion(int *row, int *off)
 			return -1;
 		break;
 	case TK_CTL('a'):
-		if (vi_curword(lbuf_get(xb, *row), cw, sizeof(cw), *off, "") != 0)
+		if (uc_word(lbuf_get(xb, *row), cw, sizeof(cw), *off, "") != 0)
 			return -1;
 		snprintf(kw, sizeof(kw), "\\<%s\\>", cw);
 		ex_kwdset(kw, +1);
@@ -1466,7 +1445,7 @@ static int vc_definition(char *ln, int off, int newwin)
 	char *s;
 	int r = 0, o = 0;
 	int len = 0;
-	if (vi_curword(ln, cw, sizeof(cw), off, "") != 0)
+	if (uc_word(ln, cw, sizeof(cw), ren_noeol(ln, off), "") != 0)
 		return 0;
 	snprintf(kw, sizeof(kw), conf_definition(ex_filetype()), cw);
 	if (lbuf_search(xb, kw, +1, &r, &o, &len) != 0) {
@@ -1488,7 +1467,7 @@ static int vc_openpath(char *ln, int off, int num, int newwin)
 {
 	char path[250], ex[256];
 	char *sep;
-	if (vi_curword(ln, path, sizeof(path), off, "-/.:") != 0)
+	if (uc_word(ln, path, sizeof(path), ren_noeol(ln, off), "-/.:") != 0)
 		return 0;
 	if ((sep = strchr(path, ':')) != NULL)
 		*sep = '\0';
@@ -1515,7 +1494,7 @@ static int vc_openpath(char *ln, int off, int num, int newwin)
 static int vc_tag(char *ln, int off, int newwin)
 {
 	char cw[120], ex[128];
-	if (vi_curword(ln, cw, sizeof(cw), off, ""))
+	if (uc_word(ln, cw, sizeof(cw), ren_noeol(ln, off), ""))
 		return 0;
 	snprintf(ex, sizeof(ex), "ta %s", cw);
 	vi_marksave();
@@ -1683,7 +1662,7 @@ static int vc_quick(int newwin)
 	vi_leaplist(ls + 1, minrows, ls_n - 1, ls_n - 1, "BUFF", pos);
 	term_commit();
 	c = vi_read();
-	if (c == ',' || c == ';' || c == '=') {
+	if (c == ',' || c == ';' || c == '=' || c == '*') {
 		char *name = c == ',' ? "FILE" : "BUFF";
 		if (c == '=')
 			name = "TAGS";
@@ -1695,6 +1674,8 @@ static int vc_quick(int newwin)
 			tls = tlist_from("ls");
 		if (mod == '=')
 			tls = tlist_tags("tags");
+		if (mod == '*')
+			tls = tlist_str(reg_get('*', NULL));
 		if (tls)
 			sel = vi_leap(tls, name, pos, minrows);
 	} else if (c >= '1' && c <= '9') {
@@ -1711,10 +1692,11 @@ static int vc_quick(int newwin)
 	if (cmd[0])
 		return vc_openpath(cmd, 0, 1, newwin) | VC_WIN;
 	if (isalpha(c) && reg_get(0x80 | c, NULL) != NULL) {
-		char cmd[8] = {'@', '\\', c};
+		char cmd1[8] = {'@', '\\', c};
+		char cmd2[8] = {'r', 'a', '\\', c};
 		if (newwin)
 			vi_wmirror();
-		ex_command(cmd);
+		ex_command(islower(c) ? cmd1 : cmd2);
 		return VC_ALL;
 	}
 	if (isalpha(c))
@@ -2189,6 +2171,7 @@ int main(int argc, char *argv[])
 	tag_init();
 	if (xled || xvis)
 		term_init();
+	signal(SIGPIPE, SIG_IGN);
 	if (!ex_init(argv + i)) {
 		if (xvis)
 			vi();

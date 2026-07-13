@@ -41,10 +41,10 @@ char *sbuf_done(struct sbuf *sb);
 char *sbuf_buf(struct sbuf *sb);
 void sbuf_chr(struct sbuf *sb, int c);
 void sbuf_str(struct sbuf *sb, char *s);
-void sbuf_mem(struct sbuf *sb, char *s, int len);
+void sbuf_mem(struct sbuf *sb, void *s, long len);
 void sbuf_printf(struct sbuf *sbuf, char *s, ...);
-int sbuf_len(struct sbuf *sb);
-void sbuf_cut(struct sbuf *s, int len);
+long sbuf_len(struct sbuf *sb);
+void sbuf_cut(struct sbuf *s, long len);
 /* fixed-sized buffers */
 struct fbuf {
 	char buf[504];
@@ -52,9 +52,9 @@ struct fbuf {
 };
 void fbuf_init(struct fbuf *fb);
 void fbuf_chr(struct fbuf *fb, int c);
-void fbuf_mem(struct fbuf *fb, char *s, int len);
+void fbuf_mem(struct fbuf *fb, void *s, long len);
 void fbuf_str(struct fbuf *fb, char *s);
-int fbuf_len(struct fbuf *fb);
+long fbuf_len(struct fbuf *fb);
 char *fbuf_buf(struct fbuf *fb);
 
 /* regular expressions */
@@ -120,6 +120,7 @@ char *uc_prev(char *beg, char *s);
 char *uc_beg(char *beg, char *s);
 char *uc_shape(char *beg, char *s);
 char *uc_lastline(char *s);
+int uc_word(char *ln, char *dst, int len, int off, char *ext);
 
 /* managing the terminal */
 #define xrows		(term_rows())
@@ -251,9 +252,15 @@ void tag_done(void);
 struct tlist *tlist_make(char *ls[], int ls_n);
 struct tlist *tlist_from(char *path);
 struct tlist *tlist_tags(char *path);
+struct tlist *tlist_str(char *str);
 void tlist_free(struct tlist *tls);
 void tlist_filt(struct tlist *tls, char *kw);
 char *tlist_get(struct tlist *tls, int idx);
 int tlist_cnt(struct tlist *tls);
 int tlist_matches(struct tlist *tls);
 int tlist_top(struct tlist *tls, int *view, int view_sz);
+/* quick fix list */
+int qfix_current(char *dst, int dstlen, int *row, int *off);
+int qfix_next(void);
+int qfix_prev(void);
+void qfix_reset(void);

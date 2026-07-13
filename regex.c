@@ -507,7 +507,7 @@ static struct rnode *rnode_parse(char **pat)
 		return c1;
 	++*pat;
 	c2 = rnode_parse(pat);
-	return c2 ? rnode_make(RN_ALT, c1, c2) : c1;
+	return rnode_make(RN_ALT, c1, c2);
 }
 
 static int rnode_count(struct rnode *rnode)

@@ -129,7 +129,7 @@ Other noteworthy differences with vi(1):
   with a backslash, like \x.
 - The :cn and :cp ex commands and q* vi command read the * buffer,
   which must contain lines with the "path:line:offset: description"
-  format.  For instance, after the "rx * git grep -Fwn --column '$'"
+  format.  For instance, after the "rx * git grep -Fwn --column ']'"
   command, one can open the occurrences of the word under the
   cursor using :cn, :cp, and q* commands.
 
@@ -212,7 +212,7 @@ Special yank buffers:
 - . the last vi command
 - # cursor line number
 - ^ cursor line offset
-- $ the word under the cursor
+- ] the word under the cursor
 - \/ search history
 - \: ex command history
 - \! pipe command history

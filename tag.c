@@ -260,25 +260,45 @@ int tlist_top(struct tlist *tls, int *view, int view_sz)
 
 static long qfix_pos;
 
+static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off)
+{
+	char *c1, *c2, *c3;
+	char *eol = strchr(ln, '\n');
+	int len;
+	if (strchr("# \t:", (unsigned char) ln[0]) || !ln)
+		return 1;
+	if (!(c1 = memchr(ln, ':', eol - ln)))
+		return 1;
+	c2 = c1 + 1;
+	while (isdigit((unsigned char) *c2))
+		c2++;
+	if (*c2 != ':')
+		return 1;
+	c3 = c2 + 1;
+	while (isdigit((unsigned char) *c3))
+		c3++;
+	len = MIN(c1 - ln, dstlen - 1);
+	if (dst) {
+		memcpy(dst, ln, len);
+		dst[len] = '\0';
+	}
+	if (row)
+		*row = atoi(c1 + 1) - 1;
+	if (off)
+		*off = *c3 == ':' ? MAX(1, atoi(c2 + 1)) - 1 : 0;
+	return 0;
+}
+
 int qfix_current(char *dst, int dstlen, int *row, int *off)
 {
 	char *qfix = reg_get('*', NULL);
-	char *pos = qfix + qfix_pos;
-	char *eol, *eop, *c1, *c2;
-	int len;
 	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
 		return 1;
-	if (!(eol = strchr(pos, '\n')))
+	if (!qfix_readln(qfix + qfix_pos, dst, dstlen, row, off))
+		return 0;
+	if (qfix_pos == 0 && qfix_next())
 		return 1;
-	c1 = memchr(pos, ':', eol - pos);
-	c2 = c1 ? memchr(c1 + 1, ':', eol - c1) : NULL;
-	eop = c1 ? c1 : eol;
-	len = MIN(eop - pos, dstlen - 1);
-	memcpy(dst, pos, len);
-	dst[len] = '\0';
-	*row = c1 ? MAX(1, atoi(c1 + 1)) - 1 : 0;
-	*off = c2 ? MAX(1, atoi(c2 + 1)) - 1 : 0;
-	return 0;
+	return qfix_readln(qfix + qfix_pos, dst, dstlen, row, off);
 }
 
 int qfix_next(void)
@@ -289,8 +309,8 @@ int qfix_next(void)
 		return 1;
 	while ((eol = strchr(qfix + qfix_pos, '\n'))) {
 		qfix_pos = eol + 1 - qfix;
-		if (!qfix[qfix_pos] || !strchr("# \t:", (unsigned char) qfix[qfix_pos]))
-			break;
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL))
+			return 0;
 	}
 	return !eol || !eol[1];
 }
@@ -304,7 +324,7 @@ int qfix_prev(void)
 		qfix_pos--;
 		while (qfix_pos > 0 && qfix[qfix_pos - 1] != '\n')
 			qfix_pos--;
-		if (!strchr("# \t:", (unsigned char) qfix[qfix_pos]))
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL))
 			return 0;
 	}
 	return 1;

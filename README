@@ -47,6 +47,10 @@ Commands not available in ex(1):
   Jumps to the next matching tag.
 :tp[rev]
   Jumps to the previous matching tag.
+:tt
+  Pushes the current cursor position to the tag stack.
+:tc
+  Closes the tags file and resets the tag stack.
 :po[p]
   Pops tag stack.
 :b[uffer] [buf]
@@ -83,6 +87,10 @@ Commands not available in ex(1):
   Defines a character placeholder for UTF-8 character ch.  For
   instance, "mc  ^r" maps ^r; ^v can be used to escape non-printable
   characters.
+:cn[ext]
+  Opens the next item in quick fix list (* yank buffer).
+:cp[rev]
+  Opens the previous item in quick fix list.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -119,6 +127,11 @@ Other noteworthy differences with vi(1):
 - In addition to the standard single-letter yank buffers, Neatvi
   supports a set of extended buffers whose two-letter names begin
   with a backslash, like \x.
+- The :cn and :cp ex commands and q* vi command read the * buffer,
+  which must contain lines with the "path:line:offset: description"
+  format.  For instance, after the "rx * git grep -Fwn --column ']'"
+  command, one can open the occurrences of the word under the
+  cursor using :cn, :cp, and q* commands.
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
@@ -199,6 +212,7 @@ Special yank buffers:
 - . the last vi command
 - # cursor line number
 - ^ cursor line offset
+- ] the word under the cursor
 - \/ search history
 - \: ex command history
 - \! pipe command history
@@ -218,6 +232,8 @@ the bottom of the screen and waits for a key.
   for a keyword to filter them.
 - If the key is ;, Neatvi lists the buffers and prompts for a keyword
   to filter them.
+- If the key is *, Neatvi lists the positions in the * yank buffer
+  and prompts for a keyword to filter them.
 - If it is a letter and the extended buffer with that letter (\X for
   letter X) is defined, the contents of that buffer is executed.
 - If the key is a letter, but the extended buffer with that letter

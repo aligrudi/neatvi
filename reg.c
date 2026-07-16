@@ -30,7 +30,7 @@ char *reg_get(int c, int *lnmode)
 			*lnmode = 1;
 		return ln;
 	}
-	if (c == '$') {
+	if (c == ']') {
 		char *s = lbuf_get(xb, xrow);
 		if (uc_word(s, ln, sizeof(ln), xoff, ""))
 			ln[0] = '\0';

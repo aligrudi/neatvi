@@ -17,6 +17,7 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -324,15 +325,20 @@ char *ex_read(char *msg)
 }
 
 /* show an ex message */
-void ex_show(char *msg)
+void ex_show(char *msg, ...)
 {
+	char buf[256];
+	va_list ap;
+	va_start(ap, msg);
+	vsnprintf(buf, sizeof(buf), msg, ap);
+	va_end(ap);
 	if (xvis) {
-		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
+		snprintf(vi_msg, sizeof(vi_msg), "%s", buf);
 	} else if (xled) {
-		led_print(msg, -1, 0, xcols, xhl ? "-ex" : "___", NULL);
+		led_print(buf, -1, 0, xcols, xhl ? "-ex" : "___", NULL);
 		term_chr('\n');
 	} else {
-		printf("%s", msg);
+		printf("%s", buf);
 	}
 }
 

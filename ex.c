@@ -184,7 +184,7 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 		if (*src == '%' || *src == '#') {
 			int idx = *src == '#';
 			if (!bufs[idx].path) {
-				ex_show("pathname \"%\" or \"#\" is not set");
+				ex_show("pathname \"%%\" or \"#\" is not set");
 				return NULL;
 			}
 			fbuf_str(&fb, bufs[idx].path[0] ? bufs[idx].path : "/");
@@ -467,7 +467,6 @@ int ex_list(char **ls, int size)
 
 static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
 	char *path, *pls;
 	int fd;
 	if (!strchr(cmd, '!'))
@@ -492,11 +491,10 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 	if (fd >= 0) {
 		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
-		snprintf(msg, sizeof(msg), "R%04d <%s", lbuf_len(xb), ex_path());
 		if (rd)
 			ex_show("read failed");
 		else
-			ex_show(msg);
+			ex_show("R%04d <%s", lbuf_len(xb), ex_path());
 	}
 	lbuf_saved(xb, path[0] != '\0');
 	bufs[0].mtime = mtime(ex_path());
@@ -543,7 +541,6 @@ static int ec_prev(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
 	int beg, end, pos;
 	char *path;
 	char *obuf;
@@ -562,25 +559,23 @@ static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 	} else {
 		int fd = open(path, O_RDONLY);
 		if (fd < 0) {
-			ex_show("read failed");
+			ex_show("open failed for %s", path);
 			return 1;
 		}
 		if (lbuf_rd(xb, fd, pos, pos)) {
-			ex_show("read failed");
+			ex_show("read failed for %s", path);
 			close(fd);
 			return 1;
 		}
 		close(fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
-	snprintf(msg, sizeof(msg), "R%04d <%s", lbuf_len(xb) - n, path);
-	ex_show(msg);
+	ex_show("R%04d <%s", lbuf_len(xb) - n, path);
 	return 0;
 }
 
 static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
 	char *path;
 	char *ibuf;
 	int beg, end;
@@ -608,8 +603,7 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 			return 1;
 		}
 	}
-	snprintf(msg, sizeof(msg), "W%04d >%s", end - beg, path);
-	ex_show(msg);
+	ex_show("W%04d >%s", end - beg, path);
 	if (!ex_path()[0]) {
 		free(bufs[0].path);
 		bufs[0].path = uc_dup(path);
@@ -1077,7 +1071,7 @@ static int tag_goto(char *cw, int dir)
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
 	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
-		ex_show("not found");
+		ex_show("tag not found");
 		return 1;
 	}
 	if (dir == 0)
@@ -1085,7 +1079,7 @@ static int tag_goto(char *cw, int dir)
 	tag_pos[tag_cnt - 1] = pos;
 	if (strcmp(path, ex_path()) != 0) {
 		if (access(path, R_OK) != 0) {
-			ex_show("cannot open");
+			ex_show("cannot open %s", path);
 			return 1;
 		}
 		if (ec_edit("", "e", path, NULL) != 0)
@@ -1122,7 +1116,7 @@ static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 		xoff = tag_off[tag_cnt];
 		return 0;
 	} else {
-		ex_show("not found");
+		ex_show("tag stack empty");
 	}
 	return 1;
 }
@@ -1135,15 +1129,17 @@ static int ec_tput(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0)
-		return tag_goto(tag_name[tag_cnt - 1], +1);
+	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], +1))
+		return 0;
+	ex_show("no more tags");
 	return 1;
 }
 
 static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0)
-		return tag_goto(tag_name[tag_cnt - 1], -1);
+	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], -1))
+		return 0;
+	ex_show("no more tags");
 	return 1;
 }
 
@@ -1156,7 +1152,7 @@ static int ex_cjump(void)
 		return 1;
 	}
 	if (access(path, R_OK)) {
-		ex_show("cannot open");
+		ex_show("cannot open %s", path);
 		return 1;
 	}
 	if (ec_edit("", "e", path, NULL) != 0)
@@ -1176,7 +1172,8 @@ static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
 	if (qfix_rev)
 		qfix_next();
 	qfix_rev = 0;
-	res = ex_cjump();
+	if ((res = ex_cjump()))
+		ex_show("no more items");
 	qfix_next();
 	return res;
 }
@@ -1312,7 +1309,7 @@ static int ec_set(char *loc, char *cmd, char *arg, char *txt)
 				return 0;
 			}
 		}
-		ex_show("unknown option");
+		ex_show("unknown option %s", opt);
 		return 1;
 	}
 	return 0;
@@ -1525,7 +1522,7 @@ static char *ex_txt(char **src0, char *excmd)
 static int ex_exec(char *ln)
 {
 	int ret = 0;
-	while (*ln) {
+	while (*ln && !ret) {
 		char *loc, *cmd, *arg, *txt;
 		int idx;
 		loc = ex_loc(&ln);
@@ -1533,10 +1530,12 @@ static int ex_exec(char *ln)
 		idx = cmd ? ex_idx(cmd) : -1;
 		arg = ex_arg(&ln, idx >= 0 ? excmds[idx].abbr : "unknown");
 		txt = ex_txt(&ln, idx >= 0 ? excmds[idx].abbr : "unknown");
-		if (idx >= 0 && arg)
+		if (idx >= 0 && arg) {
 			ret = excmds[idx].ec(loc, cmd, arg, txt);
-		else
-			ex_show("unknown command");
+		} else {
+			ret = 1;
+			ex_show("unknown command %s", cmd);
+		}
 		free(txt);
 	}
 	return ret;

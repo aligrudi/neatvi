@@ -57,23 +57,25 @@ static char *vi_ledins;		/* led_print() data for xrow when vi_insert is one */
 
 static int vc_status(void);
 
-static void vi_wait(void)
-{
-	if (vi_printed > 1 || vi_printed < 0) {
-		if (vi_printed < 0)
-			term_window(0, term_rowx() - 1);
-		term_pos(xrows, 0);
-		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
-		vi_msg[0] = '\0';
-	}
-	vi_printed = 0;
-}
-
 static int xtd_set(int td)
 {
 	int old = xtd;
 	xtd = td;
 	return old;
+}
+
+static void vi_wait(void)
+{
+	if (vi_printed > 1 || vi_printed < 0) {
+		int td = xtd_set(+2);
+		if (vi_printed < 0)
+			term_window(0, term_rowx() - 1);
+		term_pos(xrows, 0);
+		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
+		vi_msg[0] = '\0';
+		xtd_set(td);
+	}
+	vi_printed = 0;
 }
 
 static void vi_drawmsg(void)

@@ -707,7 +707,7 @@ static int ec_rs(char *loc, char *cmd, char *arg, char *txt)
 static int ec_delete(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+	if (ex_region(loc, &beg, &end))
 		return 1;
 	ex_yank(REG(arg), beg, end);
 	lbuf_edit(xb, NULL, beg, end);
@@ -718,7 +718,7 @@ static int ec_delete(char *loc, char *cmd, char *arg, char *txt)
 static int ec_yank(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+	if (ex_region(loc, &beg, &end))
 		return 1;
 	ex_yank(REG(arg), beg, end);
 	return 0;

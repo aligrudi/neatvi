@@ -17,6 +17,7 @@
  */
 #include <ctype.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,23 +57,25 @@ static char *vi_ledins;		/* led_print() data for xrow when vi_insert is one */
 
 static int vc_status(void);
 
-static void vi_wait(void)
-{
-	if (vi_printed > 1 || vi_printed < 0) {
-		if (vi_printed < 0)
-			term_window(0, term_rowx() - 1);
-		term_pos(xrows, 0);
-		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
-		vi_msg[0] = '\0';
-	}
-	vi_printed = 0;
-}
-
 static int xtd_set(int td)
 {
 	int old = xtd;
 	xtd = td;
 	return old;
+}
+
+static void vi_wait(void)
+{
+	if (vi_printed > 1 || vi_printed < 0) {
+		int td = xtd_set(+2);
+		if (vi_printed < 0)
+			term_window(0, term_rowx() - 1);
+		term_pos(xrows, 0);
+		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
+		vi_msg[0] = '\0';
+		xtd_set(td);
+	}
+	vi_printed = 0;
 }
 
 static void vi_drawmsg(void)
@@ -324,15 +327,20 @@ char *ex_read(char *msg)
 }
 
 /* show an ex message */
-void ex_show(char *msg)
+void ex_show(char *msg, ...)
 {
+	char buf[256];
+	va_list ap;
+	va_start(ap, msg);
+	vsnprintf(buf, sizeof(buf), msg, ap);
+	va_end(ap);
 	if (xvis) {
-		snprintf(vi_msg, sizeof(vi_msg), "%s", msg);
+		snprintf(vi_msg, sizeof(vi_msg), "%s", buf);
 	} else if (xled) {
-		led_print(msg, -1, 0, xcols, xhl ? "-ex" : "___", NULL);
+		led_print(buf, -1, 0, xcols, xhl ? "-ex" : "___", NULL);
 		term_chr('\n');
 	} else {
-		printf("%s", msg);
+		printf("%s", buf);
 	}
 }
 

@@ -91,6 +91,16 @@ Commands not available in ex(1):
   Opens the next item in quick fix list (* yank buffer).
 :cp[rev]
   Opens the previous item in quick fix list.
+:lsp[open] cmd
+  Execute cmd as the LSP server (see the LSP section).
+:lspc[lose]
+  Terminate the LSP server.
+:lspg[oto]
+  Go to the definition of the identifier under the cursor (LSP client).
+  Pushes the current cursor position to the tag stack (^t to go back).
+:lspf[ind]
+  Find the references of the identifier under the cursor (LSP client).
+  It fills the * yank buffer (see :cn and :cp commands).
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -242,10 +252,8 @@ the bottom of the screen and waits for a key.
   current line number, and iv) the current line offset.  What ECMD
   writes to its standard output, Neatvi executes as ex commands.
 
-ECMD commands can be used to add interesting features to Neatvi, such
-as language-dependent IDE features, for instance by connecting to an
-LSP (language server protocol) server.  neatvi.sh is an example ECMD
-shell script.
+ECMD commands can be used to implement interesting features; neatvi.sh
+is an example ECMD shell script.
 
 AUTO-COMPLETION
 ---------------
@@ -253,6 +261,51 @@ AUTO-COMPLETION
 When the hist option is nonzero, Neatvi suggests the most recent
 matching entry when reading user input for :, /, and ! prompts; ^a
 completes the input using the suggestion.
+
+EXAMPLE .NEATVI
+---------------
+
+" This an example ~/.neatvi file.
+
+" general options, including hl, mk, and mc commands
+set hist=20
+mc  ^v
+mc  ^r
+hl & - 8
+
+" Q-commands (quick access commands); they can also be performed via
+" ECMD; see the quick access section and neatvi.sh.
+
+" qa invokes git-add
+rs \a
+!git add %
+.
+" qq switches to the previous buffer
+rs \q
+e #
+.
+" ql opens ./ls file
+rs \l
+e ls
+.
+" qg uses git-grep to find the occurrences of the word under the cursor
+rs \g
+rx * git grep -Fwn --column ']' \| sed -E 's/^([^:]+:[^:]+:[^:]+:)[ 	]*([^ 	])/\\1 \\2/'
+e /tmp/.tags.ls | %d | pu * | w! | 1
+.
+" qp starts an LSP server for C/C++
+rs \p
+lsp clangd --background-index
+.
+" qP starts an LSP server for Go
+rs \P
+lsp gopls
+.
+" qf finds references to the word under the cursor (lspf)
+rs \f
+lspf
+e /tmp/.tags.ls | %d | pu * | w! | 1
+.
 
 SYNTAX HIGHLIGHTING
 -------------------

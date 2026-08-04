@@ -52,7 +52,7 @@ Commands not available in ex(1):
 :tc
   Closes the tags file and resets the tag stack.
 :po[p]
-  Pops tag stack.
+  Pops the tag stack.
 :b[uffer] [buf]
   Without buf, prints buffer list.  Switches to the given buffer
   if buf is a buffer number or alias.  Also, buf can be -, +, !,
@@ -92,14 +92,14 @@ Commands not available in ex(1):
 :cp[rev]
   Opens the previous item in quick fix list.
 :lsp[open] cmd
-  Execute cmd as the LSP server (see the LSP section).
+  Executes cmd as the LSP server (see the LSP section).
 :lspc[lose]
-  Terminate the LSP server.
+  Terminates the LSP server.
 :lspg[oto]
-  Go to the definition of the identifier under the cursor (LSP client).
+  Goes to the definition of the identifier under the cursor (LSP client).
   Pushes the current cursor position to the tag stack (^t to go back).
 :lspf[ind]
-  Find the references of the identifier under the cursor (LSP client).
+  Finds the references of the identifier under the cursor (LSP client).
   It fills the * yank buffer (quick fix list).
 
 New key mappings:
@@ -147,11 +147,7 @@ Other noteworthy differences with vi(1):
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
 passed to :so).  This allows setting the value of yank buffers in ex
-files, as the following example shows:
-
-  rs a
-  :!git add %
-  .
+files (see the example .neatvi section for examples).
 
 OPTIONS
 -------
@@ -288,7 +284,7 @@ mc  ^v
 mc  ^r
 hl & - 8
 
-" Q-commands (quick access commands); they can also be performed via
+" Q-commands (quick access commands); they can also be done using
 " ECMD; see the quick access section and neatvi.sh.
 
 " qa invokes git-add

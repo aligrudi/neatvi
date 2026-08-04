@@ -2,8 +2,8 @@ NEATVI
 ======
 
 Neatvi is a small vi/ex editor for editing UTF-8 text.  It supports
-syntax highlighting, multiple windows, right-to-left languages, and
-keymaps.
+syntax highlighting, multiple windows, right-to-left languages,
+keymaps, and the language server protocol.
 
 CONFIGURATION
 -------------
@@ -100,7 +100,7 @@ Commands not available in ex(1):
   Pushes the current cursor position to the tag stack (^t to go back).
 :lspf[ind]
   Find the references of the identifier under the cursor (LSP client).
-  It fills the * yank buffer (see :cn and :cp commands).
+  It fills the * yank buffer (quick fix list).
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -124,6 +124,7 @@ New key mappings:
 - q;: lists and filters buffers.
 - q,: lists and filters files listed in ./ls.
 - q=: lists and filters files tags in ./tags.
+- q*: lists and filters quick fix items.
 
 Other noteworthy differences with vi(1):
 - Neatvi assumes POSIX extended regular expressions (ERE) in search
@@ -261,6 +262,20 @@ AUTO-COMPLETION
 When the hist option is nonzero, Neatvi suggests the most recent
 matching entry when reading user input for :, /, and ! prompts; ^a
 completes the input using the suggestion.
+
+LANGUAGE SERVER PROTOCOL
+------------------------
+
+Neatvi has a simple LSP client for finding the references of
+identifiers and opening their definition locations.  It assumes the
+current directory to be the project root when it executes the LSP
+server.  When the LSP server is running, the ^] vi command executes
+:lspg instead :ta.  The commands section lists lsp* commands.
+
+Note that for C/C++, LSP servers usually require the
+compile_commands.json file to be present in the project root for
+indexing the source files; this file can be generated manually, or
+using available tools.
 
 EXAMPLE .NEATVI
 ---------------

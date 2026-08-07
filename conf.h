@@ -22,6 +22,7 @@ static struct filetype {
 	{"nm", "\\.nm$"},
 	{"diff", "\\.(patch|diff)$"},
 	{"ls", "ls$"},
+	{"ex", "\\.neatvi$"},
 	{"txt", "$"},		/* matches everything; must be the last pattern */
 };
 
@@ -167,6 +168,13 @@ static struct highlight {
 	{"ls", {0, SX('d'), 0, SX('b'), SX('n'), SX('s'), SX('l')},
 		"^(/?([^#/: \t]+/)*)([^/: \t]+)\\>(:[0-9]+:)?([^\t]+\t)?(.*)$"},
 	{"ls", {SX('c')}, "^#.*$"},
+
+	/* .neatvi */
+	{"ex", {'c'}, "\".*$"},
+	{"ex", {'b', 'd'}, "^rs[ \t]+([^ ]+)"},
+	{"ex", {0, 'b', 'f'}, "^[ \t]*(@|rs|ra|rx|rk)[ \t]+([^ ]+)"},
+	{"ex", {0, '0', 0, 'b'}, "^[ \t]*(([-0-9:%,;.$+]|'.|`.|/[^/]*/|\\?[^?]*\\?)*)[ \t]*([a-z!]+)"},
+	{"ex", {'r'}, "^\\.$"},
 };
 
 /* right-to-left characters (used only in dircontexts[] and dirmarks[]) */

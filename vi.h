@@ -271,3 +271,4 @@ int lsp_on(void);
 void lsp_modified(char *path, char *ft);
 int lsp_definition(char *path, int row, int off, char *ft, char *dst, int dstlen, int *drow, int *doff);
 char *lsp_find(char *path, int row, int off, char *ft);
+char *lsp_hover(char *path, int row, int off, char *ft);

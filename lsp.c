@@ -96,8 +96,6 @@ int lsp_init(char *cmd[])
 
 static char *lsp_filebody(char *path)
 {
-	char ec[] = {'"', '\\', '\b', '\f', '\n', '\r', '\t', '\0'};
-	char er[] = {'"', '\\',  'b',  'f',  'n',  'r',  't', '\0'};
 	int fd = open(path, O_RDONLY);
 	char buf[1024];
 	long nr;
@@ -108,12 +106,15 @@ static char *lsp_filebody(char *path)
 	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0) {
 		for (i = 0; i < nr; i++) {
-			char *r = strchr(ec, (unsigned char) buf[i]);
-			if (r) {
-				sbuf_chr(sb, '\\');
-				sbuf_chr(sb, er[r - ec]);
+			int c = (unsigned char) buf[i];
+			if (c == '\n' || c == '\t') {
+				sbuf_str(sb, c == '\n' ? "\\n" : "\\t");
+			} else if (!isprint(c)) {
+				sbuf_printf(sb, "\\u%04x", c);
 			} else {
-				sbuf_chr(sb, (unsigned char) buf[i]);
+				if (c == '\\' || c == '"')
+					sbuf_chr(sb, '\\');
+				sbuf_chr(sb, c);
 			}
 		}
 	}
@@ -165,7 +166,7 @@ static int lsp_open(char *path, char *ft)
 		http_notify(1024,
 			"{\"jsonrpc\": \"2.0\", \"method\": \"textDocument/didClose\","
 			" \"params\": {\"textDocument\": {\"uri\": \"%s/%s\"}}}\n",
-			lsp_root, path);
+			lsp_root, lsp_file);
 		lsp_mtime = 0;
 	}
 	if (!(body = lsp_filebody(path)))
@@ -306,6 +307,36 @@ char *lsp_find(char *path, int row, int off, char *ft)
 		free(ents);
 		free(res);
 		return sbuf_done(sb);
+	}
+	free(res);
+	return NULL;
+}
+
+char *lsp_hover(char *path, int row, int off, char *ft)
+{
+	char *res, *result;
+	if (lsp_pid <= 0)
+		return NULL;
+	if (lsp_open(path, ft))
+		return NULL;
+	res = http_request(1024,
+		"{\"jsonrpc\": \"2.0\", \"id\": %d, \"method\": \"textDocument/hover\","
+		" \"params\": {\"textDocument\": {\"uri\": \"%s/%s\"}, \"position\": {\"line\": %d, \"character\": %d}}}\n",
+		++lsp_idx, lsp_root, path, row, off);
+	if (!res)
+		return NULL;
+	if ((result = json_dict_get(res + http_hlen(res, strlen(res)), "result"))) {
+		char *cont = json_dict_get(result, "contents");
+		char *val = !cont || *cont == '"' ? cont : json_dict_get(cont, "value");
+		if (val && *val == '"') {
+			long len = json_len(val) + 1;
+			char *doc = malloc(len);
+			if (!json_str(val, doc, len)) {
+				free(res);
+				return doc;
+			}
+			free(doc);
+		}
 	}
 	free(res);
 	return NULL;

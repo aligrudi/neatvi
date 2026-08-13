@@ -78,6 +78,8 @@ char *json_list_get(char *json, int key)
 
 int json_str(char *json, char *dst, long len)
 {
+	char ec[] = {'\b', '\f', '\n', '\r', '\t', '\0'};
+	char er[] = { 'b',  'f',  'n',  'r',  't', '\0'};
 	if (!json)
 		return -1;
 	json += json_ws(json);
@@ -85,9 +87,15 @@ int json_str(char *json, char *dst, long len)
 		return -1;
 	json++;
 	while (*json != '"' && len > 1) {
-		if (*json == '\\' && json[1])
-			json++;
-		*dst++ = *json++;
+		if (*json == '\\' && json[1]) {
+			char c = json[1];
+			if (strchr(er, (unsigned char) c))
+				c = ec[strchr(er, (unsigned char) c) - er];
+			json += 2;
+			*dst++ = c;
+		} else {
+			*dst++ = *json++;
+		}
 		len--;
 	}
 	*dst = '\0';

@@ -895,7 +895,7 @@ static int ec_rk(char *loc, char *cmd, char *arg, char *txt)
 static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
-	char *target;
+	char *target, *res;
 	if (!xwa && bufs_modified(0, "ma: buffer modified"))
 		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
@@ -903,8 +903,10 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 	if (snprintf(make, sizeof(make), "make %s", target) >= sizeof(make))
 		return 1;
 	ex_print(NULL);
-	if (cmd_exec(make))
+	if (!(res = cmd_pipe(make, NULL, 2)))
 		return 1;
+	reg_put('*', res, 1);
+	free(res);
 	return 0;
 }
 

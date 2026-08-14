@@ -1243,9 +1243,10 @@ static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 
 static int ex_cjump(void)
 {
+	char txt[128];
 	char path[1024];
 	int row, off;
-	if (qfix_current(path, sizeof(path), &row, &off)) {
+	if (qfix_current(path, sizeof(path), &row, &off, txt, sizeof(txt))) {
 		ex_show("cn: no more items");
 		return 1;
 	}
@@ -1259,28 +1260,29 @@ static int ex_cjump(void)
 		row = 0;
 	xrow = row;
 	xoff = off;
+	ex_print(txt);
 	return 0;
 }
 
-static int qfix_rev;	/* the last command was ec_cprev */
+static int ec_cshow(char *loc, char *cmd, char *arg, char *txt)
+{
+	int res;
+	if ((res = ex_cjump()))
+		ex_show("cc: no more items");
+	return res;
+}
 
 static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
 {
-	int res;
-	if (qfix_rev)
-		qfix_next();
-	qfix_rev = 0;
-	if ((res = ex_cjump()))
+	if (qfix_next()) {
 		ex_show("cn: no more items");
-	qfix_next();
-	return res;
+		return 1;
+	}
+	return ex_cjump();
 }
 
 static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (!qfix_rev)
-		qfix_prev();
-	qfix_rev = 1;
 	if (qfix_prev()) {
 		ex_show("cp: no more items");
 		return 1;
@@ -1291,7 +1293,6 @@ static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
 static int ec_crewind(char *loc, char *cmd, char *arg, char *txt)
 {
 	qfix_reset();
-	qfix_rev = 0;
 	return 0;
 }
 
@@ -1422,6 +1423,7 @@ static struct excmd {
 	{"b", "buffer", ec_buffer},
 	{"d", "delete", ec_delete},
 	{"c", "change", ec_insert},
+	{"cc", "cc", ec_cshow},
 	{"cm", "cmap", ec_cmap},
 	{"cm!", "cmap!", ec_cmap},
 	{"cn", "cnext", ec_cnext},

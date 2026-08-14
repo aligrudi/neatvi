@@ -258,9 +258,9 @@ int tlist_top(struct tlist *tls, int *view, int view_sz)
 	return view_n;
 }
 
-static long qfix_pos;
+static long qfix_pos;	/* offset in qfix buffer; -1 implies before the beginning */
 
-static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off)
+static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off, char *txt, int txtlen)
 {
 	char *c1, *c2, *c3;
 	char *eol = strchr(ln, '\n');
@@ -286,19 +286,25 @@ static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off)
 		*row = atoi(c1 + 1) - 1;
 	if (off)
 		*off = *c3 == ':' ? MAX(1, atoi(c2 + 1)) - 1 : 0;
+	if (txt && txtlen > 0) {
+		char *beg = (c3 ? c3 : c2) + 1;
+		while (*beg == ' ' || *beg == '\t')
+			beg++;
+		len = MIN(eol - beg, txtlen - 1);
+		memcpy(txt, beg, len);
+		txt[len] = '\0';
+	}
 	return 0;
 }
 
-int qfix_current(char *dst, int dstlen, int *row, int *off)
+int qfix_current(char *dst, int dstlen, int *row, int *off, char *txt, int txtlen)
 {
 	char *qfix = reg_get('*', NULL);
 	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
 		return 1;
-	if (!qfix_readln(qfix + qfix_pos, dst, dstlen, row, off))
-		return 0;
-	if (qfix_pos == 0 && qfix_next())
+	if (qfix_pos < 0 && qfix_next())
 		return 1;
-	return qfix_readln(qfix + qfix_pos, dst, dstlen, row, off);
+	return qfix_readln(qfix + qfix_pos, dst, dstlen, row, off, txt, txtlen);
 }
 
 int qfix_next(void)
@@ -307,9 +313,9 @@ int qfix_next(void)
 	char *eol;
 	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
 		return 1;
-	while ((eol = strchr(qfix + qfix_pos, '\n'))) {
+	while ((eol = qfix_pos >= 0 ? strchr(qfix + qfix_pos, '\n') : qfix - 1)) {
 		qfix_pos = eol + 1 - qfix;
-		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL))
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL, NULL, 0))
 			return 0;
 	}
 	return !eol || !eol[1];
@@ -324,7 +330,7 @@ int qfix_prev(void)
 		qfix_pos--;
 		while (qfix_pos > 0 && qfix[qfix_pos - 1] != '\n')
 			qfix_pos--;
-		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL))
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL, NULL, 0))
 			return 0;
 	}
 	return 1;
@@ -332,5 +338,5 @@ int qfix_prev(void)
 
 void qfix_reset(void)
 {
-	qfix_pos = 0;
+	qfix_pos = -1;
 }

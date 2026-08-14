@@ -39,10 +39,10 @@ struct sbuf *sbuf_make(void);
 void sbuf_free(struct sbuf *sb);
 char *sbuf_done(struct sbuf *sb);
 char *sbuf_buf(struct sbuf *sb);
-void sbuf_chr(struct sbuf *sb, int c);
-void sbuf_str(struct sbuf *sb, char *s);
-void sbuf_mem(struct sbuf *sb, void *s, long len);
-void sbuf_printf(struct sbuf *sbuf, char *s, ...);
+int sbuf_chr(struct sbuf *sb, int c);
+int sbuf_str(struct sbuf *sb, char *s);
+int sbuf_mem(struct sbuf *sb, void *s, long len);
+int sbuf_printf(struct sbuf *sbuf, char *s, ...);
 long sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, long len);
 /* fixed-sized buffers */

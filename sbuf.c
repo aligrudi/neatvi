@@ -15,14 +15,17 @@ struct sbuf {
 	long s_sz;		/* size of memory allocated for s[] */
 };
 
-static void sbuf_extend(struct sbuf *sbuf, long newsz)
+static int sbuf_extend(struct sbuf *sbuf, long newsz)
 {
-	char *s = sbuf->s;
-	sbuf->s_sz = newsz;
-	sbuf->s = malloc(sbuf->s_sz);
+	char *s;
+	if (!(s = malloc(newsz)))
+		return 1;
 	if (sbuf->s_n)
-		memcpy(sbuf->s, s, sbuf->s_n);
-	free(s);
+		memcpy(s, sbuf->s, sbuf->s_n);
+	free(sbuf->s);
+	sbuf->s_sz = newsz;
+	sbuf->s = s;
+	return 0;
 }
 
 struct sbuf *sbuf_make(void)
@@ -34,8 +37,8 @@ struct sbuf *sbuf_make(void)
 
 char *sbuf_buf(struct sbuf *sb)
 {
-	if (!sb->s)
-		sbuf_extend(sb, 1);
+	if (!sb->s && sbuf_extend(sb, 1))
+		return NULL;
 	sb->s[sb->s_n] = '\0';
 	return sb->s;
 }
@@ -53,24 +56,30 @@ void sbuf_free(struct sbuf *sb)
 	free(sb);
 }
 
-void sbuf_chr(struct sbuf *sbuf, int c)
+int sbuf_chr(struct sbuf *sbuf, int c)
 {
-	if (sbuf->s_n + 2 >= sbuf->s_sz)
-		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, 1));
+	if (sbuf->s_n + 2 >= sbuf->s_sz) {
+		if (sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, 1)))
+			return 1;
+	}
 	sbuf->s[sbuf->s_n++] = c;
+	return 0;
 }
 
-void sbuf_mem(struct sbuf *sbuf, void *s, long len)
+int sbuf_mem(struct sbuf *sbuf, void *s, long len)
 {
-	if (sbuf->s_n + len + 1 >= sbuf->s_sz)
-		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, len + 1));
+	if (sbuf->s_n + len + 1 >= sbuf->s_sz) {
+		if (sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, len + 1)))
+			return 1;
+	}
 	memcpy(sbuf->s + sbuf->s_n, s, len);
 	sbuf->s_n += len;
+	return 0;
 }
 
-void sbuf_str(struct sbuf *sbuf, char *s)
+int sbuf_str(struct sbuf *sbuf, char *s)
 {
-	sbuf_mem(sbuf, s, strlen(s));
+	return sbuf_mem(sbuf, s, strlen(s));
 }
 
 long sbuf_len(struct sbuf *sbuf)
@@ -84,14 +93,14 @@ void sbuf_cut(struct sbuf *sb, long len)
 		sb->s_n = len;
 }
 
-void sbuf_printf(struct sbuf *sbuf, char *s, ...)
+int sbuf_printf(struct sbuf *sbuf, char *s, ...)
 {
 	char buf[256];
 	va_list ap;
 	va_start(ap, s);
 	vsnprintf(buf, sizeof(buf), s, ap);
 	va_end(ap);
-	sbuf_str(sbuf, buf);
+	return sbuf_str(sbuf, buf);
 }
 
 void fbuf_init(struct fbuf *fb)

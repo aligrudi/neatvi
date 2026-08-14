@@ -12,8 +12,9 @@ If the EXINIT environment variable is defined, Neatvi executes its
 contents as ex commands at startup.  Otherwise, it executes the ex
 commands in $HOME/.neatvi, if present.  They can set the value of
 Neatvi options, change syntax highlighting colours, define new or
-modify existing keymaps, or define q-commands.  To change syntax
-highlighting and text direction patterns, conf.h must be modified.
+modify existing keymaps, or define q-commands.  The example .neatvi
+section of this file demonstrates this.  To change syntax highlighting
+and text direction patterns, conf.h must be modified.
 
 The :hl (:highlight) ex-mode command changes syntax highlighting
 colours; see the syntax highlighting section of this file for the
@@ -272,7 +273,7 @@ Neatvi has an LSP client for finding the references of identifiers
 and opening their definition locations.  It assumes the current
 directory to be the project root when it executes the LSP server.
 When the LSP server is running, the ^] vi command executes :lspg
-instead :ta.  The commands section lists lsp* commands.
+instead of :ta.  The commands section lists lsp* commands.
 
 Note that for C/C++, LSP servers usually require the
 compile_commands.json file to be present in the project root for

@@ -1177,6 +1177,26 @@ static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
 	return !res;
 }
 
+static int ec_lspdoc(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *res;
+	int reg = 0;
+	ex_reg(arg, &reg);
+	if (reg <= 0) {
+		ex_show("lspd: no yank buffer specified");
+		return 1;
+	}
+	if (!xwa && bufs_modified(0, "lspd: buffer modified"))
+		return 1;
+	res = lsp_hover(ex_path(), xrow, xoff, ex_filetype());
+	if (res)
+		reg_put(reg, res, 1);
+	else
+		ex_show("lspd: no documentation");
+	free(res);
+	return !res;
+}
+
 static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
@@ -1422,6 +1442,7 @@ static struct excmd {
 	{"lspc", "lspclose", ec_lspclose},
 	{"lspf", "lspfind", ec_lspfind},
 	{"lspg", "lspgoto", ec_lspgoto},
+	{"lspd", "lspdoc", ec_lspdoc},
 	{"make", "make", ec_make},
 	{"mk", "mapkey", ec_mapkey},
 	{"n", "next", ec_next},

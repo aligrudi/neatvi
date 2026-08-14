@@ -333,6 +333,7 @@ int qfix_prev(void)
 		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL, NULL, 0))
 			return 0;
 	}
+	qfix_pos = -1;
 	return 1;
 }
 

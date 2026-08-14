@@ -91,6 +91,8 @@ Commands not available in ex(1):
   Opens the next item in quick fix list (* yank buffer).
 :cp[rev]
   Opens the previous item in quick fix list.
+:cc
+  Jumps to the current quick fix item.
 :lsp[open] cmd
   Executes cmd as the LSP server (see the LSP section).
 :lspc[lose]
@@ -101,6 +103,9 @@ Commands not available in ex(1):
 :lspf[ind]
   Finds the references of the identifier under the cursor (LSP client).
   It fills the * yank buffer (quick fix list).
+:lspd[oc] buf
+  Copies hover documentation (LSP client) of the identifier under the
+  cursor into the given yank buffer.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -143,6 +148,7 @@ Other noteworthy differences with vi(1):
   format.  For instance, after the "rx * git grep -Fwn --column ']'"
   command, one can open the occurrences of the word under the
   cursor using :cn, :cp, and q* commands.
+- The output of :make is copied into the quick fix buffer (*).
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
@@ -262,11 +268,11 @@ completes the input using the suggestion.
 LANGUAGE SERVER PROTOCOL
 ------------------------
 
-Neatvi has a simple LSP client for finding the references of
-identifiers and opening their definition locations.  It assumes the
-current directory to be the project root when it executes the LSP
-server.  When the LSP server is running, the ^] vi command executes
-:lspg instead :ta.  The commands section lists lsp* commands.
+Neatvi has an LSP client for finding the references of identifiers
+and opening their definition locations.  It assumes the current
+directory to be the project root when it executes the LSP server.
+When the LSP server is running, the ^] vi command executes :lspg
+instead :ta.  The commands section lists lsp* commands.
 
 Note that for C/C++, LSP servers usually require the
 compile_commands.json file to be present in the project root for
@@ -302,7 +308,7 @@ e ls
 " qg uses git-grep to find the occurrences of the word under the cursor
 rs \g
 rx * git grep -Fwn --column ']' \| sed -E 's/^([^:]+:[^:]+:[^:]+:)[ 	]*([^ 	])/\\1 \\2/'
-e /tmp/.tags.ls | %d | pu * | w! | 1
+e /tmp/.qfix.ls | %d | pu * | w! | 1
 .
 " qp starts an LSP server for C/C++
 rs \p
@@ -315,7 +321,12 @@ lsp gopls
 " qf finds references to the word under the cursor (lspf)
 rs \f
 lspf
-e /tmp/.tags.ls | %d | pu * | w! | 1
+e /tmp/.qfix.ls | %d | pu * | w! | 1
+.
+" qd shows symbol documentation (lspd)
+rs \d
+lspd l
+e /tmp/.vidoc.txt | %d | pu l | w! | 1
 .
 
 SYNTAX HIGHLIGHTING

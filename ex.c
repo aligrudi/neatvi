@@ -906,6 +906,7 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 	if (!(res = cmd_pipe(make, NULL, 2)))
 		return 1;
 	reg_put('*', res, 1);
+	qfix_reset();
 	free(res);
 	return 0;
 }
@@ -1171,10 +1172,12 @@ static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
 	if (!xwa && bufs_modified(0, "lspf: buffer modified"))
 		return 1;
 	res = lsp_find(ex_path(), xrow, xoff, ex_filetype());
-	if (res)
+	if (res) {
 		reg_put('*', res, 1);
-	else
+		qfix_reset();
+	} else {
 		ex_show("lspf: identifier not found");
+	}
 	free(res);
 	return !res;
 }

@@ -366,7 +366,7 @@ static char *lbuf_write(struct lbuf *lb, int beg, int end, char *path, int force
 		end = lbuf_len(lb);
 	if (!force && ts > 0 && mtime(path) > ts) {
 		return "write failed: file changed";
-	} else if (!force && ts <= 0 && mtime(path) >= 0) {
+	} else if (!xwa && !force && ts <= 0 && mtime(path) >= 0) {
 		return "write failed: file exists";
 	} else if ((fd = open(path, O_WRONLY | O_CREAT, conf_mode())) < 0) {
 		return "write failed: cannot create file";
@@ -446,9 +446,8 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 			idx = r ? r - aliases : -1;
 		}
 		if (idx >= 0 && idx < LEN(bufs) && bufs[idx].lb) {
-			if (!xwa && strchr(cmd, '!') == NULL)
-				if (bufs_modified(0, "b: buffer modified"))
-					return 1;
+			if (!strchr(cmd, '!') && bufs_modified(0, "b: buffer modified"))
+				return 1;
 			bufs_switch(idx);
 		} else {
 			ex_show("b: no such buffer");
@@ -470,9 +469,8 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *path, *pls;
 	int fd;
-	if (!strchr(cmd, '!'))
-		if (xb && !xwa && bufs_modified(0, "e: buffer modified"))
-			return 1;
+	if (!strchr(cmd, '!') && bufs_modified(0, "e: buffer modified"))
+		return 1;
 	pls = ex_plus(&arg);
 	if (!pls || !(path = ex_pathexpand(arg, 0)))
 		return 1;
@@ -848,6 +846,8 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {
+		if (bufs_modified(0, "!: buffer modified"))
+			return 1;
 		ex_print(NULL);
 		return cmd_exec(ecmd);
 	}
@@ -896,7 +896,7 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
 	char *target, *res;
-	if (!xwa && bufs_modified(0, "ma: buffer modified"))
+	if (!strchr(cmd, '!') && bufs_modified(0, "mak: buffer modified"))
 		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
@@ -1071,12 +1071,12 @@ static void ex_tagput(char *name)
 }
 
 /* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
-static int tag_goto(char *cw, int dir)
+static int tag_goto(char *cmd, char *cw, int dir)
 {
-	char path[TAGLOC], cmd[TAGLEN];
+	char path[TAGLOC], pcmd[TAGLEN];
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
-	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
+	if (tag_find(cw, &pos, dir, path, sizeof(path), pcmd, sizeof(pcmd))) {
 		ex_show("ta: tag not found");
 		return 1;
 	}
@@ -1088,12 +1088,12 @@ static int tag_goto(char *cw, int dir)
 			ex_show("ta: cannot open %s", path);
 			return 1;
 		}
-		if (ec_edit("", "e", path, NULL) != 0)
+		if (ec_edit("", cmd, path, NULL) != 0)
 			return 1;
 	}
 	xrow = 0;
 	xoff = 0;
-	ex_command(cmd);
+	ex_command(pcmd);
 	ln = lbuf_get(xb, xrow);
 	if (ln && (s = strstr(ln, cw)) != NULL)
 		xoff = s - ln;
@@ -1102,7 +1102,7 @@ static int tag_goto(char *cw, int dir)
 
 static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 {
-	return tag_goto(arg, 0);
+	return tag_goto(cmd, arg, 0);
 }
 
 static void cmd_args(char *src, char *args[], int sz)
@@ -1145,7 +1145,7 @@ static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
 {
 	char path[TAGLOC];
 	int drow, doff;
-	if (!xwa && bufs_modified(0, "lspg: buffer modified"))
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspg: buffer modified"))
 		return 1;
 	if (!ex_path() || lsp_definition(ex_path(), xrow, xoff, ex_filetype(),
 					path, sizeof(path), &drow, &doff)) {
@@ -1158,7 +1158,7 @@ static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
 			ex_show("lspg: cannot open %s", path);
 			return 1;
 		}
-		if (ec_edit("", "e", path, NULL) != 0)
+		if (ec_edit("", cmd, path, NULL) != 0)
 			return 1;
 	}
 	xrow = drow;
@@ -1169,7 +1169,7 @@ static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
 static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *res;
-	if (!xwa && bufs_modified(0, "lspf: buffer modified"))
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspf: buffer modified"))
 		return 1;
 	res = lsp_find(ex_path(), xrow, xoff, ex_filetype());
 	if (res) {
@@ -1191,7 +1191,7 @@ static int ec_lspdoc(char *loc, char *cmd, char *arg, char *txt)
 		ex_show("lspd: no yank buffer specified");
 		return 1;
 	}
-	if (!xwa && bufs_modified(0, "lspd: buffer modified"))
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspd: buffer modified"))
 		return 1;
 	res = lsp_hover(ex_path(), xrow, xoff, ex_filetype());
 	if (res)
@@ -1212,9 +1212,10 @@ static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (tag_cnt > 0) {
+		if (!ex_path() || strcmp(tag_path[tag_cnt - 1], ex_path()) != 0)
+			if (ec_edit("", cmd, tag_path[tag_cnt - 1], txt))
+				return 1;
 		tag_cnt--;
-		if (ex_path() == NULL || strcmp(tag_path[tag_cnt], ex_path()) != 0)
-			ec_edit("", "e", tag_path[tag_cnt], txt);
 		xrow = tag_row[tag_cnt];
 		xoff = tag_off[tag_cnt];
 		return 0;
@@ -1232,7 +1233,7 @@ static int ec_tput(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], +1))
+	if (tag_cnt > 0 && !tag_goto(cmd, tag_name[tag_cnt - 1], +1))
 		return 0;
 	ex_show("tn: no more tags");
 	return 1;
@@ -1240,13 +1241,13 @@ static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0 && !tag_goto(tag_name[tag_cnt - 1], -1))
+	if (tag_cnt > 0 && !tag_goto(cmd, tag_name[tag_cnt - 1], -1))
 		return 0;
 	ex_show("tp: no more tags");
 	return 1;
 }
 
-static int ex_cjump(void)
+static int ex_cjump(char *cmd)
 {
 	char txt[128];
 	char path[1024];
@@ -1259,7 +1260,7 @@ static int ex_cjump(void)
 		ex_show("cn: cannot open %s", path);
 		return 1;
 	}
-	if (ec_edit("", "e", path, NULL) != 0)
+	if (ec_edit("", cmd, path, NULL) != 0)
 		return 1;
 	if (row < 0 || row >= lbuf_len(xb))
 		row = 0;
@@ -1272,7 +1273,7 @@ static int ex_cjump(void)
 static int ec_cshow(char *loc, char *cmd, char *arg, char *txt)
 {
 	int res;
-	if ((res = ex_cjump()))
+	if ((res = ex_cjump(cmd)))
 		ex_show("cc: no more items");
 	return res;
 }
@@ -1283,7 +1284,7 @@ static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
 		ex_show("cn: no more items");
 		return 1;
 	}
-	return ex_cjump();
+	return ex_cjump(cmd);
 }
 
 static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
@@ -1292,7 +1293,7 @@ static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
 		ex_show("cp: no more items");
 		return 1;
 	}
-	return ex_cjump();
+	return ex_cjump(cmd);
 }
 
 static int ec_crewind(char *loc, char *cmd, char *arg, char *txt)
@@ -1423,43 +1424,39 @@ static struct excmd {
 	char *abbr;
 	char *name;
 	int (*ec)(char *loc, char *cmd, char *arg, char *txt);
+	int exclam;
 } excmds[] = {
 	{"a", "append", ec_insert},
 	{"b", "buffer", ec_buffer},
 	{"d", "delete", ec_delete},
 	{"c", "change", ec_insert},
-	{"cc", "cc", ec_cshow},
-	{"cm", "cmap", ec_cmap},
-	{"cm!", "cmap!", ec_cmap},
-	{"cn", "cnext", ec_cnext},
-	{"cp", "cprev", ec_cprev},
+	{"cc", "cc", ec_cshow, 1},
+	{"cm", "cmap", ec_cmap, 1},
+	{"cn", "cnext", ec_cnext, 1},
+	{"cp", "cprev", ec_cprev, 1},
 	{"cr", "crewind", ec_crewind},
-	{"e", "edit", ec_edit},
-	{"e!", "edit!", ec_edit},
+	{"e", "edit", ec_edit, 1},
 	{"ec", "echo", ec_echo},
-	{"ew", "ew", ec_edit},
-	{"ew!", "ew!", ec_edit},
+	{"ew", "ew", ec_edit, 1},
 	{"ft", "filetype", ec_ft},
-	{"g", "global", ec_glob},
-	{"g!", "global!", ec_glob},
+	{"g", "global", ec_glob, 1},
 	{"hl", "highlight", ec_highlight},
 	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
 	{"lsp", "lspopen", ec_lsp},
 	{"lspc", "lspclose", ec_lspclose},
-	{"lspf", "lspfind", ec_lspfind},
-	{"lspg", "lspgoto", ec_lspgoto},
-	{"lspd", "lspdoc", ec_lspdoc},
-	{"make", "make", ec_make},
+	{"lspf", "lspfind", ec_lspfind, 1},
+	{"lspg", "lspgoto", ec_lspgoto, 1},
+	{"lspd", "lspdoc", ec_lspdoc, 1},
+	{"mak", "make", ec_make, 1},
 	{"mk", "mapkey", ec_mapkey},
-	{"n", "next", ec_next},
+	{"n", "next", ec_next, 1},
 	{"p", "print", ec_print},
 	{"mc", "mapchar", ec_mapchar},
-	{"po", "pop", ec_pop},
+	{"po", "pop", ec_pop, 1},
 	{"pu", "put", ec_put},
-	{"prev", "prev", ec_prev},
-	{"q", "quit", ec_quit},
-	{"q!", "quit!", ec_quit},
+	{"prev", "prev", ec_prev, 1},
+	{"q", "quit", ec_quit, 1},
 	{"r", "read", ec_read},
 	{"redo", "redo", ec_redo},
 	{"rs", "rs", ec_rs},
@@ -1469,21 +1466,17 @@ static struct excmd {
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"so", "source", ec_source},
-	{"ta", "tag", ec_tag},
-	{"tn", "tnext", ec_tnext},
-	{"tp", "tprev", ec_tprev},
+	{"ta", "tag", ec_tag, 1},
+	{"tn", "tnext", ec_tnext, 1},
+	{"tp", "tprev", ec_tprev, 1},
 	{"tc", "tclose", ec_tclose},
 	{"tt", "tput", ec_tput},
 	{"u", "undo", ec_undo},
 	{"v", "vglobal", ec_glob},
-	{"w", "write", ec_write},
-	{"w!", "write!", ec_write},
-	{"wq", "wq", ec_quit},
-	{"wq!", "wq!", ec_quit},
-	{"x", "xit", ec_quit},
-	{"x!", "xit!", ec_quit},
-	{"xa", "xa", ec_quit},
-	{"xa!", "xa!", ec_quit},
+	{"w", "write", ec_write, 1},
+	{"wq", "wq", ec_quit, 1},
+	{"x", "xit", ec_quit, 1},
+	{"xa", "xa", ec_quit, 1},
 	{"y", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"@", "@", ec_at},
@@ -1493,9 +1486,13 @@ static struct excmd {
 
 static int ex_idx(char *cmd)
 {
-	int i;
+	char base[32];
+	int len, i;
+	snprintf(base, sizeof(base), "%s", cmd);
+	if ((len = strlen(base)) > 1 && base[len - 1] == '!')
+		base[len - 1] = '\0';
 	for (i = 0; i < LEN(excmds); i++)
-		if (!strcmp(excmds[i].abbr, cmd) || !strcmp(excmds[i].name, cmd))
+		if (!strcmp(excmds[i].abbr, base) || !strcmp(excmds[i].name, base))
 			return i;
 	return -1;
 }

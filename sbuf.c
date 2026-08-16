@@ -11,8 +11,8 @@
 
 struct sbuf {
 	char *s;		/* allocated buffer */
-	long s_n;		/* length of the string stored in s[] */
 	long s_sz;		/* size of memory allocated for s[] */
+	long s_n;		/* length of the string stored in s[] */
 };
 
 static int sbuf_extend(struct sbuf *sbuf, long newsz)
@@ -103,37 +103,35 @@ int sbuf_printf(struct sbuf *sbuf, char *s, ...)
 	return sbuf_str(sbuf, buf);
 }
 
-void fbuf_init(struct fbuf *fb)
+int fbuf_chr(struct fbuf *fb, int c)
 {
-	fb->pos = 0;
+	if (fb->s_n >= fb->s_sz)
+		return 1;
+	fb->s[fb->s_n++] = c;
+	return 0;
 }
 
-void fbuf_chr(struct fbuf *fb, int c)
+int fbuf_mem(struct fbuf *fb, void *s, long len)
 {
-	if (fb->pos < LEN(fb->buf))
-		fb->buf[fb->pos++] = c;
+	long cp = MIN(len, fb->s_sz - fb->s_n);
+	memcpy(fb->s + fb->s_n, s, cp);
+	fb->s_n += cp;
+	return cp < len;
 }
 
-void fbuf_mem(struct fbuf *fb, void *s, long len)
+int fbuf_str(struct fbuf *fb, char *s)
 {
-	long cp = MIN(len, LEN(fb->buf) - fb->pos);
-	memcpy(fb->buf + fb->pos, s, cp);
-	fb->pos += cp;
-}
-
-void fbuf_str(struct fbuf *fb, char *s)
-{
-	fbuf_mem(fb, s, strlen(s));
+	return fbuf_mem(fb, s, strlen(s));
 }
 
 char *fbuf_buf(struct fbuf *fb)
 {
-	if (fb->pos < LEN(fb->buf))
-		fb->buf[fb->pos] = '\0';
-	return fb->pos < LEN(fb->buf) ? fb->buf : NULL;
+	if (fb->s_n < fb->s_sz)
+		fb->s[fb->s_n] = '\0';
+	return fb->s_n < fb->s_sz ? fb->s : NULL;
 }
 
 long fbuf_len(struct fbuf *fb)
 {
-	return fb->pos;
+	return fb->s_n;
 }

@@ -47,13 +47,13 @@ long sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, long len);
 /* fixed-sized buffers */
 struct fbuf {
-	char buf[504];
-	int pos;
+	char *s;		/* allocated buffer */
+	long s_sz;		/* size of memory allocated for s[] */
+	long s_n;		/* length of the string stored in s[] */
 };
-void fbuf_init(struct fbuf *fb);
-void fbuf_chr(struct fbuf *fb, int c);
-void fbuf_mem(struct fbuf *fb, void *s, long len);
-void fbuf_str(struct fbuf *fb, char *s);
+int fbuf_chr(struct fbuf *fb, int c);
+int fbuf_mem(struct fbuf *fb, void *s, long len);
+int fbuf_str(struct fbuf *fb, char *s);
 long fbuf_len(struct fbuf *fb);
 char *fbuf_buf(struct fbuf *fb);
 

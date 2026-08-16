@@ -178,8 +178,8 @@ char *ex_filetype(void)
 /* replace % and # with current and alternate path names; returns a static buffer */
 static char *ex_pathexpand(char *src, int spaceallowed)
 {
-	static struct fbuf fb;
-	fbuf_init(&fb);
+	static char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	while (*src && *src != '\n' && (spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%' || *src == '#') {
 			int idx = *src == '#';
@@ -209,9 +209,9 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 /* read :e +cmd arguments; returns a static buffer */
 static char *ex_plus(char **src0)
 {
-	static struct fbuf fb;
+	static char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	char *src = *src0;
-	fbuf_init(&fb);
 	while (*src == ' ')
 		src++;
 	if (*src != '+')
@@ -507,12 +507,12 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 
 static int ex_next(char *cmd, int dis)
 {
-	struct fbuf fb;
+	char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	int old = next_pos;
 	int idx = next != NULL && next[old] != NULL ? next_pos + dis : -1;
 	char *path = idx >= 0 && next[idx] != NULL ? next[idx] : NULL;
 	char *r = path != NULL ? path : "";
-	fbuf_init(&fb);
 	if (dis && path == NULL) {
 		ex_show("n: no more files");
 		return 1;
@@ -1004,13 +1004,13 @@ static int ex_exec(char *ln);
 
 static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 {
-	struct fbuf fb;
+	char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	struct rstr *re;
 	int offs[32];
 	int beg, end, not;
 	char *pat, *req;
 	int i;
-	fbuf_init(&fb);
 	fbuf_str(&fb, arg);
 	req = fbuf_buf(&fb);
 	if (!loc[0] && !xgdep)
@@ -1501,8 +1501,8 @@ static int ex_idx(char *cmd)
 static char *ex_loc(char **src0)
 {
 	char *src = *src0;
-	static struct fbuf fb;
-	fbuf_init(&fb);
+	static char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	while (*src == ':' || *src == ' ' || *src == '\t')
 		src++;
 	while (*src && strchr(".$0123456789'/?+-,;%", (unsigned char) *src) != NULL) {
@@ -1528,8 +1528,8 @@ static char *ex_loc(char **src0)
 static char *ex_cmd(char **src0)
 {
 	char *src = *src0;
-	static struct fbuf fb;
-	fbuf_init(&fb);
+	static char fb_buf[32];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	while (*src == ' ' || *src == '\t')
 		src++;
 	while (isalpha((unsigned char) *src)) {
@@ -1546,11 +1546,11 @@ static char *ex_cmd(char **src0)
 /* read ex command argument for excmd command; returns a static buffer */
 static char *ex_arg(char **src0, char *excmd)
 {
-	static struct fbuf fb;
+	static char fb_buf[EXLEN];
+	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 	int c0 = excmd[0];
 	int c1 = c0 ? excmd[1] : 0;
 	char *src = *src0;
-	fbuf_init(&fb);
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
@@ -1677,8 +1677,8 @@ int ex_init(char **files)
 	if (getenv("EXINIT")) {
 		ex_command(getenv("EXINIT"));
 	} else if (getenv("HOME")) {
-		struct fbuf fb;
-		fbuf_init(&fb);
+		char fb_buf[EXLEN];
+		struct fbuf fb = {fb_buf, sizeof(fb_buf)};
 		fbuf_str(&fb, getenv("HOME"));
 		fbuf_str(&fb, "/.neatvi");
 		if (fbuf_buf(&fb) && !access(fbuf_buf(&fb), R_OK))

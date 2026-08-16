@@ -203,14 +203,14 @@ static void lbuf_replace(struct lbuf *lb, char *s, long slen, int pos, int n_del
 
 static char *lbuf_copy(struct lbuf *lb, int beg, int end, long *len)
 {
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	int i;
 	for (i = beg; i < end; i++)
 		if (i < lb->ln_n)
-			sbuf_mem(sb, lb->ln[i], lb->ln_len[i]);
+			sbuf_mem(&sb, lb->ln[i], lb->ln_len[i]);
 	if (len)
-		*len = sbuf_len(sb);
-	return sbuf_done(sb);
+		*len = sbuf_len(&sb);
+	return sbuf_done(&sb);
 }
 
 /* append undo/redo history */
@@ -282,14 +282,13 @@ void lbuf_edit(struct lbuf *lb, char *s, int beg, int end)
 int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 {
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	long nr;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+		sbuf_mem(&sb, buf, nr);
 	if (!nr)
-		lbuf_editraw(lbuf, sbuf_buf(sb), sbuf_len(sb), beg, end);
-	sbuf_free(sb);
+		lbuf_editraw(lbuf, sbuf_buf(&sb), sbuf_len(&sb), beg, end);
+	sbuf_free(&sb);
 	return nr != 0;
 }
 

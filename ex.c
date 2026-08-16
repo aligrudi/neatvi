@@ -178,8 +178,8 @@ char *ex_filetype(void)
 /* replace % and # with current and alternate path names; returns a static buffer */
 static char *ex_pathexpand(char *src, int spaceallowed)
 {
-	static char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	while (*src && *src != '\n' && (spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%' || *src == '#') {
 			int idx = *src == '#';
@@ -187,30 +187,30 @@ static char *ex_pathexpand(char *src, int spaceallowed)
 				ex_show("pathname \"%%\" or \"#\" is not set");
 				return NULL;
 			}
-			fbuf_str(&fb, bufs[idx].path[0] ? bufs[idx].path : "/");
+			sbuf_str(&sb, bufs[idx].path[0] ? bufs[idx].path : "/");
 			src++;
-		} else if (fbuf_len(&fb) == 0 && *src == '=') {
+		} else if (sbuf_len(&sb) == 0 && *src == '=') {
 			char *cur = bufs[0].path;
 			char *dir = cur != NULL ? strrchr(cur, '/') : NULL;
 			if (cur != NULL && dir != NULL) {
-				fbuf_mem(&fb, cur, dir - cur);
-				fbuf_chr(&fb, '/');
+				sbuf_mem(&sb, cur, dir - cur);
+				sbuf_chr(&sb, '/');
 			}
 			src++;
 		} else {
 			if (*src == '\\' && src[1])
 				src++;
-			fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
 		}
 	}
-	return fbuf_buf(&fb);
+	return sbuf_buf(&sb);
 }
 
 /* read :e +cmd arguments; returns a static buffer */
 static char *ex_plus(char **src0)
 {
-	static char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	char *src = *src0;
 	while (*src == ' ')
 		src++;
@@ -219,12 +219,12 @@ static char *ex_plus(char **src0)
 	while (*src && *src != ' ') {
 		if (src[0] == '\\' && src[1])
 			src++;
-		fbuf_chr(&fb, *src++);
+		sbuf_chr(&sb, *src++);
 	}
 	while (*src == ' ' || *src == '\t')
 		src++;
 	*src0 = src;
-	return fbuf_buf(&fb);
+	return sbuf_buf(&sb);
 }
 
 /* read register name */
@@ -507,8 +507,8 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 
 static int ex_next(char *cmd, int dis)
 {
-	char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	int old = next_pos;
 	int idx = next != NULL && next[old] != NULL ? next_pos + dis : -1;
 	char *path = idx >= 0 && next[idx] != NULL ? next[idx] : NULL;
@@ -519,10 +519,10 @@ static int ex_next(char *cmd, int dis)
 	}
 	while (*r) {
 		if (*r == ' ' || *r == '%' || *r == '#' || *r == '=')
-			fbuf_chr(&fb, '\\');
-		fbuf_chr(&fb, *r++);
+			sbuf_chr(&sb, '\\');
+		sbuf_chr(&sb, *r++);
 	}
-	if (!fbuf_buf(&fb) || ec_edit("", cmd, fbuf_buf(&fb), NULL))
+	if (!sbuf_buf(&sb) || ec_edit("", cmd, sbuf_buf(&sb), NULL))
 		return 1;
 	next_pos = idx;
 	return 0;
@@ -815,22 +815,20 @@ static int ec_substitute(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
-		struct sbuf *r = NULL;
+		struct sbuf sb = {0};
 		while (rstr_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
-			if (!r)
-				r = sbuf_make();
-			sbuf_mem(r, ln, offs[0]);
-			replace(r, xrep, ln, offs);
+			sbuf_mem(&sb, ln, offs[0]);
+			replace(&sb, xrep, ln, offs);
 			ln += offs[1];
 			if (offs[1] <= 0)	/* zero-length match */
-				sbuf_chr(r, (unsigned char) *ln++);
+				sbuf_chr(&sb, (unsigned char) *ln++);
 			if (!*ln || *ln == '\n' || !strchr(s, 'g'))
 				break;
 		}
-		if (r) {
-			sbuf_str(r, ln);
-			lbuf_edit(xb, sbuf_buf(r), i, i + 1);
-			sbuf_free(r);
+		if (sb.s) {
+			sbuf_str(&sb, ln);
+			lbuf_edit(xb, sbuf_buf(&sb), i, i + 1);
+			sbuf_free(&sb);
 		}
 	}
 	rstr_free(re);
@@ -1004,15 +1002,14 @@ static int ex_exec(char *ln);
 
 static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 {
-	char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	char sb_buf[EXLEN];
 	struct rstr *re;
 	int offs[32];
 	int beg, end, not;
-	char *pat, *req;
+	char *req = sb_buf;
+	char *pat;
 	int i;
-	fbuf_str(&fb, arg);
-	req = fbuf_buf(&fb);
+	snprintf(sb_buf, sizeof(sb_buf), "%s", arg);
 	if (!loc[0] && !xgdep)
 		loc = "%";
 	if (ex_region(loc, &beg, &end))
@@ -1311,22 +1308,22 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	xrow = beg;
 	if (cmd[0] == 'r' && cmd[1] == 'a') {
-		struct sbuf *r = sbuf_make();
+		struct sbuf sb = {0};
 		char *s = buf;
 		int ret;
 		while (*s) {
 			if ((unsigned char) *s == '' && s[1]) {
 				char *reg = reg_get((unsigned char) *++s, NULL);
-				sbuf_str(r, reg ? reg : "");
+				sbuf_str(&sb, reg ? reg : "");
 				s++;
 			} else {
 				if ((unsigned char) *s == '' && s[1])
 					s++;
-				sbuf_chr(r, (unsigned char) *s++);
+				sbuf_chr(&sb, (unsigned char) *s++);
 			}
 		}
-		ret = ex_command(sbuf_buf(r));
-		sbuf_free(r);
+		ret = ex_command(sbuf_buf(&sb));
+		sbuf_free(&sb);
 		return ret;
 	}
 	return ex_command(buf);
@@ -1336,16 +1333,15 @@ static int ec_source(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *path = arg[0] ? ex_pathexpand(arg, 1) : ex_path();
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int fd = path[0] ? open(path, O_RDONLY) : -1;
 	long nr;
 	if (fd < 0)
 		return 1;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
-	ex_command(sbuf_buf(sb));
-	sbuf_free(sb);
+		sbuf_mem(&sb, buf, nr);
+	ex_command(sbuf_buf(&sb));
+	sbuf_free(&sb);
 	return 0;
 }
 
@@ -1501,53 +1497,53 @@ static int ex_idx(char *cmd)
 static char *ex_loc(char **src0)
 {
 	char *src = *src0;
-	static char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	while (*src == ':' || *src == ' ' || *src == '\t')
 		src++;
 	while (*src && strchr(".$0123456789'/?+-,;%", (unsigned char) *src) != NULL) {
 		if (*src == '\'')
-			fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
 		if (*src == '/' || *src == '?') {
 			int d = *src;
-			fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
 			while (*src && *src != d) {
 				if (*src == '\\' && src[1])
-					fbuf_chr(&fb, *src++);
-				fbuf_chr(&fb, *src++);
+					sbuf_chr(&sb, *src++);
+				sbuf_chr(&sb, *src++);
 			}
 		}
 		if (*src)
-			fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
 	}
 	*src0 = src;
-	return fbuf_buf(&fb);
+	return sbuf_buf(&sb);
 }
 
 /* read ex command name; returns a static buffer */
 static char *ex_cmd(char **src0)
 {
 	char *src = *src0;
-	static char fb_buf[32];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	static char sb_buf[32];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	while (*src == ' ' || *src == '\t')
 		src++;
 	while (isalpha((unsigned char) *src)) {
-		fbuf_chr(&fb, *src++);
-		if (src[-1] == 'k' && fbuf_len(&fb) == 1)
+		sbuf_chr(&sb, *src++);
+		if (src[-1] == 'k' && sbuf_len(&sb) == 1)
 			break;
 	}
 	if (*src == '!' || *src == '=' || *src == '@')
-		fbuf_chr(&fb, *src++);
+		sbuf_chr(&sb, *src++);
 	*src0 = src;
-	return fbuf_buf(&fb);
+	return sbuf_buf(&sb);
 }
 
 /* read ex command argument for excmd command; returns a static buffer */
 static char *ex_arg(char **src0, char *excmd)
 {
-	static char fb_buf[EXLEN];
-	struct fbuf fb = {fb_buf, sizeof(fb_buf)};
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	int c0 = excmd[0];
 	int c1 = c0 ? excmd[1] : 0;
 	char *src = *src0;
@@ -1557,27 +1553,27 @@ static char *ex_arg(char **src0, char *excmd)
 			((c0 == 'r' || c0 == 'w') && !c1 && src[0] == '!')) {
 		while (*src && *src != '\n') {
 			if (*src == '\\' && src[1])
-				fbuf_chr(&fb, *src++);
-			fbuf_chr(&fb, *src++);
+				sbuf_chr(&sb, *src++);
+			sbuf_chr(&sb, *src++);
 		}
 	} else if ((c0 == 's' && c1 != 'e') || c0 == '&' || c0 == '~') {
 		int delim = *src;
 		int cnt = 2;
 		if (delim != '\n' && delim != '|' && delim != '\\' && delim != '"') {
-			fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
 			while (*src && *src != '\n' && cnt > 0) {
 				if (*src == delim)
 					cnt--;
 				if (*src == '\\' && src[1])
-					fbuf_chr(&fb, *src++);
-				fbuf_chr(&fb, *src++);
+					sbuf_chr(&sb, *src++);
+				sbuf_chr(&sb, *src++);
 			}
 		}
 	}
 	while (*src && *src != '\n' && *src != '|' && *src != '"') {
 		if (*src == '\\' && src[1])
-			fbuf_chr(&fb, *src++);
-		fbuf_chr(&fb, *src++);
+			sbuf_chr(&sb, *src++);
+		sbuf_chr(&sb, *src++);
 	}
 	if (*src == '"') {
 		while (*src && *src != '\n')
@@ -1586,7 +1582,7 @@ static char *ex_arg(char **src0, char *excmd)
 	if (*src == '\n' || *src == '|')
 		src++;
 	*src0 = src;
-	return fbuf_buf(&fb);
+	return sbuf_buf(&sb);
 }
 
 /* read ex text input for excmd command */
@@ -1608,19 +1604,19 @@ static char *ex_txt(char **src0, char *excmd)
 		return res;
 	}
 	if ((c0 == 'r' && c1 == 's') || (c1 == 0 && (c0 == 'i' || c0 == 'a' || c0 == 'c'))) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char *s;
 		while ((s = ex_read(""))) {
 			if (!strcmp(".", s)) {
 				free(s);
 				break;
 			}
-			sbuf_str(sb, s);
-			sbuf_chr(sb, '\n');
+			sbuf_str(&sb, s);
+			sbuf_chr(&sb, '\n');
 			free(s);
 		}
 		*src0 = src;
-		return sbuf_done(sb);
+		return sbuf_done(&sb);
 	}
 	return NULL;
 }
@@ -1677,12 +1673,12 @@ int ex_init(char **files)
 	if (getenv("EXINIT")) {
 		ex_command(getenv("EXINIT"));
 	} else if (getenv("HOME")) {
-		char fb_buf[EXLEN];
-		struct fbuf fb = {fb_buf, sizeof(fb_buf)};
-		fbuf_str(&fb, getenv("HOME"));
-		fbuf_str(&fb, "/.neatvi");
-		if (fbuf_buf(&fb) && !access(fbuf_buf(&fb), R_OK))
-			ec_source("", "so", fbuf_buf(&fb), NULL);
+		char sb_buf[EXLEN];
+		struct sbuf sb = {sb_buf, sizeof(sb_buf)};
+		sbuf_str(&sb, getenv("HOME"));
+		sbuf_str(&sb, "/.neatvi");
+		if (sbuf_buf(&sb) && !access(sbuf_buf(&sb), R_OK))
+			ec_source("", "so", sbuf_buf(&sb), NULL);
 	}
 	return 0;
 }

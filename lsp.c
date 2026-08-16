@@ -17,7 +17,7 @@ static int lsp_pid;		/* LSP server PID */
 static int lsp_ifd;		/* LSP server standard input */
 static int lsp_ofd;		/* LSP server standard output */
 static int lsp_idx;		/* LSP command index */
-static struct sbuf *lsp_res;	/* LSP server input stream */
+static struct sbuf lsp_res;	/* LSP server input stream */
 static char lsp_root[1024];	/* project root (CWD) */
 static char lsp_file[1024];	/* the open file */
 static long lsp_mtime;		/* the modification time of lsp_file */
@@ -86,7 +86,6 @@ int lsp_init(char *cmd[])
 	close(ofds[1]);
 	fcntl(lsp_ifd, F_SETFL, fcntl(lsp_ifd, F_GETFL, 0) | O_NONBLOCK | FD_CLOEXEC);
 	fcntl(lsp_ofd, F_SETFL, fcntl(lsp_ofd, F_GETFL, 0) | O_NONBLOCK | FD_CLOEXEC);
-	lsp_res = sbuf_make();
 	if (lsp_initialize()) {
 		lsp_done();
 		return 1;
@@ -100,25 +99,24 @@ static char *lsp_filebody(char *path)
 	char buf[1024];
 	long nr;
 	int i;
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	if (fd < 0)
 		return NULL;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0) {
 		for (i = 0; i < nr; i++) {
 			int c = (unsigned char) buf[i];
 			if (c == '\n' || c == '\t') {
-				sbuf_str(sb, c == '\n' ? "\\n" : "\\t");
+				sbuf_str(&sb, c == '\n' ? "\\n" : "\\t");
 			} else if (!isprint(c)) {
-				sbuf_printf(sb, "\\u%04x", c);
+				sbuf_printf(&sb, "\\u%04x", c);
 			} else {
 				if (c == '\\' || c == '"')
-					sbuf_chr(sb, '\\');
-				sbuf_chr(sb, c);
+					sbuf_chr(&sb, '\\');
+				sbuf_chr(&sb, c);
 			}
 		}
 	}
-	return sbuf_done(sb);
+	return sbuf_done(&sb);
 }
 
 static char *lsp_lang(char *ft)
@@ -226,13 +224,12 @@ static char *lsp_fileread(char *path)
 	char buf[1024];
 	int fd = open(path, O_RDONLY);
 	long nr;
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	if (fd < 0)
 		return NULL;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
-	return sbuf_done(sb);
+		sbuf_mem(&sb, buf, nr);
+	return sbuf_done(&sb);
 }
 
 static int lsp_fileline(char *body, int goal, char *dst, int dstlen, int *lastln, long *lastpos)
@@ -280,7 +277,7 @@ char *lsp_find(char *path, int row, int off, char *ft)
 		return NULL;
 	}
 	if ((ents = json_list(result))) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char lastfile[1024];
 		char *lastbody = NULL;
 		long lastpos;
@@ -299,14 +296,14 @@ char *lsp_find(char *path, int row, int off, char *ft)
 				}
 				line[0] = '\0';
 				lsp_fileline(lastbody, drow, line, sizeof(line), &lastrow, &lastpos);
-				sbuf_str(sb, file);
-				sbuf_printf(sb, ":%d:%d: %s\n", drow + 1, doff + 1, line);
+				sbuf_str(&sb, file);
+				sbuf_printf(&sb, ":%d:%d: %s\n", drow + 1, doff + 1, line);
 			}
 		}
 		free(lastbody);
 		free(ents);
 		free(res);
-		return sbuf_done(sb);
+		return sbuf_done(&sb);
 	}
 	free(res);
 	return NULL;
@@ -360,8 +357,7 @@ void lsp_done(void)
 		if (waitpid(lsp_pid, NULL, WNOHANG) == lsp_pid)
 			break;
 	}
-	sbuf_free(lsp_res);
-	lsp_res = NULL;
+	sbuf_free(&lsp_res);
 	lsp_pid = 0;
 	lsp_ifd = 0;
 	lsp_ofd = 0;
@@ -414,8 +410,8 @@ static long http_blen(char *buf, long len)
 
 static long http_got(void)
 {
-	char *res = sbuf_buf(lsp_res);
-	long len = sbuf_len(lsp_res);
+	char *res = sbuf_buf(&lsp_res);
+	long len = sbuf_len(&lsp_res);
 	long hlen = http_hlen(res, len);
 	long blen = hlen > 0 ? http_blen(res, hlen) : -1;
 	if (hlen >= 0 && blen >= 0 && (len - hlen) >= blen)
@@ -436,7 +432,7 @@ static int http_req(char *msg, long msg_sz)
 		if (fds[0].revents & POLLIN) {
 			long ret = read(fds[0].fd, buf, sizeof(buf));
 			if (ret > 0)
-				sbuf_mem(lsp_res, buf, ret);
+				sbuf_mem(&lsp_res, buf, ret);
 			if (ret <= 0)
 				fds[0].fd = -1;
 		} else if (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)) {
@@ -465,10 +461,9 @@ static int http_fetch(char **res, long *len)
 		http_req(NULL, 0);
 	*len = http_got();
 	if (*len) {
-		long tot = sbuf_len(lsp_res);
-		*res = sbuf_done(lsp_res);
-		lsp_res = sbuf_make();
-		sbuf_mem(lsp_res, *res + *len, tot - *len);
+		long tot = sbuf_len(&lsp_res);
+		*res = sbuf_done(&lsp_res);
+		sbuf_mem(&lsp_res, *res + *len, tot - *len);
 		return 0;
 	}
 	return 1;
@@ -477,13 +472,13 @@ static int http_fetch(char **res, long *len)
 static int http_send(long sz, char *fmt, va_list ap)
 {
 	char *buf = malloc(sz);
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	vsnprintf(buf, sz, fmt, ap);
-	sbuf_printf(sb, "Content-Length: %ld\r\n\r\n", strlen(buf));
-	sbuf_str(sb, buf);
+	sbuf_printf(&sb, "Content-Length: %ld\r\n\r\n", strlen(buf));
+	sbuf_str(&sb, buf);
 	free(buf);
-	http_req(sbuf_buf(sb), sbuf_len(sb));
-	sbuf_free(sb);
+	http_req(sbuf_buf(&sb), sbuf_len(&sb));
+	sbuf_free(&sb);
 	return 0;
 }
 

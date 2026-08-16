@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "vi.h"
 
-static struct sbuf *term_sbuf;	/* output buffer if not NULL */
+static struct sbuf term_sbuf;	/* output buffer if not NULL */
 static int rows, cols;		/* number of terminal rows and columns */
 static int win_top, win_rows;	/* active window rows */
 static int win_left, win_cols;	/* active window columns */
@@ -22,7 +22,6 @@ void term_init(void)
 	newtermios = termios;
 	newtermios.c_lflag &= ~(ICANON | ISIG);
 	newtermios.c_lflag &= ~ECHO;
-	term_sbuf = sbuf_make();
 	tcsetattr(0, TCSAFLUSH, &newtermios);
 	if (getenv("LINES"))
 		rows = atoi(getenv("LINES"));
@@ -59,8 +58,7 @@ void term_done(void)
 	term_pos(rows - 1, 0);
 	term_kill();
 	term_commit();
-	sbuf_free(term_sbuf);
-	term_sbuf = NULL;
+	sbuf_free(&term_sbuf);
 	tcsetattr(0, 0, &termios);
 }
 
@@ -81,13 +79,13 @@ static long write_fully(int fd, void *buf, long sz)
 
 void term_commit(void)
 {
-	write_fully(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
-	sbuf_cut(term_sbuf, 0);
+	write_fully(1, sbuf_buf(&term_sbuf), sbuf_len(&term_sbuf));
+	sbuf_cut(&term_sbuf, 0);
 }
 
 void term_str(char *s)
 {
-	sbuf_str(term_sbuf, s);
+	sbuf_str(&term_sbuf, s);
 }
 
 void term_chr(int ch)

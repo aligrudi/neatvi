@@ -35,7 +35,12 @@ int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_pair(struct lbuf *lb, int *row, int *off);
 
 /* string buffer, variable-sized string */
-struct sbuf *sbuf_make(void);
+struct sbuf {
+	char *s;		/* allocated buffer */
+	long s_sz;		/* size of memory allocated for s[] */
+	long s_n;		/* length of the string stored in s[] */
+	int owns;		/* s is allocated and owned by sbuf */
+};
 void sbuf_free(struct sbuf *sb);
 char *sbuf_done(struct sbuf *sb);
 char *sbuf_buf(struct sbuf *sb);
@@ -45,17 +50,6 @@ int sbuf_mem(struct sbuf *sb, void *s, long len);
 int sbuf_printf(struct sbuf *sbuf, char *s, ...);
 long sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, long len);
-/* fixed-sized buffers */
-struct fbuf {
-	char *s;		/* allocated buffer */
-	long s_sz;		/* size of memory allocated for s[] */
-	long s_n;		/* length of the string stored in s[] */
-};
-int fbuf_chr(struct fbuf *fb, int c);
-int fbuf_mem(struct fbuf *fb, void *s, long len);
-int fbuf_str(struct fbuf *fb, char *s);
-long fbuf_len(struct fbuf *fb);
-char *fbuf_buf(struct fbuf *fb);
 
 /* regular expressions */
 #define RE_ICASE		1

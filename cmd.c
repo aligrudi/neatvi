@@ -66,7 +66,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 {
 	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
 	struct pollfd fds[3];
-	struct sbuf *sb = NULL;
+	struct sbuf sb = {0};
 	char buf[512];
 	int ifd = -1, ofd = -1;
 	int slen = ibuf != NULL ? strlen(ibuf) : 0;
@@ -74,8 +74,6 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 	int pid = cmd_make(argv, ibuf ? &ifd : NULL, oproc ? &ofd : NULL);
 	if (pid <= 0)
 		return NULL;
-	if (oproc)
-		sb = sbuf_make();
 	if (!ibuf) {
 		signal(SIGINT, SIG_IGN);
 		term_done();
@@ -94,7 +92,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 			if (ret > 0 && oproc == 2)
 				write(1, buf, ret);
 			if (ret > 0)
-				sbuf_mem(sb, buf, ret);
+				sbuf_mem(&sb, buf, ret);
 			if (ret <= 0) {
 				close(fds[0].fd);
 				fds[0].fd = -1;
@@ -133,7 +131,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 		signal(SIGINT, SIG_DFL);
 	}
 	if (oproc)
-		return sbuf_done(sb);
+		return sbuf_done(&sb);
 	return NULL;
 }
 
@@ -150,7 +148,7 @@ char *cmd_unix(char *path, char *ibuf)
 	struct sockaddr_un addr;
 	long nw = 0, nc = 0;
 	long len = strlen(ibuf);
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	if (fd < 0)
 		return NULL;
 	memset(&addr, 0, sizeof(addr));
@@ -163,9 +161,8 @@ char *cmd_unix(char *path, char *ibuf)
 	while (nw < len && (nc = write(fd, ibuf + nw, len - nw)) >= 0)
 		nw += nc;
 	shutdown(fd, SHUT_WR);
-	sb = sbuf_make();
 	while ((nc = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nc);
+		sbuf_mem(&sb, buf, nc);
 	close(fd);
-	return sbuf_done(sb);
+	return sbuf_done(&sb);
 }

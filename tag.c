@@ -19,7 +19,7 @@ int tag_init(void)
 static int tag_load(void)
 {
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	long nr;
 	int fd;
 	if (tagpath != NULL)
@@ -27,12 +27,11 @@ static int tag_load(void)
 	tagpath = getenv("TAGPATH") ? getenv("TAGPATH") : "tags";
 	if ((fd = open(tagpath, O_RDONLY)) < 0)
 		return 1;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+		sbuf_mem(&sb, buf, nr);
 	close(fd);
-	taglen = sbuf_len(sb);
-	tag = sbuf_done(sb);
+	taglen = sbuf_len(&sb);
+	tag = sbuf_done(&sb);
 	return 0;
 }
 
@@ -134,16 +133,15 @@ struct tlist *tlist_from(char *path)
 	char buf[1024];
 	long nr;
 	char *s;
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return NULL;
 	tls = tlist_make(NULL, 0);
-	sb = sbuf_make();
-	while (sbuf_len(sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+	while (sbuf_len(&sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(&sb, buf, nr);
 	close(fd);
-	tls->raw = sbuf_done(sb);
+	tls->raw = sbuf_done(&sb);
 	for (s = tls->raw; s && *s;) {
 		char *r = strchr(s, '\n');
 		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
@@ -180,16 +178,15 @@ struct tlist *tlist_tags(char *path)
 	char buf[1024];
 	long nr;
 	char *s;
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return NULL;
 	tls = tlist_make(NULL, 0);
-	sb = sbuf_make();
-	while (sbuf_len(sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+	while (sbuf_len(&sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(&sb, buf, nr);
 	close(fd);
-	tls->raw = sbuf_done(sb);
+	tls->raw = sbuf_done(&sb);
 	for (s = tls->raw; s && *s;) {
 		char *r = strchr(s, '\n');
 		char *t1 = s ? memchr(s, '\t', r - s) : NULL;

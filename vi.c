@@ -304,7 +304,7 @@ static char *vi_prompt(char *msg, int *kmap, char *hist)
 /* read an ex input line */
 char *ex_read(char *msg)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int c;
 	if (xvis)
 		term_pos(xrows - 1, 0);
@@ -316,14 +316,13 @@ char *ex_read(char *msg)
 			term_chr('\n');
 		return s;
 	}
-	sb = sbuf_make();
 	while ((c = getchar()) != EOF && c != '\n')
-		sbuf_chr(sb, c);
+		sbuf_chr(&sb, c);
 	if (c == EOF) {
-		sbuf_free(sb);
+		sbuf_free(&sb);
 		return NULL;
 	}
-	return sbuf_done(sb);
+	return sbuf_done(&sb);
 }
 
 /* show an ex message */
@@ -373,7 +372,7 @@ static char *reg_getln(int h)
 static void reg_putln(int h, char *s)
 {
 	char *old = reg_get(0x80 | h, NULL);
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int i = 0;
 	if (xhist == 0 || s == NULL || s[0] == '\0' || s[0] == '\n')
 		return;
@@ -393,14 +392,13 @@ static void reg_putln(int h, char *s)
 			end[1] = '\0';
 	}
 	/* add the new line */
-	sb = sbuf_make();
-	sbuf_str(sb, s);
+	sbuf_str(&sb, s);
 	if (strchr(s, '\n') == NULL)
-		sbuf_chr(sb, '\n');
+		sbuf_chr(&sb, '\n');
 	if (old != NULL)
-		sbuf_str(sb, old);
-	reg_put(0x80 | h, sbuf_buf(sb), 1);
-	sbuf_free(sb);
+		sbuf_str(&sb, old);
+	reg_put(0x80 | h, sbuf_buf(&sb), 1);
+	sbuf_free(&sb);
 }
 
 static int vi_yankbuf(void)
@@ -505,17 +503,16 @@ static int vi_next(int cmd, int cnt, int *row, int *off)
 static int vi_search(int cmd, int cnt, int *row, int *off)
 {
 	char sign[4] = {cmd};
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	char *kw = vi_prompt(sign, &xkmap, reg_getln('/'));
 	char *re;
 	int ret = 0;
 	if (!kw)
 		return 1;
-	sb = sbuf_make();
-	sbuf_chr(sb, cmd);
-	sbuf_str(sb, kw);
+	sbuf_chr(&sb, cmd);
+	sbuf_str(&sb, kw);
 	free(kw);
-	kw = sbuf_buf(sb);
+	kw = sbuf_buf(&sb);
 	while ((re = re_read(&kw))) {
 		ex_kwdset(re[0] ? re : NULL, cmd == '/' ? +1 : -1);
 		if (re[0]) {
@@ -547,7 +544,7 @@ static int vi_search(int cmd, int cnt, int *row, int *off)
 		if (!*kw || (*kw != '/' && *kw != '?'))
 			break;
 	}
-	sbuf_free(sb);
+	sbuf_free(&sb);
 	return ret;
 }
 
@@ -847,21 +844,20 @@ static void swap(int *a, int *b)
 
 static char *lbuf_region(struct lbuf *lb, int r1, int o1, int r2, int o2)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	char *s1, *s2, *s3;
 	if (r1 == r2)
 		return uc_sub(lbuf_get(lb, r1), o1, o2);
-	sb = sbuf_make();
 	s1 = uc_sub(lbuf_get(lb, r1), o1, -1);
 	s3 = uc_sub(lbuf_get(lb, r2), 0, o2);
 	s2 = lbuf_cp(lb, r1 + 1, r2);
-	sbuf_str(sb, s1);
-	sbuf_str(sb, s2);
-	sbuf_str(sb, s3);
+	sbuf_str(&sb, s1);
+	sbuf_str(&sb, s2);
+	sbuf_str(&sb, s3);
 	free(s1);
 	free(s2);
 	free(s3);
-	return sbuf_done(sb);
+	return sbuf_done(&sb);
 }
 
 static int vi_yank(int r1, int o1, int r2, int o2, int lnmode)
@@ -882,13 +878,13 @@ static int vi_delete(int r1, int o1, int r2, int o2, int lnmode)
 	reg_put(vi_ybuf, region, lnmode);
 	free(region);
 	if (!lnmode) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char *s1 = lbuf_get(xb, r1);
 		char *s2 = lbuf_get(xb, r2);
-		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
-		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
-		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
-		sbuf_free(sb);
+		sbuf_mem(&sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
+		sbuf_str(&sb, s2 ? uc_chr(s2, o2) : "");
+		lbuf_edit(xb, sbuf_buf(&sb), r1, r2 + 1);
+		sbuf_free(&sb);
 	} else {
 		lbuf_edit(xb, NULL, r1, r2 + 1);
 	}
@@ -963,7 +959,7 @@ static int vi_indents(char *ln, char *in, int size)
 
 static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 {
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	char *s1 = lbuf_get(xb, r1);
 	char *s2 = lbuf_get(xb, r2);
 	char *region = lbuf_region(xb, r1, lnmode ? 0 : o1, r2, lnmode ? -1 : o2);
@@ -972,14 +968,14 @@ static int vi_change(int r1, int o1, int r2, int o2, int lnmode)
 	if (xai && lnmode)
 		vi_indents(s1, vi_ai, sizeof(vi_ai) - 1);
 	if (lnmode) {
-		sbuf_str(sb, xai ? vi_ai : "");
-		sbuf_str(sb, "\n");
+		sbuf_str(&sb, xai ? vi_ai : "");
+		sbuf_str(&sb, "\n");
 	} else {
-		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
-		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
+		sbuf_mem(&sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
+		sbuf_str(&sb, s2 ? uc_chr(s2, o2) : "");
 	}
-	lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
-	sbuf_free(sb);
+	lbuf_edit(xb, sbuf_buf(&sb), r1, r2 + 1);
+	sbuf_free(&sb);
 	xrow = r1;
 	xoff = xai && lnmode ? lbuf_indents(xb, r1) : o1;
 	vi_drawfix(r1, r2 - r1 + 1, 1);
@@ -1006,14 +1002,14 @@ static int vi_case(int r1, int o1, int r2, int o2, int lnmode, int cmd)
 		s = uc_next(s);
 	}
 	if (!lnmode) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char *s1 = lbuf_get(xb, r1);
 		char *s2 = lbuf_get(xb, r2);
-		sbuf_mem(sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
-		sbuf_str(sb, region);
-		sbuf_str(sb, s2 ? uc_chr(s2, o2) : "");
-		lbuf_edit(xb, sbuf_buf(sb), r1, r2 + 1);
-		sbuf_free(sb);
+		sbuf_mem(&sb, s1, s1 ? uc_chr(s1, o1) - s1 : 0);
+		sbuf_str(&sb, region);
+		sbuf_str(&sb, s2 ? uc_chr(s2, o2) : "");
+		lbuf_edit(xb, sbuf_buf(&sb), r1, r2 + 1);
+		sbuf_free(&sb);
 	} else {
 		lbuf_edit(xb, region, r1, r2 + 1);
 	}
@@ -1046,22 +1042,21 @@ static int vi_pipe(int r1, int r2)
 
 static int vi_shift(int r1, int r2, int dir)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	char *ln;
 	int i;
 	for (i = r1; i <= r2; i++) {
 		if (!(ln = lbuf_get(xb, i)))
 			continue;
-		sb = sbuf_make();
 		if (dir > 0) {
 			if (ln[0] != '\n')
-				sbuf_chr(sb, '\t');
+				sbuf_chr(&sb, '\t');
 		} else {
 			ln = ln[0] == ' ' || ln[0] == '\t' ? ln + 1 : ln;
 		}
-		sbuf_str(sb, ln);
-		lbuf_edit(xb, sbuf_buf(sb), i, i + 1);
-		sbuf_free(sb);
+		sbuf_str(&sb, ln);
+		lbuf_edit(xb, sbuf_buf(&sb), i, i + 1);
+		sbuf_free(&sb);
 	}
 	xrow = r1;
 	xoff = lbuf_indents(xb, xrow);
@@ -1161,17 +1156,17 @@ static int vc_insert(int cmd)
 static void vi_edit(int off, int del, char *ins)
 {
 	char *ln = lbuf_get(xb, xrow);
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	char *pos = ln ? uc_chr(ln, off) : NULL;
 	char *end = pos ? uc_chr(pos, del) : NULL;
 	char *last = strrchr(ins, '\n');
 	int lncnt = linecount(ins);
 	int row = xrow;
 	last = last ? last + 1 : ins;
-	sbuf_mem(sb, ln, pos ? pos - ln : 0);
-	sbuf_str(sb, ins);
-	sbuf_str(sb, end && end[0] ? end : "\n");
-	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
+	sbuf_mem(&sb, ln, pos ? pos - ln : 0);
+	sbuf_str(&sb, ins);
+	sbuf_str(&sb, end && end[0] ? end : "\n");
+	lbuf_edit(xb, sbuf_buf(&sb), xrow, xrow + 1);
 	vi_drawrow(row);
 	xrow += lncnt - 1;
 	xoff = xoff - del + uc_slen(last) - (lncnt > 1 ? off : 0);
@@ -1180,7 +1175,7 @@ static void vi_edit(int off, int del, char *ins)
 		led_reset(&vi_ledins);
 	if (lncnt > 1)
 		vi_drawfix(row + 1, 0, lncnt - 1);
-	sbuf_free(sb);
+	sbuf_free(&sb);
 }
 
 static int vi_lastword(char *s, int off)
@@ -1293,31 +1288,31 @@ static int vc_put(int cmd)
 	if (!buf || !buf[0])
 		return 0;
 	if (lnmode) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		for (i = 0; i < cnt; i++)
-			sbuf_str(sb, buf);
+			sbuf_str(&sb, buf);
 		if (cmd == 'p' && lbuf_len(xb))
 			xrow++;
-		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow);
-		lncnt = linecount(sbuf_buf(sb));
+		lbuf_edit(xb, sbuf_buf(&sb), xrow, xrow);
+		lncnt = linecount(sbuf_buf(&sb));
 		xoff = lbuf_indents(xb, xrow);
-		sbuf_free(sb);
+		sbuf_free(&sb);
 	} else {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char *ln = xrow < lbuf_len(xb) ? lbuf_get(xb, xrow) : "\n";
 		int off = ren_noeol(ln, xoff) + (ln[0] != '\n' && cmd == 'p');
 		char *s = uc_sub(ln, 0, off);
-		sbuf_str(sb, s);
+		sbuf_str(&sb, s);
 		free(s);
 		for (i = 0; i < cnt; i++)
-			sbuf_str(sb, buf);
+			sbuf_str(&sb, buf);
 		s = uc_sub(ln, off, -1);
-		sbuf_str(sb, s);
+		sbuf_str(&sb, s);
 		free(s);
-		lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
-		lncnt = linecount(sbuf_buf(sb)) - 1;
+		lbuf_edit(xb, sbuf_buf(&sb), xrow, xrow + 1);
+		lncnt = linecount(sbuf_buf(&sb)) - 1;
 		xoff = off + uc_slen(buf) * cnt - 1;
-		sbuf_free(sb);
+		sbuf_free(&sb);
 	}
 	vi_drawfix(xrow, 1, lncnt);
 	return VC_OK;
@@ -1335,7 +1330,7 @@ static int join_spaces(char *prev, char *next)
 
 static int vc_join(void)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int cnt = vi_arg1 <= 1 ? 2 : vi_arg1;
 	int beg = xrow;
 	int end = xrow + cnt;
@@ -1343,7 +1338,6 @@ static int vc_join(void)
 	int i;
 	if (!lbuf_get(xb, beg) || !lbuf_get(xb, end - 1))
 		return 0;
-	sb = sbuf_make();
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		char *lnend = strchr(ln, '\n');
@@ -1351,16 +1345,16 @@ static int vc_join(void)
 		if (i > beg)
 			while (ln[0] == ' ' || ln[0] == '\t')
 				ln++;
-		spaces = i > beg ? join_spaces(sbuf_buf(sb), ln) : 0;
-		off = uc_slen(sbuf_buf(sb));
+		spaces = i > beg ? join_spaces(sbuf_buf(&sb), ln) : 0;
+		off = uc_slen(sbuf_buf(&sb));
 		while (spaces--)
-			sbuf_chr(sb, ' ');
-		sbuf_mem(sb, ln, lnend - ln);
+			sbuf_chr(&sb, ' ');
+		sbuf_mem(&sb, ln, lnend - ln);
 	}
-	sbuf_chr(sb, '\n');
-	lbuf_edit(xb, sbuf_buf(sb), beg, end);
+	sbuf_chr(&sb, '\n');
+	lbuf_edit(xb, sbuf_buf(&sb), beg, end);
 	xoff = off;
-	sbuf_free(sb);
+	sbuf_free(&sb);
 	vi_drawfix(xrow, end - beg, 1);
 	return VC_OK;
 }
@@ -1413,7 +1407,7 @@ static int vc_replace(void)
 	int cnt = MAX(1, vi_arg1);
 	char *cs = vi_char(vi_read, xkmap);
 	char *ln = lbuf_get(xb, xrow);
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	char *pos, *end;
 	int off, i;
 	if (!ln || !cs)
@@ -1423,12 +1417,11 @@ static int vc_replace(void)
 	end = uc_chr(pos, cnt);
 	if (!end || !end[0])
 		return 0;
-	sb = sbuf_make();
-	sbuf_mem(sb, ln, pos - ln);
+	sbuf_mem(&sb, ln, pos - ln);
 	for (i = 0; i < cnt; i++)
-		sbuf_str(sb, cs);
-	sbuf_str(sb, end);
-	lbuf_edit(xb, sbuf_buf(sb), xrow, xrow + 1);
+		sbuf_str(&sb, cs);
+	sbuf_str(&sb, end);
+	lbuf_edit(xb, sbuf_buf(&sb), xrow, xrow + 1);
 	if (cs[0] == '\n') {
 		xrow += cnt;
 		xoff = 0;
@@ -1437,7 +1430,7 @@ static int vc_replace(void)
 		xoff = off + cnt - 1;
 		vi_drawfix(xrow, 1, 1);
 	}
-	sbuf_free(sb);
+	sbuf_free(&sb);
 	return VC_OK;
 }
 

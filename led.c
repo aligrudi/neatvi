@@ -48,7 +48,7 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 	int cend = cbeg + cols;
 	int clast = 0;			/* the last non-blank column */
 	int att_old = 0;
-	struct sbuf *out;
+	struct sbuf out = {0};
 	int n, i, j;
 	int ctx = dir_context(s0);
 	int att_blank = 0;		/* the attribute of blank space */
@@ -80,39 +80,37 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 	att_blank = n > 0 ? att[n - 1] : 0;
 	led_markrev(n, chrs, pos, att);
 	/* generate term output */
-	out = sbuf_make();
-	/* disable BiDi in vte-based terminals */
-	sbuf_str(out, xvte ? "\33[8l" : "");
+	sbuf_str(&out, xvte ? "\33[8l" : "");	/* disable BiDi in vte-based terminals */
 	i = cbeg;
 	while (i < cend && i <= clast) {
 		int o = off[i - cbeg];
 		int att_new = o >= 0 ? att[o] : att_blank;
-		int soff = sbuf_len(out);
+		int soff = sbuf_len(&out);
 		int scol = i - cbeg;
-		sbuf_str(out, term_seqattr(att_new, att_old));
+		sbuf_str(&out, term_seqattr(att_new, att_old));
 		att_old = att_new;
 		if (o >= 0) {
 			if (ren_translate(chrs[o], s0)) {
-				sbuf_str(out, ren_translate(chrs[o], s0));
+				sbuf_str(&out, ren_translate(chrs[o], s0));
 			} else if (uc_isprint(chrs[o])) {
-				sbuf_mem(out, chrs[o], uc_len(chrs[o]));
+				sbuf_mem(&out, chrs[o], uc_len(chrs[o]));
 			} else {
 				int cw = 0;
 				if (chrs[o][0] == '\t' && mapch_get("\t", NULL))
-					sbuf_str(out, mapch_get("\t", &cw));
+					sbuf_str(&out, mapch_get("\t", &cw));
 				for (j = i + cw; j < cend && off[j - cbeg] == o; j++)
-					sbuf_chr(out, ' ');
+					sbuf_chr(&out, ' ');
 			}
 			while (i < cend && off[i - cbeg] == o)
 				i++;
 		} else {
-			sbuf_chr(out, ' ');
+			sbuf_chr(&out, ' ');
 			i++;
 		}
 		if (out_off < 0) {
 			int old_diverged = soff >= old_len ||
-				memcmp(*old + soff, sbuf_buf(out) + soff, sbuf_len(out) - soff);
-			int old_prefix = i > clast && sbuf_len(out) < old_len;
+				memcmp(*old + soff, sbuf_buf(&out) + soff, sbuf_len(&out) - soff);
+			int old_prefix = i > clast && sbuf_len(&out) < old_len;
 			if (old_diverged || old_prefix) {
 				out_off = soff;
 				out_col = scol;
@@ -124,16 +122,16 @@ void led_print(char *s0, int row, int cbeg, int cols, char *syn, char **old)
 	if (out_off >= 0) {
 		term_pos(row, out_col);
 		term_str(term_seqattr(out_att, 0));
-		term_str(sbuf_buf(out) + out_off);
+		term_str(sbuf_buf(&out) + out_off);
 		if (clast < cend - 1)
 			term_str(term_seqkill());
 		term_str(term_seqattr(0, att_old));
 	}
 	if (old) {
 		free(*old);
-		*old = sbuf_done(out);
+		*old = sbuf_done(&out);
 	} else {
-		sbuf_free(out);
+		sbuf_free(&out);
 	}
 	free(att);
 	free(pos);
@@ -169,21 +167,20 @@ static int led_lastword(char *s)
 
 static void led_printparts(char *pref, char *main, char *post, int *left, int kmap, char *syn, char **old)
 {
-	struct sbuf *ln;
+	struct sbuf ln = {0};
 	int off, pos;
-	ln = sbuf_make();
-	sbuf_str(ln, pref);
-	sbuf_str(ln, main);
-	off = uc_slen(sbuf_buf(ln));
-	sbuf_str(ln, post);
-	pos = ren_insert(sbuf_buf(ln), off);
+	sbuf_str(&ln, pref);
+	sbuf_str(&ln, main);
+	off = uc_slen(sbuf_buf(&ln));
+	sbuf_str(&ln, post);
+	pos = ren_insert(sbuf_buf(&ln), off);
 	if (pos >= *left + xcols)
 		*left = pos - xcols / 2;
 	if (pos < *left)
 		*left = pos < xcols ? 0 : pos - xcols / 2;
-	led_print(sbuf_buf(ln), -1, *left, xcols, syn, old);
-	term_pos(-1, led_pos(dir_context(sbuf_buf(ln)), pos, *left, *left + xcols));
-	sbuf_free(ln);
+	led_print(sbuf_buf(&ln), -1, *left, xcols, syn, old);
+	term_pos(-1, led_pos(dir_context(sbuf_buf(&ln)), pos, *left, *left + xcols));
+	sbuf_free(&ln);
 	term_commit();
 }
 
@@ -246,21 +243,20 @@ static int led_match(char *out, int len, char *kwd, char *opt)
 /* read a line from the terminal */
 static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, char *syn, char *hist)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int y, lnmode;
 	int c = 0;
 	char cmp[64] = "";
 	char *cs;
 	char *led_old = NULL;
-	sb = sbuf_make();
 	if (pref == NULL)
 		pref = "";
 	if (post == NULL || !post[0])
 		post = cmp;
 	while (1) {
 		if (hist != NULL)
-			led_match(cmp, sizeof(cmp), sbuf_buf(sb), hist);
-		led_printparts(pref, sbuf_buf(sb), post, left, *kmap, syn, &led_old);
+			led_match(cmp, sizeof(cmp), sbuf_buf(&sb), hist);
+		led_printparts(pref, sbuf_buf(&sb), post, left, *kmap, syn, &led_old);
 		c = term_read(0);
 		switch (c) {
 		case TK_CTL('f'):
@@ -271,43 +267,43 @@ static char *led_line(char *pref, char *post, int *left, int *key, int *kmap, ch
 			continue;
 		case TK_CTL('h'):
 		case 127:
-			if (sbuf_len(sb))
-				sbuf_cut(sb, led_lastchar(sbuf_buf(sb)));
+			if (sbuf_len(&sb))
+				sbuf_cut(&sb, led_lastchar(sbuf_buf(&sb)));
 			break;
 		case TK_CTL('u'):
-			sbuf_cut(sb, 0);
+			sbuf_cut(&sb, 0);
 			break;
 		case TK_CTL('w'):
-			if (sbuf_len(sb))
-				sbuf_cut(sb, led_lastword(sbuf_buf(sb)));
+			if (sbuf_len(&sb))
+				sbuf_cut(&sb, led_lastword(sbuf_buf(&sb)));
 			break;
 		case TK_CTL('p'):
 			if (reg_get(0, &lnmode))
-				sbuf_str(sb, reg_get(0, &lnmode));
+				sbuf_str(&sb, reg_get(0, &lnmode));
 			break;
 		case TK_CTL('r'):
 			y = term_read(0);
 			if (y > 0 && reg_get(y, &lnmode))
-				sbuf_str(sb, reg_get(y, &lnmode));
+				sbuf_str(&sb, reg_get(y, &lnmode));
 			break;
 		case TK_CTL('a'):
-			sbuf_str(sb, cmp);
+			sbuf_str(&sb, cmp);
 			cmp[0] = '\0';
 			break;
 		default:
 			if (c == '\n' || TK_INT(c))
 				break;
 			if ((cs = led_readchar(c, *kmap)) != NULL)
-				sbuf_str(sb, cs);
+				sbuf_str(&sb, cs);
 		}
 		if (c == '\n')
-			led_printparts(pref, sbuf_buf(sb), "", left, *kmap, syn, &led_old);
+			led_printparts(pref, sbuf_buf(&sb), "", left, *kmap, syn, &led_old);
 		if (c == '\n' || TK_INT(c))
 			break;
 	}
 	led_reset(&led_old);
 	*key = c;
-	return sbuf_done(sb);
+	return sbuf_done(&sb);
 }
 
 /* read an ex command */
@@ -317,14 +313,14 @@ char *led_prompt(char *pref, char *post, int *kmap, char *syn, char *hist)
 	int left = 0;
 	char *s = led_line(pref, post, &left, &key, kmap, syn, hist);
 	if (key == '\n') {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		if (pref)
-			sbuf_str(sb, pref);
-		sbuf_str(sb, s);
+			sbuf_str(&sb, pref);
+		sbuf_str(&sb, s);
 		if (post)
-			sbuf_str(sb, post);
+			sbuf_str(&sb, post);
 		free(s);
-		return sbuf_done(sb);
+		return sbuf_done(&sb);
 	}
 	free(s);
 	return NULL;

@@ -139,8 +139,10 @@ int term_cols(void)
 	return win_cols;
 }
 
-static char ibuf[4096];		/* input character buffer */
-static char icmd[4096];		/* read after the last term_cmd() */
+static char istd[1024];		/* characters read from stdin */
+static char ibuf[4096];		/* buffered characters (term_push) */
+static char icmd[4096];		/* characters returned since the last term_cmd() */
+static int istd_pos, istd_cnt;	/* istd[] position and length */
 static int ibuf_pos, ibuf_cnt;	/* ibuf[] position and length */
 static int icmd_pos;		/* icmd[] position */
 
@@ -155,6 +157,12 @@ void term_push(char *s, int n)
 	ibuf_cnt = cur + n;
 }
 
+/* drop all characters pushed via term_push() */
+void term_pushstop(void)
+{
+	ibuf_pos = ibuf_cnt;
+}
+
 /* return a static buffer containing inputs read since the last term_cmd() */
 char *term_cmd(int *n)
 {
@@ -167,18 +175,21 @@ int term_read(int buffered)
 {
 	struct pollfd ufds[1];
 	int n, c;
-	if (!buffered && ibuf_pos >= ibuf_cnt) {
+	if (!buffered && ibuf_pos >= ibuf_cnt && istd_pos >= istd_cnt) {
 		ufds[0].fd = 0;
 		ufds[0].events = POLLIN;
 		if (poll(ufds, 1, -1) <= 0)
 			return -1;
-		if ((n = read(0, ibuf, sizeof(ibuf))) <= 0)
+		if ((n = read(0, istd, sizeof(istd))) <= 0)
 			return -1;
-		ibuf_cnt = n;
-		ibuf_pos = 0;
+		istd_cnt = n;
+		istd_pos = 0;
 	}
-	c = ibuf_pos < ibuf_cnt ? (unsigned char) ibuf[ibuf_pos++] : -1;
-	if (icmd_pos < sizeof(icmd))
+	if (ibuf_pos < ibuf_cnt)
+		c = (unsigned char) ibuf[ibuf_pos++];
+	else
+		c = istd_pos < istd_cnt ? (unsigned char) istd[istd_pos++] : -1;
+	if (icmd_pos < sizeof(icmd) && c >= 0)
 		icmd[icmd_pos++] = c;
 	return c;
 }

@@ -138,6 +138,7 @@ void term_commit(void);
 char *term_seqattr(int att, int old);
 char *term_seqkill(void);
 void term_push(char *s, int n);
+void term_pushstop(void);
 char *term_cmd(int *n);
 
 #define TK_CTL(x)	((x) & 037)

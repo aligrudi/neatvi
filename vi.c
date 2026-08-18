@@ -30,8 +30,9 @@
 #define VC_ROW	2	/* only the current line was updated */
 #define VC_WIN	4	/* only the current window was updated */
 #define VC_ALT	8	/* only the other window was updated */
-#define VC_OK	16	/* already updated */
 #define VC_ALL	12	/* all windows were updated */
+#define VC_OK	16	/* already updated */
+#define VC_BAD	32	/* no updates, command failed */
 
 static char vi_msg[EXLEN];	/* current message */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
@@ -1072,7 +1073,7 @@ static int vc_motion(int cmd)
 	int mv;
 	vi_arg2 = vi_prefix();
 	if (vi_arg2 < 0)
-		return 0;
+		return VC_BAD;
 	o1 = ren_noeol(lbuf_get(xb, r1), o1);
 	o2 = o1;
 	if ((mv = vi_motionln(&r2, cmd))) {
@@ -1082,7 +1083,7 @@ static int vc_motion(int cmd)
 		return 0;
 	}
 	if (mv < 0)
-		return 0;
+		return VC_BAD;
 	lnmode = o2 < 0;
 	if (lnmode) {
 		o1 = 0;
@@ -1337,7 +1338,7 @@ static int vc_join(void)
 	int off = 0;
 	int i;
 	if (!lbuf_get(xb, beg) || !lbuf_get(xb, end - 1))
-		return 0;
+		return VC_BAD;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
 		char *lnend = strchr(ln, '\n');
@@ -1411,12 +1412,12 @@ static int vc_replace(void)
 	char *pos, *end;
 	int off, i;
 	if (!ln || !cs)
-		return 0;
+		return VC_BAD;
 	off = ren_noeol(ln, xoff);
 	pos = uc_chr(ln, off);
 	end = uc_chr(pos, cnt);
 	if (!end || !end[0])
-		return 0;
+		return VC_BAD;
 	sbuf_mem(&sb, ln, pos - ln);
 	for (i = 0; i < cnt; i++)
 		sbuf_str(&sb, cs);
@@ -1535,6 +1536,11 @@ static void vc_repeat(void)
 	int i;
 	for (i = 0; i < MAX(1, vi_arg1); i++)
 		term_push(rep_cmd, rep_len);
+}
+
+static void vc_repeatstop(void)
+{
+	term_pushstop();
 }
 
 static void vc_execute(void)
@@ -1790,7 +1796,9 @@ static void vi(void)
 				xcol = vi_off2col(xb, xrow, xoff);
 			if (mv == '|')
 				xcol = vi_pcol;
-		} else if (mv == 0) {
+		} else if (mv < 0) {
+			mod = VC_BAD;
+		} else {
 			int c = vi_read();
 			int k = 0;
 			if (c <= 0)
@@ -2079,15 +2087,17 @@ static void vi(void)
 			if (!vi_insert) {
 				int changecmd = strchr("!<>ACDIJOPRSXYacdioprsxy~", c) ||
 					(c == 'g' && strchr("uU~", k));
-				vi_repeatset(changecmd);
+				vi_repeatset(changecmd && !(mod & VC_BAD));
 				if (changecmd)
 					glob_id['*'] = ex_id();
 			}
 		}
+		if (mod & VC_BAD)
+			vc_repeatstop();
 		if (mod & VC_OK)
 			otop = xtop;
 		vi_wfix();
-		if (mod)
+		if (mod & ~VC_BAD)
 			xcol = vi_off2col(xb, xrow, xoff);
 		if (xcol >= xleft + xcols)
 			xleft = xcol - xcols / 2;

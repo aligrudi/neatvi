@@ -200,7 +200,12 @@ hist, history
 ai, autoindent
   As in vi(1).
 aw, autowrite
-  As in vi(1).
+  As in vi(1).  Some commands check the current buffer's modified
+  status, and fail if it has unsaved changes (e.g., :n/:prev,
+  :ta/:po, :mak).  For such commands, if the autowrite option is
+  set, the buffer is saved automatically before the command begins.
+  Alternativly, by appending a ! after the name of these commands,
+  they ignore the modified status of the buffer.
 ic, ignorecase
   As in vi(1).
 ts, tabstop

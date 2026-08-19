@@ -1146,7 +1146,7 @@ static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	if (!ex_path() || lsp_definition(ex_path(), xrow, xoff, ex_filetype(),
 					path, sizeof(path), &drow, &doff)) {
-		ex_show("lspg: definition not found");
+		ex_show(lsp_on() ? "lspg: not found" : "lspg: not connected");
 		return 1;
 	}
 	ex_tagput("lspgoto");
@@ -1173,7 +1173,7 @@ static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
 		reg_put('*', res, 1);
 		qfix_reset();
 	} else {
-		ex_show("lspf: identifier not found");
+		ex_show(lsp_on() ? "lspf: not found" : "lspf: not connected");
 	}
 	free(res);
 	return !res;
@@ -1194,7 +1194,7 @@ static int ec_lspdoc(char *loc, char *cmd, char *arg, char *txt)
 	if (res)
 		reg_put(reg, res, 1);
 	else
-		ex_show("lspd: no documentation");
+		ex_show(lsp_on() ? "lspd: no documentation" : "lspd: not connected");
 	free(res);
 	return !res;
 }

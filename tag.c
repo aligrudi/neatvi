@@ -297,7 +297,7 @@ static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off, char
 int qfix_current(char *dst, int dstlen, int *row, int *off, char *txt, int txtlen)
 {
 	char *qfix = reg_get('*', NULL);
-	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
+	if (!qfix || !*qfix || qfix_pos >= (signed long) strlen(qfix))
 		return 1;
 	if (qfix_pos < 0 && qfix_next())
 		return 1;
@@ -308,7 +308,7 @@ int qfix_next(void)
 {
 	char *qfix = reg_get('*', NULL);
 	char *eol;
-	if (!qfix || !*qfix || qfix_pos >= strlen(qfix))
+	if (!qfix || !*qfix || qfix_pos >= (signed long) strlen(qfix))
 		return 1;
 	while ((eol = qfix_pos >= 0 ? strchr(qfix + qfix_pos, '\n') : qfix - 1)) {
 		qfix_pos = eol + 1 - qfix;
@@ -321,7 +321,7 @@ int qfix_next(void)
 int qfix_prev(void)
 {
 	char *qfix = reg_get('*', NULL);
-	if (!qfix || !*qfix || qfix_pos > strlen(qfix))
+	if (!qfix || !*qfix || qfix_pos > (signed long) strlen(qfix))
 		return 1;
 	while (qfix_pos > 0) {
 		qfix_pos--;

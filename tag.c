@@ -264,7 +264,7 @@ static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off, char
 	int len;
 	if (strchr("# \t:", (unsigned char) ln[0]) || !ln)
 		return 1;
-	if (!(c1 = memchr(ln, ':', eol - ln)))
+	if (!(c1 = memchr(ln, ':', eol - ln)) || c1[1] < '0' || c1[1] > '9')
 		return 1;
 	c2 = c1 + 1;
 	while (isdigit((unsigned char) *c2))
@@ -284,7 +284,7 @@ static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off, char
 	if (off)
 		*off = *c3 == ':' ? MAX(1, atoi(c2 + 1)) - 1 : 0;
 	if (txt && txtlen > 0) {
-		char *beg = (c3 ? c3 : c2) + 1;
+		char *beg = (*c3 == ':' ? c3 : c2) + 1;
 		while (*beg == ' ' || *beg == '\t')
 			beg++;
 		len = MIN(eol - beg, txtlen - 1);

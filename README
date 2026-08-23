@@ -311,6 +311,10 @@ e #
 rs \l
 e ls
 .
+" qn jumps to the next quick fix item (cn)
+rs \n
+cn
+.
 " qg uses git-grep to find the occurrences of the word under the cursor
 rs \g
 rx * git grep -Fwn --column ']' \| sed -E 's/^([^:]+:[^:]+:[^:]+:)[ 	]*([^ 	])/\\1 \\2/'

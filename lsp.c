@@ -116,6 +116,7 @@ static char *lsp_filebody(char *path)
 			}
 		}
 	}
+	close(fd);
 	return sbuf_done(&sb);
 }
 

@@ -374,10 +374,10 @@ static int startswith(char *r, char *s)
 
 static long http_hlen(char *buf, long len)
 {
-	int pos = 0;
+	long pos = 0;
 	char *r;
 	while (pos + 4 <= len && (r = memchr(buf + pos, '\n', len - pos)) != NULL) {
-		int cur = r - buf;
+		long cur = r - buf;
 		if (cur == 0 || cur + 3 > len)
 			continue;
 		if (buf[cur + 1] == '\r' && buf[cur + 2] == '\n')
@@ -393,15 +393,15 @@ static long http_blen(char *buf, long len)
 	long pos = 0;
 	while (pos + 15 < len && (buf[pos] != '\r' || buf[pos + 1] != '\n')) {
 		if (startswith(buf + pos, "content-length:")) {
-			int val = pos + 15;
-			int ret = 0;
+			long val = pos + 15;
+			long ret = 0;
 			while (val < len && isspace((unsigned char) buf[val]))
 				val++;
 			while (val < len && buf[val] >= '0' && buf[val] <= '9')
 				ret = ret * 10 + (buf[val++] - '0');
 			return ret;
 		}
-		if ((r = memchr(buf + pos, '\n', len - pos)) == NULL)
+		if (!(r = memchr(buf + pos, '\n', len - pos)))
 			break;
 		pos = r - buf + 1;
 	}
@@ -428,7 +428,7 @@ static int http_req(char *msg, long msg_sz)
 	fds[0].events = POLLIN;
 	fds[1].fd = msg ? lsp_ifd : -1;
 	fds[1].events = POLLOUT;
-	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 2, 200) >= 0) {
+	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 2, 60000) > 0) {
 		if (fds[0].revents & POLLIN) {
 			long ret = read(fds[0].fd, buf, sizeof(buf));
 			if (ret > 0)

@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include "vi.h"
 
-static struct sbuf *term_sbuf;	/* output buffer if not NULL */
+static struct sbuf term_sbuf;	/* output buffer if not NULL */
 static int rows, cols;		/* number of terminal rows and columns */
 static int win_top, win_rows;	/* active window rows */
 static int win_left, win_cols;	/* active window columns */
@@ -22,7 +22,6 @@ void term_init(void)
 	newtermios = termios;
 	newtermios.c_lflag &= ~(ICANON | ISIG);
 	newtermios.c_lflag &= ~ECHO;
-	term_sbuf = sbuf_make();
 	tcsetattr(0, TCSAFLUSH, &newtermios);
 	if (getenv("LINES"))
 		rows = atoi(getenv("LINES"));
@@ -59,8 +58,7 @@ void term_done(void)
 	term_pos(rows - 1, 0);
 	term_kill();
 	term_commit();
-	sbuf_free(term_sbuf);
-	term_sbuf = NULL;
+	sbuf_free(&term_sbuf);
 	tcsetattr(0, 0, &termios);
 }
 
@@ -81,13 +79,13 @@ static long write_fully(int fd, void *buf, long sz)
 
 void term_commit(void)
 {
-	write_fully(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
-	sbuf_cut(term_sbuf, 0);
+	write_fully(1, sbuf_buf(&term_sbuf), sbuf_len(&term_sbuf));
+	sbuf_cut(&term_sbuf, 0);
 }
 
 void term_str(char *s)
 {
-	sbuf_str(term_sbuf, s);
+	sbuf_str(&term_sbuf, s);
 }
 
 void term_chr(int ch)
@@ -141,8 +139,10 @@ int term_cols(void)
 	return win_cols;
 }
 
-static char ibuf[4096];		/* input character buffer */
-static char icmd[4096];		/* read after the last term_cmd() */
+static char istd[1024];		/* characters read from stdin */
+static char ibuf[4096];		/* buffered characters (term_push) */
+static char icmd[4096];		/* characters returned since the last term_cmd() */
+static int istd_pos, istd_cnt;	/* istd[] position and length */
 static int ibuf_pos, ibuf_cnt;	/* ibuf[] position and length */
 static int icmd_pos;		/* icmd[] position */
 
@@ -157,6 +157,12 @@ void term_push(char *s, int n)
 	ibuf_cnt = cur + n;
 }
 
+/* drop all characters pushed via term_push() */
+void term_pushstop(void)
+{
+	ibuf_pos = ibuf_cnt;
+}
+
 /* return a static buffer containing inputs read since the last term_cmd() */
 char *term_cmd(int *n)
 {
@@ -169,18 +175,21 @@ int term_read(int buffered)
 {
 	struct pollfd ufds[1];
 	int n, c;
-	if (!buffered && ibuf_pos >= ibuf_cnt) {
+	if (!buffered && ibuf_pos >= ibuf_cnt && istd_pos >= istd_cnt) {
 		ufds[0].fd = 0;
 		ufds[0].events = POLLIN;
 		if (poll(ufds, 1, -1) <= 0)
 			return -1;
-		if ((n = read(0, ibuf, sizeof(ibuf))) <= 0)
+		if ((n = read(0, istd, sizeof(istd))) <= 0)
 			return -1;
-		ibuf_cnt = n;
-		ibuf_pos = 0;
+		istd_cnt = n;
+		istd_pos = 0;
 	}
-	c = ibuf_pos < ibuf_cnt ? (unsigned char) ibuf[ibuf_pos++] : -1;
-	if (icmd_pos < sizeof(icmd))
+	if (ibuf_pos < ibuf_cnt)
+		c = (unsigned char) ibuf[ibuf_pos++];
+	else
+		c = istd_pos < istd_cnt ? (unsigned char) istd[istd_pos++] : -1;
+	if (icmd_pos < sizeof(icmd) && c >= 0)
 		icmd[icmd_pos++] = c;
 	return c;
 }

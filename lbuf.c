@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -202,14 +203,14 @@ static void lbuf_replace(struct lbuf *lb, char *s, long slen, int pos, int n_del
 
 static char *lbuf_copy(struct lbuf *lb, int beg, int end, long *len)
 {
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	int i;
 	for (i = beg; i < end; i++)
 		if (i < lb->ln_n)
-			sbuf_mem(sb, lb->ln[i], lb->ln_len[i]);
+			sbuf_mem(&sb, lb->ln[i], lb->ln_len[i]);
 	if (len)
-		*len = sbuf_len(sb);
-	return sbuf_done(sb);
+		*len = sbuf_len(&sb);
+	return sbuf_done(&sb);
 }
 
 /* append undo/redo history */
@@ -281,22 +282,21 @@ void lbuf_edit(struct lbuf *lb, char *s, int beg, int end)
 int lbuf_rd(struct lbuf *lbuf, int fd, int beg, int end)
 {
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	long nr;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+		sbuf_mem(&sb, buf, nr);
 	if (!nr)
-		lbuf_editraw(lbuf, sbuf_buf(sb), sbuf_len(sb), beg, end);
-	sbuf_free(sb);
+		lbuf_editraw(lbuf, sbuf_buf(&sb), sbuf_len(&sb), beg, end);
+	sbuf_free(&sb);
 	return nr != 0;
 }
 
 static long write_fully(int fd, void *buf, long sz)
 {
 	long nw = 0, nc = 0;
-	while (nw < sz && (nc = write(fd, buf + nw, sz - nw)) >= 0)
-		nw += nc;
+	while (nw < sz && ((nc = write(fd, buf + nw, sz - nw)) >= 0 || errno == EINTR))
+		nw += nc > 0 ? nc : 0;
 	return nc >= 0 ? nw : -1;
 }
 
@@ -309,12 +309,12 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 		char *ln = lbuf->ln[i];
 		long nl = lbuf->ln_len[i];
 		if (buf_len > 0 && buf_len + nl > sizeof(buf)) {
-			if (write_fully(fd, buf, buf_len) < 0)
+			if (write_fully(fd, buf, buf_len) != buf_len)
 				return 1;
 			buf_len = 0;
 		}
 		if (nl >= sizeof(buf)) {
-			if (write_fully(fd, ln, nl) < 0)
+			if (write_fully(fd, ln, nl) != nl)
 				return 1;
 		} else {
 			memcpy(buf + buf_len, ln, nl);
@@ -322,7 +322,7 @@ int lbuf_wr(struct lbuf *lbuf, int fd, int beg, int end)
 		}
 		sz += nl;
 	}
-	if (buf_len > 0 && write_fully(fd, buf, buf_len) < 0)
+	if (buf_len > 0 && write_fully(fd, buf, buf_len) != buf_len)
 		return 1;
 	ftruncate(fd, sz);
 	return 0;

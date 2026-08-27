@@ -49,7 +49,7 @@ static int re_groupcount(char *s)
 struct rset *rset_make(int n, char **re, int flg)
 {
 	struct rset *rs = malloc(sizeof(*rs));
-	struct sbuf *sb = sbuf_make();
+	struct sbuf sb = {0};
 	int regex_flg = REG_EXTENDED | (flg & RE_ICASE ? REG_ICASE : 0);
 	int i;
 	memset(rs, 0, sizeof(*rs));
@@ -57,32 +57,32 @@ struct rset *rset_make(int n, char **re, int flg)
 	rs->setgrpcnt = malloc((n + 1) * sizeof(rs->setgrpcnt[0]));
 	rs->grpcnt = 2;
 	rs->n = n;
-	sbuf_chr(sb, '(');
+	sbuf_chr(&sb, '(');
 	for (i = 0; i < n; i++) {
 		if (!re[i]) {
 			rs->grp[i] = -1;
 			rs->setgrpcnt[i] = 0;
 			continue;
 		}
-		if (sbuf_len(sb) > 1)
-			sbuf_chr(sb, '|');
-		sbuf_chr(sb, '(');
-		sbuf_str(sb, re[i]);
-		sbuf_chr(sb, ')');
+		if (sbuf_len(&sb) > 1)
+			sbuf_chr(&sb, '|');
+		sbuf_chr(&sb, '(');
+		sbuf_str(&sb, re[i]);
+		sbuf_chr(&sb, ')');
 		rs->grp[i] = rs->grpcnt;
 		rs->setgrpcnt[i] = re_groupcount(re[i]);
 		rs->grpcnt += 1 + rs->setgrpcnt[i];
 	}
 	rs->grp[n] = rs->grpcnt;
-	sbuf_chr(sb, ')');
-	if (regcomp(&rs->regex, sbuf_buf(sb), regex_flg)) {
+	sbuf_chr(&sb, ')');
+	if (regcomp(&rs->regex, sbuf_buf(&sb), regex_flg)) {
 		free(rs->grp);
 		free(rs->setgrpcnt);
 		free(rs);
-		sbuf_free(sb);
+		sbuf_free(&sb);
 		return NULL;
 	}
-	sbuf_free(sb);
+	sbuf_free(&sb);
 	return rs;
 }
 
@@ -130,18 +130,17 @@ void rset_free(struct rset *rs)
 /* read a regular expression enclosed in a delimiter */
 char *re_read(char **src)
 {
-	struct sbuf *sbuf;
+	struct sbuf sb = {0};
 	char *s = *src;
 	int delim = (unsigned char) *s++;
 	if (!delim)
 		return NULL;
-	sbuf = sbuf_make();
 	while (*s && *s != delim) {
 		if (s[0] == '\\' && s[1])
 			if (*(++s) != delim)
-				sbuf_chr(sbuf, '\\');
-		sbuf_chr(sbuf, (unsigned char) *s++);
+				sbuf_chr(&sb, '\\');
+		sbuf_chr(&sb, (unsigned char) *s++);
 	}
 	*src = *s ? s + 1 : s;
-	return sbuf_done(sbuf);
+	return sbuf_done(&sb);
 }

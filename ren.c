@@ -120,23 +120,22 @@ int ren_cursor(char *s, int p)
 /* obtain cursor position when inserting a character before offset */
 int ren_insert(char *ln, int off)
 {
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	char *cur;
 	int *pos;
 	int ret, n;
 	if (off == 0)
 		return 0;
-	sb = sbuf_make();
 	if (!(cur = uc_chr(ln, off - 1)))
 		cur = uc_chr(ln, -1);
-	sbuf_mem(sb, ln, cur - ln);
-	sbuf_mem(sb, cur, uc_len(cur));
-	sbuf_str(sb, cur);
-	n = uc_slen(sbuf_buf(sb));
-	pos = ren_position(sbuf_buf(sb), n);
+	sbuf_mem(&sb, ln, cur - ln);
+	sbuf_mem(&sb, cur, uc_len(cur));
+	sbuf_str(&sb, cur);
+	n = uc_slen(sbuf_buf(&sb));
+	pos = ren_position(sbuf_buf(&sb), n);
 	off = off > n ? n : off;
 	ret = off > 0 ? pos[off] - (pos[off] < pos[off - 1]) : 0;
-	sbuf_free(sb);
+	sbuf_free(&sb);
 	free(pos);
 	return ret;
 }

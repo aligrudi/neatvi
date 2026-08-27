@@ -35,27 +35,21 @@ int lbuf_wordend(struct lbuf *lb, int big, int dir, int *row, int *off);
 int lbuf_pair(struct lbuf *lb, int *row, int *off);
 
 /* string buffer, variable-sized string */
-struct sbuf *sbuf_make(void);
+struct sbuf {
+	char *s;		/* allocated buffer */
+	long s_sz;		/* size of memory allocated for s[] */
+	long s_n;		/* length of the string stored in s[] */
+	int owns;		/* s is allocated and owned by sbuf */
+};
 void sbuf_free(struct sbuf *sb);
 char *sbuf_done(struct sbuf *sb);
 char *sbuf_buf(struct sbuf *sb);
-void sbuf_chr(struct sbuf *sb, int c);
-void sbuf_str(struct sbuf *sb, char *s);
-void sbuf_mem(struct sbuf *sb, void *s, long len);
-void sbuf_printf(struct sbuf *sbuf, char *s, ...);
+int sbuf_chr(struct sbuf *sb, int c);
+int sbuf_str(struct sbuf *sb, char *s);
+int sbuf_mem(struct sbuf *sb, void *s, long len);
+int sbuf_printf(struct sbuf *sbuf, char *s, ...);
 long sbuf_len(struct sbuf *sb);
 void sbuf_cut(struct sbuf *s, long len);
-/* fixed-sized buffers */
-struct fbuf {
-	char buf[504];
-	int pos;
-};
-void fbuf_init(struct fbuf *fb);
-void fbuf_chr(struct fbuf *fb, int c);
-void fbuf_mem(struct fbuf *fb, void *s, long len);
-void fbuf_str(struct fbuf *fb, char *s);
-long fbuf_len(struct fbuf *fb);
-char *fbuf_buf(struct fbuf *fb);
 
 /* regular expressions */
 #define RE_ICASE		1
@@ -144,6 +138,7 @@ void term_commit(void);
 char *term_seqattr(int att, int old);
 char *term_seqkill(void);
 void term_push(char *s, int n);
+void term_pushstop(void);
 char *term_cmd(int *n);
 
 #define TK_CTL(x)	((x) & 037)
@@ -260,7 +255,15 @@ int tlist_cnt(struct tlist *tls);
 int tlist_matches(struct tlist *tls);
 int tlist_top(struct tlist *tls, int *view, int view_sz);
 /* quick fix list */
-int qfix_current(char *dst, int dstlen, int *row, int *off);
+int qfix_current(char *dst, int dstlen, int *row, int *off, char *txt, int txtlen);
 int qfix_next(void);
 int qfix_prev(void);
 void qfix_reset(void);
+/* LSP client */
+int lsp_init(char *cmd[]);
+void lsp_done(void);
+int lsp_on(void);
+void lsp_modified(char *path, char *ft);
+int lsp_definition(char *path, int row, int off, char *ft, char *dst, int dstlen, int *drow, int *doff);
+char *lsp_find(char *path, int row, int off, char *ft);
+char *lsp_hover(char *path, int row, int off, char *ft);

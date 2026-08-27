@@ -9,68 +9,68 @@
 #define ALIGN(n, a)	(((n) + (a) - 1) & ~((a) - 1))
 #define NEXTSZ(o, r)	ALIGN(MAX((o) * 2, (o) + (r)), SBUFSZ)
 
-struct sbuf {
-	char *s;		/* allocated buffer */
-	long s_n;		/* length of the string stored in s[] */
-	long s_sz;		/* size of memory allocated for s[] */
-};
-
-static void sbuf_extend(struct sbuf *sbuf, long newsz)
+static int sbuf_extend(struct sbuf *sbuf, long newsz)
 {
-	char *s = sbuf->s;
-	sbuf->s_sz = newsz;
-	sbuf->s = malloc(sbuf->s_sz);
+	char *s;
+	if (sbuf->s && !sbuf->owns)
+		return 1;
+	if (!(s = malloc(newsz)))
+		return 1;
 	if (sbuf->s_n)
-		memcpy(sbuf->s, s, sbuf->s_n);
-	free(s);
-}
-
-struct sbuf *sbuf_make(void)
-{
-	struct sbuf *sb = malloc(sizeof(*sb));
-	memset(sb, 0, sizeof(*sb));
-	return sb;
+		memcpy(s, sbuf->s, sbuf->s_n);
+	free(sbuf->s);
+	sbuf->s_sz = newsz;
+	sbuf->s = s;
+	sbuf->owns = 1;
+	return 0;
 }
 
 char *sbuf_buf(struct sbuf *sb)
 {
-	if (!sb->s)
-		sbuf_extend(sb, 1);
+	if (!sb->s && sbuf_extend(sb, 1))
+		return NULL;
 	sb->s[sb->s_n] = '\0';
 	return sb->s;
 }
 
 char *sbuf_done(struct sbuf *sb)
 {
-	char *s = sbuf_buf(sb);
-	free(sb);
-	return s;
+	char *res = sbuf_buf(sb);
+	memset(sb, 0, sizeof(*sb));
+	return res;
 }
 
 void sbuf_free(struct sbuf *sb)
 {
-	free(sb->s);
-	free(sb);
+	if (sb->owns)
+		free(sb->s);
+	memset(sb, 0, sizeof(*sb));
 }
 
-void sbuf_chr(struct sbuf *sbuf, int c)
+int sbuf_chr(struct sbuf *sbuf, int c)
 {
-	if (sbuf->s_n + 2 >= sbuf->s_sz)
-		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, 1));
+	if (sbuf->s_n + 2 >= sbuf->s_sz) {
+		if (sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, 1)))
+			return 1;
+	}
 	sbuf->s[sbuf->s_n++] = c;
+	return 0;
 }
 
-void sbuf_mem(struct sbuf *sbuf, void *s, long len)
+int sbuf_mem(struct sbuf *sbuf, void *s, long len)
 {
-	if (sbuf->s_n + len + 1 >= sbuf->s_sz)
-		sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, len + 1));
+	if (sbuf->s_n + len + 1 >= sbuf->s_sz) {
+		if (sbuf_extend(sbuf, NEXTSZ(sbuf->s_sz, len + 1)))
+			return 1;
+	}
 	memcpy(sbuf->s + sbuf->s_n, s, len);
 	sbuf->s_n += len;
+	return 0;
 }
 
-void sbuf_str(struct sbuf *sbuf, char *s)
+int sbuf_str(struct sbuf *sbuf, char *s)
 {
-	sbuf_mem(sbuf, s, strlen(s));
+	return sbuf_mem(sbuf, s, strlen(s));
 }
 
 long sbuf_len(struct sbuf *sbuf)
@@ -84,47 +84,12 @@ void sbuf_cut(struct sbuf *sb, long len)
 		sb->s_n = len;
 }
 
-void sbuf_printf(struct sbuf *sbuf, char *s, ...)
+int sbuf_printf(struct sbuf *sbuf, char *s, ...)
 {
 	char buf[256];
 	va_list ap;
 	va_start(ap, s);
 	vsnprintf(buf, sizeof(buf), s, ap);
 	va_end(ap);
-	sbuf_str(sbuf, buf);
-}
-
-void fbuf_init(struct fbuf *fb)
-{
-	fb->pos = 0;
-}
-
-void fbuf_chr(struct fbuf *fb, int c)
-{
-	if (fb->pos < LEN(fb->buf))
-		fb->buf[fb->pos++] = c;
-}
-
-void fbuf_mem(struct fbuf *fb, void *s, long len)
-{
-	long cp = MIN(len, LEN(fb->buf) - fb->pos);
-	memcpy(fb->buf + fb->pos, s, cp);
-	fb->pos += cp;
-}
-
-void fbuf_str(struct fbuf *fb, char *s)
-{
-	fbuf_mem(fb, s, strlen(s));
-}
-
-char *fbuf_buf(struct fbuf *fb)
-{
-	if (fb->pos < LEN(fb->buf))
-		fb->buf[fb->pos] = '\0';
-	return fb->pos < LEN(fb->buf) ? fb->buf : NULL;
-}
-
-long fbuf_len(struct fbuf *fb)
-{
-	return fb->pos;
+	return sbuf_str(sbuf, buf);
 }

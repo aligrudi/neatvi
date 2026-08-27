@@ -2,8 +2,8 @@ NEATVI
 ======
 
 Neatvi is a small vi/ex editor for editing UTF-8 text.  It supports
-syntax highlighting, multiple windows, right-to-left languages, and
-keymaps.
+syntax highlighting, multiple windows, right-to-left languages,
+keymaps, and the language server protocol.
 
 CONFIGURATION
 -------------
@@ -12,8 +12,9 @@ If the EXINIT environment variable is defined, Neatvi executes its
 contents as ex commands at startup.  Otherwise, it executes the ex
 commands in $HOME/.neatvi, if present.  They can set the value of
 Neatvi options, change syntax highlighting colours, define new or
-modify existing keymaps, or define q-commands.  To change syntax
-highlighting and text direction patterns, conf.h must be modified.
+modify existing keymaps, or define q-commands.  The example .neatvi
+section of this file demonstrates this.  To change syntax highlighting
+and text direction patterns, conf.h must be modified.
 
 The :hl (:highlight) ex-mode command changes syntax highlighting
 colours; see the syntax highlighting section of this file for the
@@ -52,7 +53,7 @@ Commands not available in ex(1):
 :tc
   Closes the tags file and resets the tag stack.
 :po[p]
-  Pops tag stack.
+  Pops the tag stack.
 :b[uffer] [buf]
   Without buf, prints buffer list.  Switches to the given buffer
   if buf is a buffer number or alias.  Also, buf can be -, +, !,
@@ -91,6 +92,21 @@ Commands not available in ex(1):
   Opens the next item in quick fix list (* yank buffer).
 :cp[rev]
   Opens the previous item in quick fix list.
+:cc
+  Jumps to the current quick fix item.
+:lsp[open] cmd
+  Executes cmd as the LSP server (see the LSP section).
+:lspc[lose]
+  Terminates the LSP server.
+:lspg[oto]
+  Goes to the definition of the identifier under the cursor (LSP client).
+  Pushes the current cursor position to the tag stack (^t to go back).
+:lspf[ind]
+  Finds the references of the identifier under the cursor (LSP client).
+  It fills the * yank buffer (quick fix list).
+:lspd[oc] buf
+  Copies hover documentation (LSP client) of the identifier under the
+  cursor into the given yank buffer.
 
 New key mappings:
 - ^a in normal mode: searches for the word under the cursor.
@@ -114,6 +130,7 @@ New key mappings:
 - q;: lists and filters buffers.
 - q,: lists and filters files listed in ./ls.
 - q=: lists and filters files tags in ./tags.
+- q*: lists and filters quick fix items.
 
 Other noteworthy differences with vi(1):
 - Neatvi assumes POSIX extended regular expressions (ERE) in search
@@ -132,15 +149,12 @@ Other noteworthy differences with vi(1):
   format.  For instance, after the "rx * git grep -Fwn --column ']'"
   command, one can open the occurrences of the word under the
   cursor using :cn, :cp, and q* commands.
+- The output of :make is copied into the quick fix buffer (*).
 
 Note that in :rs command, input lines are read from ex input stream
 (unlike :a), to make it usable in @ commands and ex scripts (files
 passed to :so).  This allows setting the value of yank buffers in ex
-files, as the following example shows:
-
-  rs a
-  :!git add %
-  .
+files (see the example .neatvi section for examples).
 
 OPTIONS
 -------
@@ -186,7 +200,12 @@ hist, history
 ai, autoindent
   As in vi(1).
 aw, autowrite
-  As in vi(1).
+  As in vi(1).  Some commands check the current buffer's modified
+  status, and fail if it has unsaved changes (e.g., :n/:prev,
+  :ta/:po, :mak).  For such commands, if the autowrite option is
+  set, the buffer is saved automatically before the command begins.
+  Alternativly, by appending a ! after the name of these commands,
+  they ignore the modified status of the buffer.
 ic, ignorecase
   As in vi(1).
 ts, tabstop
@@ -242,10 +261,8 @@ the bottom of the screen and waits for a key.
   current line number, and iv) the current line offset.  What ECMD
   writes to its standard output, Neatvi executes as ex commands.
 
-ECMD commands can be used to add interesting features to Neatvi, such
-as language-dependent IDE features, for instance by connecting to an
-LSP (language server protocol) server.  neatvi.sh is an example ECMD
-shell script.
+ECMD commands can be used to implement interesting features; neatvi.sh
+is an example ECMD shell script.
 
 AUTO-COMPLETION
 ---------------
@@ -253,6 +270,74 @@ AUTO-COMPLETION
 When the hist option is nonzero, Neatvi suggests the most recent
 matching entry when reading user input for :, /, and ! prompts; ^a
 completes the input using the suggestion.
+
+LANGUAGE SERVER PROTOCOL
+------------------------
+
+Neatvi has an LSP client for finding the references of identifiers
+and opening their definition locations.  It assumes the current
+directory to be the project root when it executes the LSP server.
+When the LSP server is running, the ^] vi command executes :lspg
+instead of :ta.  The commands section lists lsp* commands.
+
+Note that for C/C++, LSP servers usually require the
+compile_commands.json file to be present in the project root for
+indexing the source files; this file can be generated manually, or
+using available tools.
+
+EXAMPLE .NEATVI
+---------------
+
+" This an example ~/.neatvi file.
+
+" general options, including hl, mk, and mc commands
+set hist=20
+mc  ^v
+mc  ^r
+hl & - 8
+
+" Q-commands (quick access commands); they can also be done using
+" ECMD; see the quick access section and neatvi.sh.
+
+" qa invokes git-add
+rs \a
+!git add %
+.
+" qq switches to the previous buffer
+rs \q
+e #
+.
+" ql opens ./ls file
+rs \l
+e ls
+.
+" qn jumps to the next quick fix item (cn)
+rs \n
+cn
+.
+" qg uses git-grep to find the occurrences of the word under the cursor
+rs \g
+rx * git grep -Fwn --column ']' \| sed -E 's/^([^:]+:[^:]+:[^:]+:)[ 	]*([^ 	])/\\1 \\2/'
+e /tmp/.qfix.ls | %d | pu * | w! | 1 | cr
+.
+" qp starts an LSP server for C/C++
+rs \p
+lsp clangd --background-index
+.
+" qP starts an LSP server for Go
+rs \P
+lsp gopls
+.
+" qf finds references to the word under the cursor (lspf)
+rs \f
+lspf
+e /tmp/.qfix.ls | %d | pu * | w! | 1 | cr
+.
+" qd shows symbol documentation (lspd)
+rs \d
+lspd l
+e /tmp/.vidoc.txt | %d | pu l | w! | 1
+.
 
 SYNTAX HIGHLIGHTING
 -------------------

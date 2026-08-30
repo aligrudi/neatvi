@@ -603,15 +603,15 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		}
 	}
 	ex_show("W%04d >%s", end - beg, path);
-	if (!ex_path()[0]) {
+	if (!ex_path()[0] && path[0] && path[0] != '!') {
 		free(bufs[0].path);
 		bufs[0].path = uc_dup(path);
 		reg_put('%', path, 0);
 	}
-	if (!strcmp(ex_path(), path))
+	if (!strcmp(ex_path(), path)) {
 		lbuf_saved(xb, 0);
-	if (!strcmp(ex_path(), path))
 		bufs[0].mtime = mtime(path);
+	}
 	lsp_modified(path, bufs[0].ft);
 	return 0;
 }

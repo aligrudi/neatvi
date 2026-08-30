@@ -318,7 +318,7 @@ cn
 " qg uses git-grep to find the occurrences of the word under the cursor
 rs \g
 rx * git grep -Fwn --column ']' \| sed -E 's/^([^:]+:[^:]+:[^:]+:)[ 	]*([^ 	])/\\1 \\2/'
-e /tmp/.qfix.ls | %d | pu * | w! | 1 | cr
+e /tmp/.qfix.ls | %d - | pu * | w! | 1 | cr
 .
 " qp starts an LSP server for C/C++
 rs \p
@@ -331,12 +331,12 @@ lsp gopls
 " qf finds references to the word under the cursor (lspf)
 rs \f
 lspf
-e /tmp/.qfix.ls | %d | pu * | w! | 1 | cr
+e /tmp/.qfix.ls | %d - | pu * | w! | 1 | cr
 .
 " qd shows symbol documentation (lspd)
 rs \d
 lspd l
-e /tmp/.vidoc.txt | %d | pu l | w! | 1
+e /tmp/.vidoc.txt | %d - | pu l | w! | 1
 .
 
 SYNTAX HIGHLIGHTING

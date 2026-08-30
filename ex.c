@@ -19,7 +19,6 @@ int xaw;			/* autowrite option */
 int xwa;			/* writeany option */
 int xhl = 1;			/* syntax highlight option */
 int xhll;			/* highlight current line */
-int xled = 1;			/* use the line editor */
 int xtd = 0;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
@@ -36,6 +35,7 @@ static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 static char **next;		/* argument list */
 static int next_pos;		/* position in argument list */
+static int xsource;		/* executing :so */
 
 static struct buf {
 	char ft[32];		/* file type */
@@ -680,7 +680,7 @@ static int ec_print(char *loc, char *cmd, char *arg, char *txt)
 static int ec_null(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (!xvis) {
+	if (!xvis && !xsource) {
 		xrow = xrow + 1 < lbuf_len(xb) ? xrow + 1 : xrow;
 		return ec_print(loc, cmd, arg, txt);
 	}
@@ -1263,7 +1263,7 @@ static int ex_cjump(char *cmd)
 		row = 0;
 	xrow = row;
 	xoff = off;
-	ex_print(txt);
+	ex_show("cn: %s", txt);
 	return 0;
 }
 
@@ -1340,14 +1340,16 @@ static int ec_source(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(&sb, buf, nr);
+	xsource = 1;
 	ex_command(sbuf_buf(&sb));
+	xsource = 0;
 	sbuf_free(&sb);
 	return 0;
 }
 
 static int ec_echo(char *loc, char *cmd, char *arg, char *txt)
 {
-	ex_print(arg);
+	ex_show(arg);
 	return 0;
 }
 
@@ -1625,7 +1627,7 @@ static char *ex_txt(char **src0, char *excmd)
 static int ex_exec(char *ln)
 {
 	int ret = 0;
-	while (*ln && !ret) {
+	while (!ret) {
 		char *loc, *cmd, *arg, *txt;
 		int idx;
 		loc = ex_loc(&ln);
@@ -1640,11 +1642,13 @@ static int ex_exec(char *ln)
 			ex_show("unknown command %s", cmd);
 		}
 		free(txt);
+		if (!*ln)
+			break;
 	}
 	return ret;
 }
 
-/* execute a single ex command */
+/* execute ex commands */
 int ex_command(char *ln)
 {
 	int ret = ex_exec(ln);
@@ -1657,10 +1661,10 @@ void ex(void)
 {
 	while (!xquit) {
 		char *ln = ex_read(":");
-		if (ln) {
-			ex_command(ln);
-			reg_put(':', ln, 1);
-		}
+		if (!ln)
+			break;
+		ex_command(ln);
+		reg_put(':', ln, 1);
 		free(ln);
 	}
 }

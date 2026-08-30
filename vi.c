@@ -35,12 +35,12 @@
 #define VC_BAD	32	/* no updates, command failed */
 
 static char vi_msg[EXLEN];	/* current message */
+static int vi_pending;		/* keep the status line contents */
 static char vi_charlast[8];	/* the last character searched via f, t, F, or T */
 static int vi_charcmd;		/* the character finding command */
 static int vi_arg1, vi_arg2;	/* the first and second arguments */
 static int vi_ybuf;		/* current yank buffer */
 static int vi_pcol;		/* the column requested by | command */
-static int vi_printed;		/* ex_print() calls since the last command */
 static int vi_scroll;		/* scroll amount for ^f and ^d */
 static int vi_soset, vi_so;	/* search offset; 1 in "/kw/1" */
 static int vi_insert;		/* insert mode */
@@ -52,6 +52,8 @@ static int w_tmp;		/* temporary window */
 static char *w_path;		/* saved window path */
 static int w_row, w_off, w_top, w_left;	/* saved window configuration */
 static int glob_id[128];	/* global mark buffer IDs */
+static int ex_printed;		/* ex_print() was called */
+static struct sbuf ex_printsb;	/* ex_print() buffer */
 
 static char *vi_ledmod;		/* led_print() data for the status line */
 static char *vi_ledins;		/* led_print() data for xrow when vi_insert is one */
@@ -67,26 +69,36 @@ static int xtd_set(int td)
 
 static void vi_wait(void)
 {
-	if (vi_printed > 1 || vi_printed < 0) {
+	if (ex_printed) {
+		char *o = sbuf_done(&ex_printsb);
+		char *s = o, *r;
 		int td = xtd_set(+2);
-		if (vi_printed < 0)
-			term_window(0, term_rowx() - 1);
+		while (s && *s && (r = strchr(s, '\n'))) {
+			*r = '\0';
+			if (s != o)
+				term_chr('\n');
+			led_print(s, xrows - 1, 0, xcols, xhl ? ex_filetype() : "", NULL);
+			s = r + 1;
+		}
+		free(o);
 		term_pos(xrows, 0);
 		free(led_prompt("[enter to continue]", "", &xkmap, xhl ? "---" : "___", NULL));
-		vi_msg[0] = '\0';
+		led_reset(&vi_ledmod);
 		xtd_set(td);
+		ex_printed = 0;
 	}
-	vi_printed = 0;
 }
 
 static void vi_drawmsg(void)
 {
-	int td = xtd_set(+2);
-	syn_context('.', w_tmp ? 'Z' : 0);
-	led_print(vi_msg[0] ? vi_msg : "\n", xrows, 0, xcols, xhl ? "---" : "___", &vi_ledmod);
-	syn_context('.', 0);
-	vi_msg[0] = '\0';
-	xtd_set(td);
+	if (!vi_pending) {
+		int td = xtd_set(+2);
+		syn_context('.', w_tmp ? 'Z' : 0);
+		led_print(vi_msg[0] ? vi_msg : "\n", xrows, 0, xcols, xhl ? "---" : "___", &vi_ledmod);
+		syn_context('.', 0);
+		vi_msg[0] = '\0';
+		xtd_set(td);
+	}
 }
 
 static void vi_drawquick(char *s, int row)
@@ -306,12 +318,12 @@ static char *vi_prompt(char *msg, int *kmap, char *hist)
 char *ex_read(char *msg)
 {
 	struct sbuf sb = {0};
-	int c;
-	if (xvis)
+	int c, td;
+	char *s;
+	if (xvis) {
 		term_pos(xrows - 1, 0);
-	if (xled) {
-		int td = xtd_set(+2);
-		char *s = led_prompt(msg, "", &xkmap, xhl ? "-ex" : "___", NULL);
+		td = xtd_set(+2);
+		s = led_prompt(msg, "", &xkmap, xhl ? "-ex" : "___", NULL);
 		xtd_set(td);
 		if (s)
 			term_chr('\n');
@@ -336,11 +348,12 @@ void ex_show(char *msg, ...)
 	va_end(ap);
 	if (xvis) {
 		snprintf(vi_msg, sizeof(vi_msg), "%s", buf);
-	} else if (xled) {
-		led_print(buf, -1, 0, xcols, xhl ? "-ex" : "___", NULL);
-		term_chr('\n');
+		vi_pending = 0;
+		vi_drawmsg();
+		term_commit();
+		vi_pending = 1;
 	} else {
-		printf("%s", buf);
+		printf("%s\n", buf);
 	}
 }
 
@@ -350,18 +363,14 @@ void ex_print(char *line)
 	if (vi_insert) {
 		led_print(line, xrows, 0, xcols, xhl ? "---" : "___", &vi_ledmod);
 	} else if (xvis) {
-		if (line && vi_printed == 0)
-			snprintf(vi_msg, sizeof(vi_msg), "%s", line);
-		if (line && vi_printed == 1)
-			led_print(vi_msg, xrows - 1, 0, xcols, xhl ? "-ex" : "", NULL);
-		if (vi_printed)
-			term_chr('\n');
-		if (line && vi_printed)
-			led_print(line, xrows - 1, 0, xcols, xhl ? "-ex" : "", NULL);
-		vi_printed += line != NULL ? 1 : -1000;
+		if (line)
+			sbuf_str(&ex_printsb, line);
+		if (line && (!line[0] || line[strlen(line) - 1] != '\n'))
+			sbuf_chr(&ex_printsb, '\n');
+		ex_printed = 1;
 	} else {
 		if (line)
-			ex_show(line);
+			printf("%s", line);
 	}
 }
 
@@ -2108,24 +2117,24 @@ static void vi(void)
 		if (mod & VC_ALT && w_cnt == 1)
 			vi_switch(w_cur);
 		if (mod & VC_ALT && w_cnt > 1) {
-			char msg[sizeof(vi_msg)];
+			int pending = vi_pending;
 			int id = w_cur;
 			w_tmp = 1;
 			vi_switch(1 - id);
 			vi_wfix();
-			strcpy(msg, vi_msg);
+			vi_pending = 0;
 			led_reset(&vi_ledmod);
 			if (ru)
 				vc_status();
 			led_reset(&vi_ledmod);
 			vi_drawagain(vi_off2col(xb, xrow, xoff), -1);
-			strcpy(vi_msg, msg);
+			vi_pending = pending;
 			w_tmp = 0;
 			vi_switch(id);
 		}
 		if (mod & VC_WIN)
 			led_reset(&vi_ledmod);
-		if (ru && !vi_msg[0])
+		if (ru && !vi_pending)
 			vc_status();
 		if (mod & (VC_ROW | VC_WIN) || xleft != oleft) {
 			int lineonly = mod & VC_ROW && xleft == oleft && xtop == otop;
@@ -2142,6 +2151,7 @@ static void vi(void)
 			if (vi_msg[0])
 				vi_drawmsg();
 		}
+		vi_pending = 0;
 		ln = lbuf_get(xb, xrow);
 		if (vi_insert)
 			term_pos(xrow - xtop, vi_pos(ln, ren_insert(ln, xoff)));
@@ -2164,7 +2174,6 @@ int main(int argc, char *argv[])
 		if (argv[i][1] && !argv[i][2]) {
 			switch (argv[i][1]) {
 			case 's':
-				xled = 0;
 				continue;
 			case 'e':
 				xvis = 0;
@@ -2177,7 +2186,6 @@ int main(int argc, char *argv[])
 				printf("options:\n");
 				printf("  -v    start in vi mode\n");
 				printf("  -e    start in ex mode\n");
-				printf("  -s    silent mode (for ex mode only)\n");
 				return 0;
 			}
 		}
@@ -2187,7 +2195,7 @@ int main(int argc, char *argv[])
 	dir_init();
 	syn_init();
 	tag_init();
-	if (xled || xvis)
+	if (xvis)
 		term_init();
 	signal(SIGPIPE, SIG_IGN);
 	if (!ex_init(argv + i)) {
@@ -2197,7 +2205,7 @@ int main(int argc, char *argv[])
 			ex();
 		ex_done();
 	}
-	if (xled || xvis)
+	if (xvis)
 		term_done();
 	free(w_path);
 	reg_done();

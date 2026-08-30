@@ -222,7 +222,6 @@ extern int xoff;
 extern int xtop;
 extern int xleft;
 extern int xvis;
-extern int xled;
 extern int xquit;
 extern int xic;
 extern int xai;

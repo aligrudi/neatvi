@@ -65,34 +65,32 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 {
 	char *argv[] = {"/bin/sh", "-c", cmd, NULL};
-	struct pollfd fds[3];
-	struct sbuf sb = {0};
+	struct pollfd fds[4];
+	struct sbuf isb = {0};
+	struct sbuf osb = {0};
 	char buf[512];
 	int ifd = -1, ofd = -1;
-	int slen = ibuf != NULL ? strlen(ibuf) : 0;
-	int nw = 0;
-	int pid = cmd_make(argv, ibuf ? &ifd : NULL, oproc ? &ofd : NULL);
+	long ipos = 0, opos = 0;
+	int pid = cmd_make(argv, &ifd, &ofd);
 	if (pid <= 0)
 		return NULL;
-	if (!ibuf) {
-		signal(SIGINT, SIG_IGN);
-		term_done();
-	}
-	if (ifd >= 0)
-		fcntl(ifd, F_SETFL, fcntl(ifd, F_GETFL, 0) | O_NONBLOCK);
+	memset(fds, 0, sizeof(fds));
 	fds[0].fd = ofd;
-	fds[0].events = POLLIN;
 	fds[1].fd = ifd;
-	fds[1].events = POLLOUT;
-	fds[2].fd = isatty(0) && ibuf != NULL ? 0 : -1;
+	fds[0].events = POLLIN;
+	fds[2].fd = 0;
+	fds[3].fd = oproc != 1 ? 1 : -1;
 	fds[2].events = POLLIN;
-	while ((fds[0].fd >= 0 || fds[1].fd >= 0) && poll(fds, 3, 200) >= 0) {
+	sbuf_str(&isb, ibuf ? ibuf : "");
+	while (fds[0].fd >= 0 || fds[1].fd >= 0 || (fds[3].fd >= 0 && opos < sbuf_len(&osb))) {
+		fds[1].events = ipos < sbuf_len(&isb) ? POLLOUT : 0;
+		fds[3].events = opos < sbuf_len(&osb) ? POLLOUT : 0;
+		if (poll(fds, 4, 200) < 0)
+			break;
 		if (fds[0].revents & POLLIN) {
-			int ret = read(fds[0].fd, buf, sizeof(buf));
-			if (ret > 0 && oproc == 2)
-				write(1, buf, ret);
+			long ret = read(fds[0].fd, buf, sizeof(buf));
 			if (ret > 0)
-				sbuf_mem(&sb, buf, ret);
+				sbuf_mem(&osb, buf, ret);
 			if (ret <= 0) {
 				close(fds[0].fd);
 				fds[0].fd = -1;
@@ -102,10 +100,10 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 			fds[0].fd = -1;
 		}
 		if (fds[1].revents & POLLOUT) {
-			int ret = write(fds[1].fd, ibuf + nw, slen - nw);
+			long ret = write(fds[1].fd, sbuf_buf(&isb) + ipos, sbuf_len(&isb) - ipos);
 			if (ret > 0)
-				nw += ret;
-			if (ret <= 0 || nw == slen) {
+				ipos += ret;
+			if (ibuf && ipos == sbuf_len(&isb)) {
 				close(fds[1].fd);
 				fds[1].fd = -1;
 			}
@@ -114,24 +112,35 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 			fds[1].fd = -1;
 		}
 		if (fds[2].revents & POLLIN) {
-			int ret = read(fds[2].fd, buf, sizeof(buf));
-			int i;
+			long ret = read(fds[2].fd, buf, sizeof(buf));
+			long i;
 			for (i = 0; i < ret; i++)
 				if ((unsigned char) buf[i] == TK_CTL('c'))
 					kill(pid, SIGINT);
+			if (!ibuf && ret > 0)
+				sbuf_mem(&isb, buf, ret);
+			if (ret <= 0)
+				fds[2].fd = -1;
 		} else if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			fds[2].fd = -1;
+		}
+		if (fds[3].revents & POLLOUT) {
+			long ret = write(fds[3].fd, sbuf_buf(&osb) + opos, sbuf_len(&osb) - opos);
+			if (ret > 0)
+				opos += ret;
+			if (ret <= 0)
+				fds[3].fd = -1;
+		} else if (fds[3].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+			fds[3].fd = -1;
 		}
 	}
 	close(fds[0].fd);
 	close(fds[1].fd);
 	waitpid(pid, NULL, 0);
-	if (ibuf == NULL) {
-		term_init();
-		signal(SIGINT, SIG_DFL);
-	}
+	sbuf_free(&isb);
 	if (oproc)
-		return sbuf_done(&sb);
+		return sbuf_done(&osb);
+	sbuf_free(&osb);
 	return NULL;
 }
 

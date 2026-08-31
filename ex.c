@@ -862,14 +862,15 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 {
-	char *rep, *ecmd;
+	char *rep, *ecmd, *dat;
 	int reg = 0;
 	arg = ex_reg(arg, &reg);
 	if (reg <= 0)
 		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
-	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
+	dat = reg_get(reg, NULL);
+	rep = cmd_pipe(ecmd, dat ? dat : "", 1);
 	reg_put(reg, rep ? rep : "", 1);
 	free(rep);
 	return !rep;

@@ -371,6 +371,7 @@ void ex_print(char *line)
 			sbuf_chr(&ex_printsb, '\n');
 		if (!line) {
 			term_pos(xrows - 1, 0);
+			term_kill();
 			term_commit();
 		}
 		ex_printed = line ? 1 : 2;

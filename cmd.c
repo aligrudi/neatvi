@@ -8,6 +8,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include "vi.h"
 
 static int cmd_make(char **argv, int *ifd, int *ofd)
@@ -71,9 +73,17 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 	char buf[512];
 	int ifd = -1, ofd = -1;
 	long ipos = 0, opos = 0;
+	int eof = 0;
 	int pid = cmd_make(argv, &ifd, &ofd);
+	struct termios termios;
 	if (pid <= 0)
 		return NULL;
+	if (!ibuf && isatty(0)) {
+		tcgetattr(0, &termios);
+		termios.c_lflag |= ICANON | ECHO;
+		tcsetattr(0, TCSAFLUSH, &termios);
+		termios.c_lflag &= ~(ICANON | ECHO);
+	}
 	memset(fds, 0, sizeof(fds));
 	fds[0].fd = ofd;
 	fds[1].fd = ifd;
@@ -83,9 +93,13 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 	fds[2].events = POLLIN;
 	sbuf_str(&isb, ibuf ? ibuf : "");
 	while (fds[0].fd >= 0 || fds[1].fd >= 0 || (fds[3].fd >= 0 && opos < sbuf_len(&osb))) {
+		if ((ibuf || eof || fds[2].fd < 0) && ipos == sbuf_len(&isb) && fds[1].fd >= 0) {
+			close(fds[1].fd);
+			fds[1].fd = -1;
+		}
 		fds[1].events = ipos < sbuf_len(&isb) ? POLLOUT : 0;
 		fds[3].events = opos < sbuf_len(&osb) ? POLLOUT : 0;
-		if (poll(fds, 4, 200) < 0)
+		if (poll(fds, 4, -1) < 0)
 			break;
 		if (fds[0].revents & POLLIN) {
 			long ret = read(fds[0].fd, buf, sizeof(buf));
@@ -103,7 +117,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 			long ret = write(fds[1].fd, sbuf_buf(&isb) + ipos, sbuf_len(&isb) - ipos);
 			if (ret > 0)
 				ipos += ret;
-			if (ibuf && ipos == sbuf_len(&isb)) {
+			if (ret < 0) {
 				close(fds[1].fd);
 				fds[1].fd = -1;
 			}
@@ -113,13 +127,13 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 		}
 		if (fds[2].revents & POLLIN) {
 			long ret = read(fds[2].fd, buf, sizeof(buf));
-			long i;
-			for (i = 0; i < ret; i++)
-				if ((unsigned char) buf[i] == TK_CTL('c'))
-					kill(pid, SIGINT);
 			if (!ibuf && ret > 0)
 				sbuf_mem(&isb, buf, ret);
-			if (ret <= 0)
+			if (ret > 0 && memchr(buf, TK_CTL('c'), ret))
+				kill(pid, SIGINT);
+			if (!ret && !ibuf)
+				eof = 1;
+			if (ret < 0)
 				fds[2].fd = -1;
 		} else if (fds[2].revents & (POLLERR | POLLHUP | POLLNVAL)) {
 			fds[2].fd = -1;
@@ -138,6 +152,8 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 	close(fds[1].fd);
 	waitpid(pid, NULL, 0);
 	sbuf_free(&isb);
+	if (!ibuf && isatty(0))
+		tcsetattr(0, TCSAFLUSH, &termios);
 	if (oproc)
 		return sbuf_done(&osb);
 	sbuf_free(&osb);

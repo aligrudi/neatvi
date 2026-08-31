@@ -52,7 +52,7 @@ static int w_tmp;		/* temporary window */
 static char *w_path;		/* saved window path */
 static int w_row, w_off, w_top, w_left;	/* saved window configuration */
 static int glob_id[128];	/* global mark buffer IDs */
-static int ex_printed;		/* ex_print() was called */
+static int ex_printed;		/* 1: ex_print() was called, 2: shell output is printed */
 static struct sbuf ex_printsb;	/* ex_print() buffer */
 
 static char *vi_ledmod;		/* led_print() data for the status line */
@@ -206,6 +206,7 @@ static int vi_wsplit(void)
 	w_cnt = 2;
 	w_path = uc_dup(ex_path());
 	w_row = xrow, w_off = xoff, w_top = xtop, w_left = xleft;
+	vi_pending = 0;
 	return vi_switch(0);
 }
 
@@ -215,6 +216,7 @@ static int vi_wonly(void)
 		return 1;
 	w_cnt = 1;
 	w_cur = 0;
+	vi_pending = 0;
 	return vi_switch(0);
 }
 
@@ -367,7 +369,11 @@ void ex_print(char *line)
 			sbuf_str(&ex_printsb, line);
 		if (line && (!line[0] || line[strlen(line) - 1] != '\n'))
 			sbuf_chr(&ex_printsb, '\n');
-		ex_printed = 1;
+		if (!line) {
+			term_pos(xrows - 1, 0);
+			term_commit();
+		}
+		ex_printed = line ? 1 : 2;
 	} else {
 		if (line)
 			printf("%s", line);

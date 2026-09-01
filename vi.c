@@ -67,7 +67,7 @@ static int xtd_set(int td)
 	return old;
 }
 
-static void vi_wait(void)
+static int vi_wait(void)
 {
 	if (ex_printed) {
 		char *o = sbuf_done(&ex_printsb);
@@ -86,7 +86,9 @@ static void vi_wait(void)
 		led_reset(&vi_ledmod);
 		xtd_set(td);
 		ex_printed = 0;
+		return 1;
 	}
+	return 0;
 }
 
 static void vi_drawmsg(void)
@@ -1775,6 +1777,7 @@ static void vi(void)
 	vi_drawagain(xcol, -1);
 	term_pos(xrow - xtop, vi_pos(lbuf_get(xb, xrow), xcol));
 	term_commit();
+	vi_pending = 0;
 	while (!xquit) {
 		int mod = 0;
 		int nrow = xrow;
@@ -2119,7 +2122,8 @@ static void vi(void)
 			xleft = xcol - xcols / 2;
 		if (xcol < xleft)
 			xleft = xcol < xcols ? 0 : xcol - xcols / 2;
-		vi_wait();
+		if (vi_wait())
+			vi_pending = 0;
 		ru = (xru & 1) || ((xru & 2) && w_cnt > 1) || ((xru & 4) && opath != ex_path());
 		if (mod & VC_ALT && w_cnt == 1)
 			vi_switch(w_cur);
@@ -2141,7 +2145,7 @@ static void vi(void)
 		}
 		if (mod & VC_WIN)
 			led_reset(&vi_ledmod);
-		if (ru && !vi_pending)
+		if (ru && !vi_msg[0] && !vi_pending)
 			vc_status();
 		if (mod & (VC_ROW | VC_WIN) || xleft != oleft) {
 			int lineonly = mod & VC_ROW && xleft == oleft && xtop == otop;

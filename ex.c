@@ -902,7 +902,7 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 	if (snprintf(make, sizeof(make), "make %s", target) >= sizeof(make))
 		return 1;
 	ex_print(NULL);
-	if (!(res = cmd_pipe(make, NULL, 2)))
+	if (!(res = cmd_pipe(make, "", 2)))
 		return 1;
 	reg_put('*', res, 1);
 	qfix_reset();

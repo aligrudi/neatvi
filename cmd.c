@@ -22,6 +22,7 @@ static int cmd_make(char **argv, int *ifd, int *ofd)
 	if (ofd)
 		pipe(pipefds1);
 	if (!(pid = fork())) {
+		setpgid(0, 0);
 		if (ifd) {		/* setting up stdin */
 			dup2(pipefds0[0], 0);
 			close(pipefds0[1]);
@@ -130,7 +131,7 @@ char *cmd_pipe(char *cmd, char *ibuf, int oproc)
 			if (!ibuf && ret > 0)
 				sbuf_mem(&isb, buf, ret);
 			if (ret > 0 && memchr(buf, TK_CTL('c'), ret))
-				kill(pid, SIGINT);
+				kill(-pid, SIGINT);
 			if (!ret && !ibuf)
 				eof = 1;
 			if (ret < 0)

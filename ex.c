@@ -19,7 +19,6 @@ int xaw;			/* autowrite option */
 int xwa;			/* writeany option */
 int xhl = 1;			/* syntax highlight option */
 int xhll;			/* highlight current line */
-int xled = 1;			/* use the line editor */
 int xtd = 0;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
@@ -36,6 +35,7 @@ static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 static char **next;		/* argument list */
 static int next_pos;		/* position in argument list */
+static int xsource;		/* executing :so */
 
 static struct buf {
 	char ft[32];		/* file type */
@@ -603,15 +603,15 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		}
 	}
 	ex_show("W%04d >%s", end - beg, path);
-	if (!ex_path()[0]) {
+	if (!ex_path()[0] && path[0] && path[0] != '!') {
 		free(bufs[0].path);
 		bufs[0].path = uc_dup(path);
 		reg_put('%', path, 0);
 	}
-	if (!strcmp(ex_path(), path))
+	if (!strcmp(ex_path(), path)) {
 		lbuf_saved(xb, 0);
-	if (!strcmp(ex_path(), path))
 		bufs[0].mtime = mtime(path);
+	}
 	lsp_modified(path, bufs[0].ft);
 	return 0;
 }
@@ -680,7 +680,7 @@ static int ec_print(char *loc, char *cmd, char *arg, char *txt)
 static int ec_null(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (!xvis) {
+	if (!xvis && !xsource) {
 		xrow = xrow + 1 < lbuf_len(xb) ? xrow + 1 : xrow;
 		return ec_print(loc, cmd, arg, txt);
 	}
@@ -862,14 +862,15 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 {
-	char *rep, *ecmd;
+	char *rep, *ecmd, *dat;
 	int reg = 0;
 	arg = ex_reg(arg, &reg);
 	if (reg <= 0)
 		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
-	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
+	dat = reg_get(reg, NULL);
+	rep = cmd_pipe(ecmd, dat ? dat : "", 1);
 	reg_put(reg, rep ? rep : "", 1);
 	free(rep);
 	return !rep;
@@ -901,7 +902,7 @@ static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 	if (snprintf(make, sizeof(make), "make %s", target) >= sizeof(make))
 		return 1;
 	ex_print(NULL);
-	if (!(res = cmd_pipe(make, NULL, 2)))
+	if (!(res = cmd_pipe(make, "", 2)))
 		return 1;
 	reg_put('*', res, 1);
 	qfix_reset();
@@ -1263,7 +1264,7 @@ static int ex_cjump(char *cmd)
 		row = 0;
 	xrow = row;
 	xoff = off;
-	ex_print(txt);
+	ex_show("cn: %s", txt);
 	return 0;
 }
 
@@ -1340,14 +1341,16 @@ static int ec_source(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
 		sbuf_mem(&sb, buf, nr);
+	xsource = 1;
 	ex_command(sbuf_buf(&sb));
+	xsource = 0;
 	sbuf_free(&sb);
 	return 0;
 }
 
 static int ec_echo(char *loc, char *cmd, char *arg, char *txt)
 {
-	ex_print(arg);
+	ex_show(arg);
 	return 0;
 }
 
@@ -1625,7 +1628,7 @@ static char *ex_txt(char **src0, char *excmd)
 static int ex_exec(char *ln)
 {
 	int ret = 0;
-	while (*ln && !ret) {
+	while (!ret) {
 		char *loc, *cmd, *arg, *txt;
 		int idx;
 		loc = ex_loc(&ln);
@@ -1640,11 +1643,13 @@ static int ex_exec(char *ln)
 			ex_show("unknown command %s", cmd);
 		}
 		free(txt);
+		if (!*ln)
+			break;
 	}
 	return ret;
 }
 
-/* execute a single ex command */
+/* execute ex commands */
 int ex_command(char *ln)
 {
 	int ret = ex_exec(ln);
@@ -1657,10 +1662,10 @@ void ex(void)
 {
 	while (!xquit) {
 		char *ln = ex_read(":");
-		if (ln) {
-			ex_command(ln);
-			reg_put(':', ln, 1);
-		}
+		if (!ln)
+			break;
+		ex_command(ln);
+		reg_put(':', ln, 1);
 		free(ln);
 	}
 }

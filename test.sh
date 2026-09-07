@@ -1,7 +1,7 @@
 #!/bin/sh
 # This script executes Neatvi's tests.
 
-export EXINIT=""
+unset EXINIT HOME
 
 # testcase vi_options test.sh
 testcase() {

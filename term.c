@@ -8,9 +8,10 @@
 #include <unistd.h>
 #include "vi.h"
 
-static struct sbuf *term_sbuf;	/* output buffer if not NULL */
+static struct sbuf term_sbuf;	/* output buffer if not NULL */
 static int rows, cols;		/* number of terminal rows and columns */
-static int win_beg, win_rows;	/* active window rows */
+static int win_top, win_rows;	/* active window rows */
+static int win_left, win_cols;	/* active window columns */
 static struct termios termios;
 
 void term_init(void)
@@ -33,18 +34,20 @@ void term_init(void)
 	cols = cols ? cols : 80;
 	rows = rows ? rows : 25;
 	term_str("\33[m");
-	term_window(win_beg, win_rows > 0 ? win_rows : rows);
+	term_window(win_top, win_rows > 0 ? win_rows : rows);
 }
 
 void term_window(int row, int cnt)
 {
 	char cmd[64];
-	win_beg = row;
+	win_top = row;
 	win_rows = cnt;
+	win_left = 0;
+	win_cols = cols;
 	if (row == 0 && win_rows == rows) {
 		term_str("\33[r");
 	} else {
-		sprintf(cmd, "\33[%d;%dr", win_beg + 1, win_beg + win_rows);
+		sprintf(cmd, "\33[%d;%dr", win_top + 1, win_top + win_rows);
 		term_str(cmd);
 	}
 }
@@ -55,6 +58,7 @@ void term_done(void)
 	term_pos(rows - 1, 0);
 	term_kill();
 	term_commit();
+	sbuf_free(&term_sbuf);
 	tcsetattr(0, 0, &termios);
 }
 
@@ -65,43 +69,34 @@ void term_suspend(void)
 	term_init();
 }
 
-void term_record(void)
+static long write_fully(int fd, void *buf, long sz)
 {
-	if (!term_sbuf)
-		term_sbuf = sbuf_make();
+	long nw = 0, nc = 0;
+	while (nw < sz && (nc = write(fd, buf + nw, sz - nw)) >= 0)
+		nw += nc;
+	return nc >= 0 ? nw : -1;
 }
 
 void term_commit(void)
 {
-	if (term_sbuf) {
-		write(1, sbuf_buf(term_sbuf), sbuf_len(term_sbuf));
-		sbuf_free(term_sbuf);
-		term_sbuf = NULL;
-	}
-}
-
-static void term_out(char *s)
-{
-	if (term_sbuf)
-		sbuf_str(term_sbuf, s);
-	else
-		write(1, s, strlen(s));
+	write_fully(1, sbuf_buf(&term_sbuf), sbuf_len(&term_sbuf));
+	sbuf_cut(&term_sbuf, 0);
 }
 
 void term_str(char *s)
 {
-	term_out(s);
+	sbuf_str(&term_sbuf, s);
 }
 
 void term_chr(int ch)
 {
 	char s[4] = {ch};
-	term_out(s);
+	term_str(s);
 }
 
 void term_kill(void)
 {
-	term_out("\33[K");
+	term_str("\33[K");
 }
 
 void term_room(int n)
@@ -112,21 +107,21 @@ void term_room(int n)
 	if (n > 0)
 		sprintf(cmd, "\33[%dL", n);
 	if (n)
-		term_out(cmd);
+		term_str(cmd);
 }
 
 void term_pos(int r, int c)
 {
-	char buf[32] = "\r";
+	char buf[32];
 	if (c < 0)
 		c = 0;
 	if (c >= term_cols())
-		c = cols - 1;
+		c = win_cols - 1;
 	if (r < 0)
-		sprintf(buf, "\r\33[%d%c", abs(c), c > 0 ? 'C' : 'D');
+		sprintf(buf, "\33[%dG", win_left + c + 1);
 	else
-		sprintf(buf, "\33[%d;%dH", win_beg + r + 1, c + 1);
-	term_out(buf);
+		sprintf(buf, "\33[%d;%dH", win_top + r + 1, win_left + c + 1);
+	term_str(buf);
 }
 
 int term_rowx(void)
@@ -141,20 +136,31 @@ int term_rows(void)
 
 int term_cols(void)
 {
-	return cols;
+	return win_cols;
 }
 
-static char ibuf[4096];		/* input character buffer */
-static char icmd[4096];		/* read after the last term_cmd() */
+static char istd[1024];		/* characters read from stdin */
+static char ibuf[4096];		/* buffered characters (term_push) */
+static char icmd[4096];		/* characters returned since the last term_cmd() */
+static int istd_pos, istd_cnt;	/* istd[] position and length */
 static int ibuf_pos, ibuf_cnt;	/* ibuf[] position and length */
 static int icmd_pos;		/* icmd[] position */
 
 /* read s before reading from the terminal */
 void term_push(char *s, int n)
 {
-	n = MIN(n, sizeof(ibuf) - ibuf_cnt);
-	memcpy(ibuf + ibuf_cnt, s, n);
-	ibuf_cnt += n;
+	int cur = ibuf_cnt - ibuf_pos;
+	n = MIN(n, sizeof(ibuf) - cur);
+	memmove(ibuf + n, ibuf + ibuf_pos, cur);
+	memcpy(ibuf, s, n);
+	ibuf_pos = 0;
+	ibuf_cnt = cur + n;
+}
+
+/* drop all characters pushed via term_push() */
+void term_pushstop(void)
+{
+	ibuf_pos = ibuf_cnt;
 }
 
 /* return a static buffer containing inputs read since the last term_cmd() */
@@ -165,23 +171,25 @@ char *term_cmd(int *n)
 	return icmd;
 }
 
-int term_read(void)
+int term_read(int buffered)
 {
 	struct pollfd ufds[1];
 	int n, c;
-	if (ibuf_pos >= ibuf_cnt) {
+	if (!buffered && ibuf_pos >= ibuf_cnt && istd_pos >= istd_cnt) {
 		ufds[0].fd = 0;
 		ufds[0].events = POLLIN;
 		if (poll(ufds, 1, -1) <= 0)
 			return -1;
-		/* read a single input character */
-		if ((n = read(0, ibuf, 1)) <= 0)
+		if ((n = read(0, istd, sizeof(istd))) <= 0)
 			return -1;
-		ibuf_cnt = n;
-		ibuf_pos = 0;
+		istd_cnt = n;
+		istd_pos = 0;
 	}
-	c = ibuf_pos < ibuf_cnt ? (unsigned char) ibuf[ibuf_pos++] : -1;
-	if (icmd_pos < sizeof(icmd))
+	if (ibuf_pos < ibuf_cnt)
+		c = (unsigned char) ibuf[ibuf_pos++];
+	else
+		c = istd_pos < istd_cnt ? (unsigned char) istd[istd_pos++] : -1;
+	if (icmd_pos < sizeof(icmd) && c >= 0)
 		icmd[icmd_pos++] = c;
 	return c;
 }
@@ -200,7 +208,7 @@ char *term_seqattr(int att, int old)
 		s += sprintf(s, ";1");
 	if (att & SYN_IT)
 		s += sprintf(s, ";3");
-	else if (att & SYN_RV)
+	if (att & SYN_RV)
 		s += sprintf(s, ";7");
 	if (SYN_FGSET(att)) {
 		if ((fg & 0xff) < 8)

@@ -10,7 +10,21 @@
 int uc_len(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (~c & 0xc0)		/* ASCII or invalid */
+	if (~c & 0xc0 || !s[1])		/* ASCII or invalid */
+		return c > 0;
+	if (~c & 0x20 || !s[2])
+		return 2;
+	if (~c & 0x10 || !s[3])
+		return 3;
+	if (~c & 0x08)
+		return 4;
+	return 1;
+}
+
+/* return the expected length of a utf-8 character */
+int uc_len_expect(char c)
+{
+	if (~c & 0xc0)			/* ASCII or invalid */
 		return c > 0;
 	if (~c & 0x20)
 		return 2;
@@ -21,24 +35,15 @@ int uc_len(char *s)
 	return 1;
 }
 
-/* the number of utf-8 characters in s */
-int uc_slen(char *s)
-{
-	int n;
-	for (n = 0; *s; n++)
-		s = uc_end(s) + 1;
-	return n;
-}
-
 /* the unicode codepoint of the given utf-8 character */
 int uc_code(char *s)
 {
 	int c = (unsigned char) s[0];
-	if (~c & 0xc0)		/* ASCII or invalid */
+	if (~c & 0xc0 || !s[1])		/* ASCII or invalid */
 		return c;
-	if (~c & 0x20)
+	if (~c & 0x20 || !s[2])
 		return ((c & 0x1f) << 6) | (s[1] & 0x3f);
-	if (~c & 0x10)
+	if (~c & 0x10 || !s[3])
 		return ((c & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f);
 	if (~c & 0x08)
 		return ((c & 0x07) << 18) | ((s[1] & 0x3f) << 12) | ((s[2] & 0x3f) << 6) | (s[3] & 0x3f);
@@ -53,29 +58,26 @@ char *uc_beg(char *beg, char *s)
 	return s;
 }
 
-/* find the end of the character at s[i] */
-char *uc_end(char *s)
-{
-	if (!*s || !((unsigned char) *s & 0x80))
-		return s;
-	if (((unsigned char) *s & 0xc0) == 0xc0)
-		s++;
-	while (((unsigned char) *s & 0xc0) == 0x80)
-		s++;
-	return s - 1;
-}
-
 /* return a pointer to the character following s */
 char *uc_next(char *s)
 {
-	s = uc_end(s);
-	return *s ? s + 1 : s;
+	int l = uc_len(s);
+	return l > 0 ? s + l : s;
 }
 
 /* return a pointer to the character preceding s */
 char *uc_prev(char *beg, char *s)
 {
 	return s == beg ? beg : uc_beg(beg, s - 1);
+}
+
+/* the number of utf-8 characters in s */
+int uc_slen(char *s)
+{
+	int n;
+	for (n = 0; *s; n++)
+		s += uc_len(s);
+	return n;
 }
 
 char *uc_lastline(char *s)
@@ -106,7 +108,7 @@ char *uc_chr(char *s, int off)
 			return s;
 		s = uc_next(s);
 	}
-	return s && (off < 0 || i == off) ? s : "";
+	return s && (off < 0 || i == off) ? s : NULL;
 }
 
 /* the number of characters between s and s + off */
@@ -125,7 +127,8 @@ char *uc_sub(char *s, int beg, int end)
 	char *send = uc_chr(s, end);
 	int len = sbeg && send && sbeg <= send ? send - sbeg : 0;
 	char *r = malloc(len + 1);
-	memcpy(r, sbeg, len);
+	if (len > 0)
+		memcpy(r, sbeg, len);
 	r[len] = '\0';
 	return r;
 }
@@ -616,4 +619,25 @@ int uc_iscomb(char *s)
 	if (c == ' ' || c == '\t' || c == '\n' || (c <= 0x7f && isprint(c)))
 		return 0;
 	return uc_acomb(uc_code(s));
+}
+
+int uc_word(char *ln, char *dst, int len, int off, char *ext)
+{
+	char *beg, *end;
+	if (!ln)
+		return 1;
+	beg = uc_chr(ln, off);
+	end = beg;
+	while (*end && (uc_kind(end) == 1 ||
+			strchr(ext, (unsigned char) end[0]) != NULL))
+		end = uc_next(end);
+	while (beg > ln && (uc_kind(uc_beg(ln, beg - 1)) == 1 ||
+			strchr(ext, (unsigned char) beg[-1]) != NULL))
+		beg = uc_beg(ln, beg - 1);
+	if (beg >= end)
+		return 1;
+	len = len - 1 < end - beg ? len - 1 : end - beg;
+	memcpy(dst, beg, len);
+	dst[len] = '\0';
+	return 0;
 }

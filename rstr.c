@@ -24,7 +24,7 @@ static int rstr_simple(struct rstr *rs, char *re)
 	if (rs->wbeg)
 		re += 2;
 	beg = re;
-	while (re[0] && !strchr("\\.*+?[]{}()$", (unsigned char) re[0]))
+	while (re[0] && !strchr("\\.*+?|[]{}()$", (unsigned char) re[0]))
 		re++;
 	end = re;
 	rs->wend = re[0] == '\\' && re[1] == '>';

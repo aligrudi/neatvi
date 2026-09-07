@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,7 +19,7 @@ int tag_init(void)
 static int tag_load(void)
 {
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	long nr;
 	int fd;
 	if (tagpath != NULL)
@@ -26,12 +27,11 @@ static int tag_load(void)
 	tagpath = getenv("TAGPATH") ? getenv("TAGPATH") : "tags";
 	if ((fd = open(tagpath, O_RDONLY)) < 0)
 		return 1;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
+		sbuf_mem(&sb, buf, nr);
 	close(fd);
-	taglen = sbuf_len(sb);
-	tag = sbuf_done(sb);
+	taglen = sbuf_len(&sb);
+	tag = sbuf_done(&sb);
 	return 0;
 }
 
@@ -91,4 +91,250 @@ int tag_find(char *name, int *pos, int dir, char *path, int pathlen, char *cmd, 
 		s = tag_next(s, dir);
 	}
 	return 1;
+}
+
+struct tlist {
+	char **ls;
+	char *mark;
+	char *raw;
+	int ls_n;
+	int ls_sz;
+};
+
+struct tlist *tlist_make(char *ls[], int ls_n)
+{
+	struct tlist *tls = malloc(sizeof(*tls));
+	memset(tls, 0, sizeof(*tls));
+	tls->ls = ls;
+	tls->ls_n = ls_n;
+	tls->ls_sz = 0;
+	return tls;
+}
+
+static int tlist_put(struct tlist *tls, char *item)
+{
+	if (tls->ls_n >= tls->ls_sz) {
+		char **new;
+		int ls_sz = tls->ls_sz + 256;
+		if (!(new = malloc(ls_sz * sizeof(tls->ls[0]))))
+			return 1;
+		memcpy(new, tls->ls, tls->ls_n * sizeof(tls->ls[0]));
+		free(tls->ls);
+		tls->ls_sz = ls_sz;
+		tls->ls = new;
+	}
+	tls->ls[tls->ls_n++] = item;
+	return 0;
+}
+
+struct tlist *tlist_from(char *path)
+{
+	struct tlist *tls;
+	char buf[1024];
+	long nr;
+	char *s;
+	struct sbuf sb = {0};
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+	tls = tlist_make(NULL, 0);
+	while (sbuf_len(&sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(&sb, buf, nr);
+	close(fd);
+	tls->raw = sbuf_done(&sb);
+	for (s = tls->raw; s && *s;) {
+		char *r = strchr(s, '\n');
+		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
+			tlist_put(tls, s);
+		if (r)
+			*r++ = '\0';
+		s = r;
+	}
+	return tls;
+}
+
+struct tlist *tlist_str(char *str)
+{
+	struct tlist *tls;
+	char *s;
+	if (!str || !*str)
+		return NULL;
+	tls = tlist_make(NULL, 0);
+	tls->raw = uc_dup(str);
+	for (s = tls->raw; s && *s;) {
+		char *r = strchr(s, '\n');
+		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
+			tlist_put(tls, s);
+		if (r)
+			*r++ = '\0';
+		s = r;
+	}
+	return tls;
+}
+
+struct tlist *tlist_tags(char *path)
+{
+	struct tlist *tls;
+	char buf[1024];
+	long nr;
+	char *s;
+	struct sbuf sb = {0};
+	int fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return NULL;
+	tls = tlist_make(NULL, 0);
+	while (sbuf_len(&sb) < (1 << 20) && (nr = read(fd, buf, sizeof(buf))) > 0)
+		sbuf_mem(&sb, buf, nr);
+	close(fd);
+	tls->raw = sbuf_done(&sb);
+	for (s = tls->raw; s && *s;) {
+		char *r = strchr(s, '\n');
+		char *t1 = s ? memchr(s, '\t', r - s) : NULL;
+		char *t2 = t1 ? memchr(t1 + 1, '\t', r - t1 - 1) : NULL;
+		if (r && s[0] != '#' && !isspace((unsigned char) s[0]))
+			tlist_put(tls, s);
+		if (t2)
+			*t2 = '\0';
+		if (r)
+			*r++ = '\0';
+		s = r;
+	}
+	return tls;
+}
+
+void tlist_free(struct tlist *tls)
+{
+	if (tls->ls_sz)
+		free(tls->ls);
+	free(tls->raw);
+	free(tls->mark);
+	free(tls);
+}
+
+void tlist_filt(struct tlist *tls, char *kw)
+{
+	int i;
+	if (!tls->mark) {
+		if (!(tls->mark = malloc(tls->ls_n * sizeof(tls->mark[0]))))
+			return;
+		memset(tls->mark, 1, tls->ls_n * sizeof(tls->mark[0]));
+	}
+	if (!kw)
+		memset(tls->mark, 1, tls->ls_n * sizeof(tls->mark[0]));
+	for (i = 0; i < tls->ls_n; i++)
+		if (kw && tls->mark[i] && !strstr(tls->ls[i], kw))
+			tls->mark[i] = 0;
+}
+
+int tlist_cnt(struct tlist *tls)
+{
+	return tls->ls_n;
+}
+
+int tlist_matches(struct tlist *tls)
+{
+	int i, cnt = 0;
+	for (i = 0; i < tls->ls_n; i++)
+		if (!tls->mark || tls->mark[i])
+			cnt++;
+	return cnt;
+}
+
+char *tlist_get(struct tlist *tls, int idx)
+{
+	return idx < tls->ls_n ? tls->ls[idx] : NULL;
+}
+
+int tlist_top(struct tlist *tls, int *view, int view_sz)
+{
+	int view_n = 0;
+	int i;
+	for (i = 0; i < tls->ls_n && view_n < view_sz; i++)
+		if (!tls->mark || tls->mark[i])
+			view[view_n++] = i;
+	return view_n;
+}
+
+static long qfix_pos;	/* offset in qfix buffer; -1 implies before the beginning */
+
+static int qfix_readln(char *ln, char *dst, int dstlen, int *row, int *off, char *txt, int txtlen)
+{
+	char *c1, *c2, *c3;
+	char *eol = strchr(ln, '\n');
+	int len;
+	if (strchr("# \t:", (unsigned char) ln[0]) || !ln)
+		return 1;
+	if (!(c1 = memchr(ln, ':', eol - ln)) || c1[1] < '0' || c1[1] > '9')
+		return 1;
+	c2 = c1 + 1;
+	while (isdigit((unsigned char) *c2))
+		c2++;
+	if (*c2 != ':')
+		return 1;
+	c3 = c2 + 1;
+	while (isdigit((unsigned char) *c3))
+		c3++;
+	len = MIN(c1 - ln, dstlen - 1);
+	if (dst) {
+		memcpy(dst, ln, len);
+		dst[len] = '\0';
+	}
+	if (row)
+		*row = atoi(c1 + 1) - 1;
+	if (off)
+		*off = *c3 == ':' ? MAX(1, atoi(c2 + 1)) - 1 : 0;
+	if (txt && txtlen > 0) {
+		char *beg = (*c3 == ':' ? c3 : c2) + 1;
+		while (*beg == ' ' || *beg == '\t')
+			beg++;
+		len = MIN(eol - beg, txtlen - 1);
+		memcpy(txt, beg, len);
+		txt[len] = '\0';
+	}
+	return 0;
+}
+
+int qfix_current(char *dst, int dstlen, int *row, int *off, char *txt, int txtlen)
+{
+	char *qfix = reg_get('*', NULL);
+	if (!qfix || !*qfix || qfix_pos >= (signed long) strlen(qfix))
+		return 1;
+	if (qfix_pos < 0 && qfix_next())
+		return 1;
+	return qfix_readln(qfix + qfix_pos, dst, dstlen, row, off, txt, txtlen);
+}
+
+int qfix_next(void)
+{
+	char *qfix = reg_get('*', NULL);
+	char *eol;
+	if (!qfix || !*qfix || qfix_pos >= (signed long) strlen(qfix))
+		return 1;
+	while ((eol = qfix_pos >= 0 ? strchr(qfix + qfix_pos, '\n') : qfix - 1)) {
+		qfix_pos = eol + 1 - qfix;
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL, NULL, 0))
+			return 0;
+	}
+	return !eol || !eol[1];
+}
+
+int qfix_prev(void)
+{
+	char *qfix = reg_get('*', NULL);
+	if (!qfix || !*qfix || qfix_pos > (signed long) strlen(qfix))
+		return 1;
+	while (qfix_pos > 0) {
+		qfix_pos--;
+		while (qfix_pos > 0 && qfix[qfix_pos - 1] != '\n')
+			qfix_pos--;
+		if (!qfix_readln(qfix + qfix_pos, NULL, 0, NULL, NULL, NULL, 0))
+			return 0;
+	}
+	qfix_pos = -1;
+	return 1;
+}
+
+void qfix_reset(void)
+{
+	qfix_pos = -1;
 }

@@ -19,7 +19,6 @@ int xaw;			/* autowrite option */
 int xwa;			/* writeany option */
 int xhl = 1;			/* syntax highlight option */
 int xhll;			/* highlight current line */
-int xled = 1;			/* use the line editor */
 int xtd = 0;			/* current text direction */
 int xshape = 1;			/* perform letter shaping */
 int xorder = 1;			/* change the order of characters */
@@ -28,12 +27,15 @@ int xkmap_alt = 1;		/* the alternate keymap */
 int xlim = 256;			/* do not process lines longer than this */
 int xru = 1;			/* show line number */
 int xhist = 0;			/* number of history lines */
+int xvte = 0;			/* workaround for vte-based terminals */
+int xts = 8;			/* tabstop */
 static char xkwd[EXLEN];	/* the last searched keyword */
 static char xrep[EXLEN];	/* the last replacement */
 static int xkwddir;		/* the last search direction */
 static int xgdep;		/* global command recursion depth */
 static char **next;		/* argument list */
 static int next_pos;		/* position in argument list */
+static int xsource;		/* executing :so */
 
 static struct buf {
 	char ft[32];		/* file type */
@@ -98,7 +100,7 @@ static int bufs_open(char *path)
 	return idx;
 }
 
-static void bufs_save(void)
+static void bufs_store(void)
 {
 	bufs[0].row = xrow;
 	bufs[0].off = xoff;
@@ -128,7 +130,7 @@ static void bufs_shift(void)
 static void bufs_switch(int idx)
 {
 	struct buf tmp;
-	bufs_save();
+	bufs_store();
 	memcpy(&tmp, &bufs[idx], sizeof(tmp));
 	memmove(&bufs[1], &bufs[0], sizeof(tmp) * idx);
 	memcpy(&bufs[0], &tmp, sizeof(tmp));
@@ -158,6 +160,11 @@ char *ex_path(void)
 	return bufs[0].path;
 }
 
+int ex_id(void)
+{
+	return bufs[0].id;
+}
+
 struct lbuf *ex_lbuf(void)
 {
 	return bufs[0].lb;
@@ -171,65 +178,61 @@ char *ex_filetype(void)
 /* replace % and # with current and alternate path names; returns a static buffer */
 static char *ex_pathexpand(char *src, int spaceallowed)
 {
-	static char buf[1024];
-	char *dst = buf;
-	char *end = dst + sizeof(buf);
-	while (dst + 1 < end && *src && *src != '\n' &&
-			(spaceallowed || (*src != ' ' && *src != '\t'))) {
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
+	while (*src && *src != '\n' && (spaceallowed || (*src != ' ' && *src != '\t'))) {
 		if (*src == '%' || *src == '#') {
 			int idx = *src == '#';
 			if (!bufs[idx].path) {
-				ex_show("pathname \"%\" or \"#\" is not set");
+				ex_show("pathname \"%%\" or \"#\" is not set");
 				return NULL;
 			}
-			dst += snprintf(dst, end - dst, "%s",
-				bufs[idx].path[0] ? bufs[idx].path : "/");
+			sbuf_str(&sb, bufs[idx].path[0] ? bufs[idx].path : "/");
 			src++;
-		} else if (dst == buf && *src == '=') {
+		} else if (sbuf_len(&sb) == 0 && *src == '=') {
 			char *cur = bufs[0].path;
 			char *dir = cur != NULL ? strrchr(cur, '/') : NULL;
 			if (cur != NULL && dir != NULL) {
-				int len = MIN(dir - cur, end - dst - 2);
-				memcpy(dst, cur, len);
-				dst += len;
-				*dst++ = '/';
+				sbuf_mem(&sb, cur, dir - cur);
+				sbuf_chr(&sb, '/');
 			}
 			src++;
 		} else {
 			if (*src == '\\' && src[1])
 				src++;
-			*dst++ = *src++;
+			sbuf_chr(&sb, *src++);
 		}
 	}
-	if (dst + 1 >= end)
-		dst = end - 1;
-	*dst = '\0';
-	return buf;
+	return sbuf_buf(&sb);
 }
 
-/* read :e +cmd arguments */
-static char *ex_plus(char *src, char *dst)
+/* read :e +cmd arguments; returns a static buffer */
+static char *ex_plus(char **src0)
 {
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
+	char *src = *src0;
 	while (*src == ' ')
 		src++;
-	*dst = '\0';
 	if (*src != '+')
 		return src;
 	while (*src && *src != ' ') {
 		if (src[0] == '\\' && src[1])
 			src++;
-		*dst++ = *src++;
+		sbuf_chr(&sb, *src++);
 	}
-	*dst = '\0';
 	while (*src == ' ' || *src == '\t')
 		src++;
-	return src;
+	*src0 = src;
+	return sbuf_buf(&sb);
 }
 
 /* read register name */
 static char *ex_reg(char *src, int *reg)
 {
 	while (*src == ' ')
+		src++;
+	if (src[0] == '\\' && src[1] == '"')
 		src++;
 	*reg = REG(src);
 	while (*src && *src != ' ' && *src != '\t')
@@ -310,7 +313,9 @@ static int ex_lineno(char **num)
 		}
 	}
 	while (**num == '-' || **num == '+') {
-		n += atoi((*num)++);
+		int neg = *(*num)++ == '-';
+		int val = isdigit((unsigned char) **num) ? atoi(*num) : 1;
+		n += neg ? -val : val;
 		while (isdigit((unsigned char) **num))
 			(*num)++;
 	}
@@ -354,14 +359,14 @@ static int ex_region(char *loc, int *beg, int *end)
 	return 0;
 }
 
-static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force, long ts)
+static char *lbuf_write(struct lbuf *lb, int beg, int end, char *path, int force, long ts)
 {
 	int fd;
 	if (end < 0)
 		end = lbuf_len(lb);
-	if (!force && mtime > 0 && mtime(path) > ts) {
+	if (!force && ts > 0 && mtime(path) > ts) {
 		return "write failed: file changed";
-	} else if (!force && ts <= 0 && mtime(path) >= 0) {
+	} else if (!xwa && !force && ts <= 0 && mtime(path) >= 0) {
 		return "write failed: file exists";
 	} else if ((fd = open(path, O_WRONLY | O_CREAT, conf_mode())) < 0) {
 		return "write failed: cannot create file";
@@ -372,13 +377,25 @@ static char *lbuf_save(struct lbuf *lb, int beg, int end, char *path, int force,
 	return NULL;
 }
 
+static char *bufs_save(int idx, int force)
+{
+	struct buf *b = &bufs[idx];
+	char *err = lbuf_write(b->lb, 0, -1, b->path, force, b->mtime);
+	if (err)
+		return err;
+	lbuf_saved(b->lb, 0);
+	b->mtime = mtime(b->path);
+	lsp_modified(b->path, b->ft);
+	return NULL;
+}
+
 static int bufs_modified(int idx, char *msg)
 {
 	struct buf *b = &bufs[idx];
 	if (!b->lb || !lbuf_modified(b->lb))
 		return 0;
 	if (xaw && b->path[0])
-		return lbuf_save(b->lb, 0, -1, b->path, 0, b->mtime) != NULL;
+		return bufs_save(idx, 0) != NULL;
 	if (msg)
 		ex_show(msg);
 	return 1;
@@ -429,12 +446,11 @@ static int ec_buffer(char *loc, char *cmd, char *arg, char *txt)
 			idx = r ? r - aliases : -1;
 		}
 		if (idx >= 0 && idx < LEN(bufs) && bufs[idx].lb) {
-			if (!xwa && strchr(cmd, '!') == NULL)
-				if (bufs_modified(0, "buffer modified"))
-					return 1;
+			if (!strchr(cmd, '!') && bufs_modified(0, "b: buffer modified"))
+				return 1;
 			bufs_switch(idx);
 		} else {
-			ex_show("no such buffer");
+			ex_show("b: no such buffer");
 			return 1;
 		}
 	}
@@ -445,21 +461,18 @@ int ex_list(char **ls, int size)
 {
 	int i;
 	for (i = 0; i < LEN(bufs) && bufs[i].lb && i < size; i++)
-		ls[i] = bufs[i].path;
+		ls[i] = bufs[i].path[0] ? bufs[i].path : "/";
 	return i;
 }
 
 static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 {
-	char pls[EXLEN];
-	char msg[128];
-	char *path;
+	char *path, *pls;
 	int fd;
-	if (!strchr(cmd, '!'))
-		if (xb && !xwa && bufs_modified(0, "buffer modified"))
-			return 1;
-	arg = ex_plus(arg, pls);
-	if (!(path = ex_pathexpand(arg, 0)))
+	if (!strchr(cmd, '!') && bufs_modified(0, "e: buffer modified"))
+		return 1;
+	pls = ex_plus(&arg);
+	if (!pls || !(path = ex_pathexpand(arg, 0)))
 		return 1;
 	/* ew: switch buffer without changing # */
 	if (path[0] && cmd[0] == 'e' && cmd[1] == 'w' && bufs_find(path) > 1)
@@ -477,12 +490,10 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 	if (fd >= 0) {
 		int rd = lbuf_rd(xb, fd, 0, lbuf_len(xb));
 		close(fd);
-		snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [r]",
-				ex_path(), lbuf_len(xb));
 		if (rd)
-			ex_show("read failed");
+			ex_show("e: read failed");
 		else
-			ex_show(msg);
+			ex_show("R%04d <%s", lbuf_len(xb), ex_path());
 	}
 	lbuf_saved(xb, path[0] != '\0');
 	bufs[0].mtime = mtime(ex_path());
@@ -496,23 +507,22 @@ static int ec_edit(char *loc, char *cmd, char *arg, char *txt)
 
 static int ex_next(char *cmd, int dis)
 {
-	char arg[EXLEN];
+	char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	int old = next_pos;
 	int idx = next != NULL && next[old] != NULL ? next_pos + dis : -1;
 	char *path = idx >= 0 && next[idx] != NULL ? next[idx] : NULL;
-	char *s = arg;
 	char *r = path != NULL ? path : "";
 	if (dis && path == NULL) {
-		ex_show("no more files");
+		ex_show("n: no more files");
 		return 1;
 	}
-	while (*r && s + 2 < arg + sizeof(arg)) {
+	while (*r) {
 		if (*r == ' ' || *r == '%' || *r == '#' || *r == '=')
-			*s++ = '\\';
-		*s++ = *r++;
+			sbuf_chr(&sb, '\\');
+		sbuf_chr(&sb, *r++);
 	}
-	*s = '\0';
-	if (ec_edit("", cmd, arg, NULL))
+	if (!sbuf_buf(&sb) || ec_edit("", cmd, sbuf_buf(&sb), NULL))
 		return 1;
 	next_pos = idx;
 	return 0;
@@ -530,7 +540,6 @@ static int ec_prev(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
 	int beg, end, pos;
 	char *path;
 	char *obuf;
@@ -549,26 +558,23 @@ static int ec_read(char *loc, char *cmd, char *arg, char *txt)
 	} else {
 		int fd = open(path, O_RDONLY);
 		if (fd < 0) {
-			ex_show("read failed");
+			ex_show("r: open failed for %s", path);
 			return 1;
 		}
 		if (lbuf_rd(xb, fd, pos, pos)) {
-			ex_show("read failed");
+			ex_show("r: read failed for %s", path);
 			close(fd);
 			return 1;
 		}
 		close(fd);
 	}
 	xrow = end + lbuf_len(xb) - n - 1;
-	snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [r]",
-		path, lbuf_len(xb) - n);
-	ex_show(msg);
+	ex_show("R%04d <%s", lbuf_len(xb) - n, path);
 	return 0;
 }
 
 static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 {
-	char msg[128];
 	char *path;
 	char *ibuf;
 	int beg, end;
@@ -590,23 +596,23 @@ static int ec_write(char *loc, char *cmd, char *arg, char *txt)
 		free(ibuf);
 	} else {
 		long ts = !strcmp(ex_path(), path) ? bufs[0].mtime : 0;
-		char *err = lbuf_save(xb, beg, end, path, !!strchr(cmd, '!'), ts);
+		char *err = lbuf_write(xb, beg, end, path, !!strchr(cmd, '!'), ts);
 		if (err != NULL) {
 			ex_show(err);
 			return 1;
 		}
 	}
-	snprintf(msg, sizeof(msg), "\"%s\"  [=%d]  [w]", path, end - beg);
-	ex_show(msg);
-	if (!ex_path()[0]) {
+	ex_show("W%04d >%s", end - beg, path);
+	if (!ex_path()[0] && path[0] && path[0] != '!') {
 		free(bufs[0].path);
 		bufs[0].path = uc_dup(path);
 		reg_put('%', path, 0);
 	}
-	if (!strcmp(ex_path(), path))
+	if (!strcmp(ex_path(), path)) {
 		lbuf_saved(xb, 0);
-	if (!strcmp(ex_path(), path))
 		bufs[0].mtime = mtime(path);
+	}
+	lsp_modified(path, bufs[0].ft);
 	return 0;
 }
 
@@ -619,15 +625,13 @@ static int ec_quit(char *loc, char *cmd, char *arg, char *txt)
 	for (i = 0; i < LEN(bufs); i++) {
 		if (bufs[i].lb) {
 			if (!strchr(cmd, 'a') && !strchr(cmd, '!')) {
-				if (bufs_modified(i, "buffer modified")) {
+				if (bufs_modified(i, "q: buffer modified")) {
 					bufs_switch(i);
 					return 0;
 				}
 			}
 			if (strchr(cmd, 'a')) {
-				struct buf *b = &bufs[i];
-				char *err = lbuf_save(b->lb, 0, -1, b->path,
-						!!strchr(cmd, '!'), b->mtime);
+				char *err = bufs_save(i, !!strchr(cmd, '!'));
 				if (err) {
 					bufs_switch(i);
 					ex_show(err);
@@ -676,7 +680,7 @@ static int ec_print(char *loc, char *cmd, char *arg, char *txt)
 static int ec_null(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (!xvis) {
+	if (!xvis && !xsource) {
 		xrow = xrow + 1 < lbuf_len(xb) ? xrow + 1 : xrow;
 		return ec_print(loc, cmd, arg, txt);
 	}
@@ -703,7 +707,7 @@ static int ec_rs(char *loc, char *cmd, char *arg, char *txt)
 static int ec_delete(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+	if (ex_region(loc, &beg, &end))
 		return 1;
 	ex_yank(REG(arg), beg, end);
 	lbuf_edit(xb, NULL, beg, end);
@@ -714,7 +718,7 @@ static int ec_delete(char *loc, char *cmd, char *arg, char *txt)
 static int ec_yank(char *loc, char *cmd, char *arg, char *txt)
 {
 	int beg, end;
-	if (ex_region(loc, &beg, &end) || !lbuf_len(xb))
+	if (ex_region(loc, &beg, &end))
 		return 1;
 	ex_yank(REG(arg), beg, end);
 	return 0;
@@ -811,22 +815,20 @@ static int ec_substitute(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	for (i = beg; i < end; i++) {
 		char *ln = lbuf_get(xb, i);
-		struct sbuf *r = NULL;
+		struct sbuf sb = {0};
 		while (rstr_find(re, ln, LEN(offs) / 2, offs, 0) >= 0) {
-			if (!r)
-				r = sbuf_make();
-			sbuf_mem(r, ln, offs[0]);
-			replace(r, xrep, ln, offs);
+			sbuf_mem(&sb, ln, offs[0]);
+			replace(&sb, xrep, ln, offs);
 			ln += offs[1];
 			if (offs[1] <= 0)	/* zero-length match */
-				sbuf_chr(r, (unsigned char) *ln++);
+				sbuf_chr(&sb, (unsigned char) *ln++);
 			if (!*ln || *ln == '\n' || !strchr(s, 'g'))
 				break;
 		}
-		if (r) {
-			sbuf_str(r, ln);
-			lbuf_edit(xb, sbuf_buf(r), i, i + 1);
-			sbuf_free(r);
+		if (sb.s) {
+			sbuf_str(&sb, ln);
+			lbuf_edit(xb, sbuf_buf(&sb), i, i + 1);
+			sbuf_free(&sb);
 		}
 	}
 	rstr_free(re);
@@ -839,11 +841,11 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 	char *text;
 	char *rep;
 	char *ecmd;
-	if (!xwa && bufs_modified(0, "buffer modified"))
-		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
 	if (!loc[0]) {
+		if (bufs_modified(0, "!: buffer modified"))
+			return 1;
 		ex_print(NULL);
 		return cmd_exec(ecmd);
 	}
@@ -860,14 +862,15 @@ static int ec_exec(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_rx(char *loc, char *cmd, char *arg, char *txt)
 {
-	char *rep, *ecmd;
+	char *rep, *ecmd, *dat;
 	int reg = 0;
 	arg = ex_reg(arg, &reg);
 	if (reg <= 0)
 		return 1;
 	if (!(ecmd = ex_pathexpand(arg, 1)))
 		return 1;
-	rep = cmd_pipe(ecmd, reg_get(reg, NULL), 1);
+	dat = reg_get(reg, NULL);
+	rep = cmd_pipe(ecmd, dat ? dat : "", 1);
 	reg_put(reg, rep ? rep : "", 1);
 	free(rep);
 	return !rep;
@@ -891,16 +894,19 @@ static int ec_rk(char *loc, char *cmd, char *arg, char *txt)
 static int ec_make(char *loc, char *cmd, char *arg, char *txt)
 {
 	char make[EXLEN];
-	char *target;
-	if (!xwa && bufs_modified(0, "buffer modified"))
+	char *target, *res;
+	if (!strchr(cmd, '!') && bufs_modified(0, "mak: buffer modified"))
 		return 1;
 	if (!(target = ex_pathexpand(arg, 0)))
 		return 1;
 	if (snprintf(make, sizeof(make), "make %s", target) >= sizeof(make))
 		return 1;
 	ex_print(NULL);
-	if (cmd_exec(make))
+	if (!(res = cmd_pipe(make, "", 2)))
 		return 1;
+	reg_put('*', res, 1);
+	qfix_reset();
+	free(res);
 	return 0;
 }
 
@@ -915,12 +921,81 @@ static int ec_ft(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_cmap(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (arg[0])
-		xkmap_alt = conf_kmapfind(arg);
+	if (arg[0] && kmap_find(arg) >= 0)
+		xkmap_alt = kmap_find(arg);
 	else
-		ex_print(conf_kmap(xkmap)[0]);
+		ex_print(kmap_map(xkmap, 0));
 	if (arg[0] && !strchr(cmd, '!'))
 		xkmap = xkmap_alt;
+	return 0;
+}
+
+static char *ex_skip(char **arg)
+{
+	char *s = *arg;
+	char *beg;
+	while (isspace((unsigned char) *s))
+		s++;
+	if (!*s)
+		return NULL;
+	beg = s;
+	while (*s && !isspace((unsigned char) *s))
+		if (*s++ == '' && s[0])
+			s++;
+	*arg = *s ? s + 1 : s;
+	*s = '\0';
+	return beg;
+}
+
+static int ec_highlight(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *name = ex_skip(&arg);
+	char *attr = ex_skip(&arg);
+	char *fg = ex_skip(&arg);
+	char *bg = ex_skip(&arg);
+	int mode = 0;
+	if (!name)
+		return 1;
+	if (strchr(attr, 'b'))
+		mode |= SYN_BD;
+	if (strchr(attr, 'i'))
+		mode |= SYN_IT;
+	if (strchr(attr, 'r'))
+		mode |= SYN_RV;
+	if (strchr(attr, 'h'))
+		mode |= SYN_HP;
+	if (strchr(attr, 'l'))
+		mode |= SYN_LP;
+	if (fg && isdigit((unsigned char) *fg))
+		mode |= SYN_FGMK(atoi(fg));
+	if (bg && isdigit((unsigned char) *bg))
+		mode |= SYN_BGMK(atoi(bg));
+	conf_hlset(conf_hlnum(name), mode);
+	return 0;
+}
+
+static int ec_mapkey(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *src = ex_skip(&arg);
+	char *dst = ex_skip(&arg);
+	if (!src)
+		return 1;
+	kmap_def(xkmap, (unsigned char) src[0], dst);
+	return 0;
+}
+
+static int ec_mapchar(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *src = ex_skip(&arg);
+	char *dst = ex_skip(&arg);
+	char *wid = ex_skip(&arg);
+	if (!src || !src[0])
+		return 1;
+	if (src[0] == '' && src[1])
+		src++;
+	if (dst && dst[0] == '' && dst[1])
+		dst++;
+	mapch_def(src, dst ? dst : "", wid ? atoi(wid) : -1);
 	return 0;
 }
 
@@ -928,18 +1003,20 @@ static int ex_exec(char *ln);
 
 static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 {
+	char sb_buf[EXLEN];
 	struct rstr *re;
 	int offs[32];
 	int beg, end, not;
+	char *req = sb_buf;
 	char *pat;
-	char *s = arg;
 	int i;
+	snprintf(sb_buf, sizeof(sb_buf), "%s", arg);
 	if (!loc[0] && !xgdep)
 		loc = "%";
 	if (ex_region(loc, &beg, &end))
 		return 1;
 	not = strchr(cmd, '!') || cmd[0] == 'v';
-	pat = re_read(&s);
+	pat = re_read(&req);
 	if (pat && pat[0])
 		ex_kwdset(pat, +1);
 	free(pat);
@@ -955,7 +1032,7 @@ static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 		char *ln = lbuf_get(xb, i);
 		if ((rstr_find(re, ln, LEN(offs) / 2, offs, 0) < 0) == not) {
 			xrow = i;
-			if (ex_exec(s))
+			if (ex_exec(req))
 				break;
 			i = MIN(i, xrow);
 		}
@@ -971,11 +1048,12 @@ static int ec_glob(char *loc, char *cmd, char *arg, char *txt)
 
 #define TAGCNT		32
 #define TAGLEN		128
+#define TAGLOC		256
 
 static int tag_row[TAGCNT];
 static int tag_off[TAGCNT];
 static int tag_pos[TAGCNT];
-static char tag_path[TAGCNT][TAGLEN];
+static char tag_path[TAGCNT][TAGLOC];
 static char tag_name[TAGCNT][TAGLEN];
 static int tag_cnt = 0;
 
@@ -984,20 +1062,20 @@ static void ex_tagput(char *name)
 	if (tag_cnt < TAGCNT) {
 		tag_row[tag_cnt] = xrow;
 		tag_off[tag_cnt] = xoff;
-		snprintf(tag_path[tag_cnt], TAGLEN, "%s", ex_path());
-		snprintf(tag_name[tag_cnt], TAGLEN, "%s", name);
+		snprintf(tag_path[tag_cnt], sizeof(tag_path[tag_cnt]), "%s", ex_path());
+		snprintf(tag_name[tag_cnt], sizeof(tag_name[tag_cnt]), "%s", name);
 		tag_cnt++;
 	}
 }
 
 /* go to definition (dir=+1 next, dir=-1 prev, dir=0 first) */
-static int tag_goto(char *cw, int dir)
+static int tag_goto(char *cmd, char *cw, int dir)
 {
-	char path[120], cmd[120];
+	char path[TAGLOC], pcmd[TAGLEN];
 	char *s, *ln;
 	int pos = dir == 0 || tag_cnt == 0 ? 0 : tag_pos[tag_cnt - 1];
-	if (tag_find(cw, &pos, dir, path, sizeof(path), cmd, sizeof(cmd))) {
-		ex_show("not found");
+	if (tag_find(cw, &pos, dir, path, sizeof(path), pcmd, sizeof(pcmd))) {
+		ex_show("ta: tag not found");
 		return 1;
 	}
 	if (dir == 0)
@@ -1005,15 +1083,15 @@ static int tag_goto(char *cw, int dir)
 	tag_pos[tag_cnt - 1] = pos;
 	if (strcmp(path, ex_path()) != 0) {
 		if (access(path, R_OK) != 0) {
-			ex_show("cannot open");
+			ex_show("ta: cannot open %s", path);
 			return 1;
 		}
-		if (ec_edit("", "e", path, NULL) != 0)
+		if (ec_edit("", cmd, path, NULL) != 0)
 			return 1;
 	}
 	xrow = 0;
 	xoff = 0;
-	ex_command(cmd);
+	ex_command(pcmd);
 	ln = lbuf_get(xb, xrow);
 	if (ln && (s = strstr(ln, cw)) != NULL)
 		xoff = s - ln;
@@ -1022,42 +1100,204 @@ static int tag_goto(char *cw, int dir)
 
 static int ec_tag(char *loc, char *cmd, char *arg, char *txt)
 {
-	return tag_goto(arg, 0);
+	return tag_goto(cmd, arg, 0);
 }
 
-static int ec_tfree(char *loc, char *cmd, char *arg, char *txt)
+static void cmd_args(char *src, char *args[], int sz)
+{
+	int i;
+	for (i = 0; i < sz - 1 && *src; i++) {
+		while (isspace((unsigned char) *src))
+			src++;
+		args[i] = src;
+		for (; *src && !isspace((unsigned char) *src); src++) {
+			if (*src == '\\' && src[1])
+				src++;
+		}
+		if (*src)
+			*src++ = '\0';
+	}
+	args[i] = NULL;
+}
+
+static int ec_lsp(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *lcmd[16];
+	cmd_args(arg && arg[0] ? arg : "clangd", lcmd, LEN(lcmd));
+	if (!lsp_init(lcmd)) {
+		ex_show("LSP server connected");
+		return 0;
+	}
+	ex_show("lsp: failed to connect to the LSP server");
+	return 1;
+}
+
+static int ec_lspclose(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_show("LSP server disconnected");
+	lsp_done();
+	return 0;
+}
+
+static int ec_lspgoto(char *loc, char *cmd, char *arg, char *txt)
+{
+	char path[TAGLOC];
+	int drow, doff;
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspg: buffer modified"))
+		return 1;
+	if (!ex_path() || lsp_definition(ex_path(), xrow, xoff, ex_filetype(),
+					path, sizeof(path), &drow, &doff)) {
+		ex_show(lsp_on() ? "lspg: not found" : "lspg: not connected");
+		return 1;
+	}
+	ex_tagput("lspgoto");
+	if (strcmp(path, ex_path()) != 0) {
+		if (access(path, R_OK) != 0) {
+			ex_show("lspg: cannot open %s", path);
+			return 1;
+		}
+		if (ec_edit("", cmd, path, NULL) != 0)
+			return 1;
+	}
+	xrow = drow;
+	xoff = doff;
+	return 0;
+}
+
+static int ec_lspfind(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *res;
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspf: buffer modified"))
+		return 1;
+	res = lsp_find(ex_path(), xrow, xoff, ex_filetype());
+	if (res) {
+		reg_put('*', res, 1);
+		qfix_reset();
+	} else {
+		ex_show(lsp_on() ? "lspf: not found" : "lspf: not connected");
+	}
+	free(res);
+	return !res;
+}
+
+static int ec_lspdoc(char *loc, char *cmd, char *arg, char *txt)
+{
+	char *res;
+	int reg = 0;
+	ex_reg(arg, &reg);
+	if (reg <= 0) {
+		ex_show("lspd: no yank buffer specified");
+		return 1;
+	}
+	if (!strchr(cmd, '!') && bufs_modified(0, "lspd: buffer modified"))
+		return 1;
+	res = lsp_hover(ex_path(), xrow, xoff, ex_filetype());
+	if (res)
+		reg_put(reg, res, 1);
+	else
+		ex_show(lsp_on() ? "lspd: no documentation" : "lspd: not connected");
+	free(res);
+	return !res;
+}
+
+static int ec_tclose(char *loc, char *cmd, char *arg, char *txt)
 {
 	tag_done();
+	tag_cnt = 0;
 	return 0;
 }
 
 static int ec_pop(char *loc, char *cmd, char *arg, char *txt)
 {
 	if (tag_cnt > 0) {
+		if (!ex_path() || strcmp(tag_path[tag_cnt - 1], ex_path()) != 0)
+			if (ec_edit("", cmd, tag_path[tag_cnt - 1], txt))
+				return 1;
 		tag_cnt--;
-		if (ex_path() == NULL || strcmp(tag_path[tag_cnt], ex_path()) != 0)
-			ec_edit("", "e", tag_path[tag_cnt], txt);
 		xrow = tag_row[tag_cnt];
 		xoff = tag_off[tag_cnt];
 		return 0;
 	} else {
-		ex_show("not found");
+		ex_show("po: tag stack empty");
 	}
 	return 1;
 }
 
+static int ec_tput(char *loc, char *cmd, char *arg, char *txt)
+{
+	ex_tagput(arg[0] ? arg : "tagput");
+	return 0;
+}
+
 static int ec_tnext(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0)
-		return tag_goto(tag_name[tag_cnt - 1], +1);
+	if (tag_cnt > 0 && !tag_goto(cmd, tag_name[tag_cnt - 1], +1))
+		return 0;
+	ex_show("tn: no more tags");
 	return 1;
 }
 
 static int ec_tprev(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (tag_cnt > 0)
-		return tag_goto(tag_name[tag_cnt - 1], -1);
+	if (tag_cnt > 0 && !tag_goto(cmd, tag_name[tag_cnt - 1], -1))
+		return 0;
+	ex_show("tp: no more tags");
 	return 1;
+}
+
+static int ex_cjump(char *cmd)
+{
+	char txt[128];
+	char path[1024];
+	int row, off;
+	if (qfix_current(path, sizeof(path), &row, &off, txt, sizeof(txt))) {
+		ex_show("cn: no more items");
+		return 1;
+	}
+	if (access(path, R_OK)) {
+		ex_show("cn: cannot open %s", path);
+		return 1;
+	}
+	if (ec_edit("", cmd, path, NULL) != 0)
+		return 1;
+	if (row < 0 || row >= lbuf_len(xb))
+		row = 0;
+	xrow = row;
+	xoff = off;
+	ex_show("cn: %s", txt);
+	return 0;
+}
+
+static int ec_cshow(char *loc, char *cmd, char *arg, char *txt)
+{
+	int res;
+	if ((res = ex_cjump(cmd)))
+		ex_show("cc: no more items");
+	return res;
+}
+
+static int ec_cnext(char *loc, char *cmd, char *arg, char *txt)
+{
+	if (qfix_next()) {
+		ex_show("cn: no more items");
+		return 1;
+	}
+	return ex_cjump(cmd);
+}
+
+static int ec_cprev(char *loc, char *cmd, char *arg, char *txt)
+{
+	if (qfix_prev()) {
+		ex_show("cp: no more items");
+		return 1;
+	}
+	return ex_cjump(cmd);
+}
+
+static int ec_crewind(char *loc, char *cmd, char *arg, char *txt)
+{
+	qfix_reset();
+	return 0;
 }
 
 static int ec_at(char *loc, char *cmd, char *arg, char *txt)
@@ -1069,22 +1309,22 @@ static int ec_at(char *loc, char *cmd, char *arg, char *txt)
 		return 1;
 	xrow = beg;
 	if (cmd[0] == 'r' && cmd[1] == 'a') {
-		struct sbuf *r = sbuf_make();
+		struct sbuf sb = {0};
 		char *s = buf;
 		int ret;
 		while (*s) {
 			if ((unsigned char) *s == '' && s[1]) {
 				char *reg = reg_get((unsigned char) *++s, NULL);
-				sbuf_str(r, reg ? reg : "");
+				sbuf_str(&sb, reg ? reg : "");
 				s++;
 			} else {
 				if ((unsigned char) *s == '' && s[1])
 					s++;
-				sbuf_chr(r, (unsigned char) *s++);
+				sbuf_chr(&sb, (unsigned char) *s++);
 			}
 		}
-		ret = ex_command(sbuf_buf(r));
-		sbuf_free(r);
+		ret = ex_command(sbuf_buf(&sb));
+		sbuf_free(&sb);
 		return ret;
 	}
 	return ex_command(buf);
@@ -1094,22 +1334,23 @@ static int ec_source(char *loc, char *cmd, char *arg, char *txt)
 {
 	char *path = arg[0] ? ex_pathexpand(arg, 1) : ex_path();
 	char buf[1 << 10];
-	struct sbuf *sb;
+	struct sbuf sb = {0};
 	int fd = path[0] ? open(path, O_RDONLY) : -1;
 	long nr;
 	if (fd < 0)
 		return 1;
-	sb = sbuf_make();
 	while ((nr = read(fd, buf, sizeof(buf))) > 0)
-		sbuf_mem(sb, buf, nr);
-	ex_command(sbuf_buf(sb));
-	sbuf_free(sb);
+		sbuf_mem(&sb, buf, nr);
+	xsource = 1;
+	ex_command(sbuf_buf(&sb));
+	xsource = 0;
+	sbuf_free(&sb);
 	return 0;
 }
 
 static int ec_echo(char *loc, char *cmd, char *arg, char *txt)
 {
-	ex_print(arg);
+	ex_show(arg);
 	return 0;
 }
 
@@ -1129,6 +1370,8 @@ static struct option {
 	{"ru", "ruler", &xru},
 	{"shape", "shape", &xshape},
 	{"td", "textdirection", &xtd},
+	{"ts", "tabstop", &xts},
+	{"vte", "vte", &xvte},
 	{"wa", "writeany", &xwa},
 };
 
@@ -1170,7 +1413,7 @@ static int ec_set(char *loc, char *cmd, char *arg, char *txt)
 				return 0;
 			}
 		}
-		ex_show("unknown option");
+		ex_show("unknown option %s", opt);
 		return 1;
 	}
 	return 0;
@@ -1180,31 +1423,39 @@ static struct excmd {
 	char *abbr;
 	char *name;
 	int (*ec)(char *loc, char *cmd, char *arg, char *txt);
+	int exclam;
 } excmds[] = {
 	{"a", "append", ec_insert},
 	{"b", "buffer", ec_buffer},
 	{"d", "delete", ec_delete},
 	{"c", "change", ec_insert},
-	{"cm", "cmap", ec_cmap},
-	{"cm!", "cmap!", ec_cmap},
-	{"e", "edit", ec_edit},
-	{"e!", "edit!", ec_edit},
+	{"cc", "cc", ec_cshow, 1},
+	{"cm", "cmap", ec_cmap, 1},
+	{"cn", "cnext", ec_cnext, 1},
+	{"cp", "cprev", ec_cprev, 1},
+	{"cr", "crewind", ec_crewind},
+	{"e", "edit", ec_edit, 1},
 	{"ec", "echo", ec_echo},
-	{"ew", "ew", ec_edit},
-	{"ew!", "ew!", ec_edit},
+	{"ew", "ew", ec_edit, 1},
 	{"ft", "filetype", ec_ft},
-	{"g", "global", ec_glob},
-	{"g!", "global!", ec_glob},
+	{"g", "global", ec_glob, 1},
+	{"hl", "highlight", ec_highlight},
 	{"i", "insert", ec_insert},
 	{"k", "mark", ec_mark},
-	{"make", "make", ec_make},
-	{"n", "next", ec_next},
+	{"lsp", "lspopen", ec_lsp},
+	{"lspc", "lspclose", ec_lspclose},
+	{"lspf", "lspfind", ec_lspfind, 1},
+	{"lspg", "lspgoto", ec_lspgoto, 1},
+	{"lspd", "lspdoc", ec_lspdoc, 1},
+	{"mak", "make", ec_make, 1},
+	{"mk", "mapkey", ec_mapkey},
+	{"n", "next", ec_next, 1},
 	{"p", "print", ec_print},
-	{"po", "pop", ec_pop},
+	{"mc", "mapchar", ec_mapchar},
+	{"po", "pop", ec_pop, 1},
 	{"pu", "put", ec_put},
-	{"prev", "prev", ec_prev},
-	{"q", "quit", ec_quit},
-	{"q!", "quit!", ec_quit},
+	{"prev", "prev", ec_prev, 1},
+	{"q", "quit", ec_quit, 1},
 	{"r", "read", ec_read},
 	{"redo", "redo", ec_redo},
 	{"rs", "rs", ec_rs},
@@ -1214,20 +1465,17 @@ static struct excmd {
 	{"se", "set", ec_set},
 	{"s", "substitute", ec_substitute},
 	{"so", "source", ec_source},
-	{"ta", "tag", ec_tag},
-	{"tn", "tnext", ec_tnext},
-	{"tp", "tprev", ec_tprev},
-	{"tf", "tfree", ec_tfree},
+	{"ta", "tag", ec_tag, 1},
+	{"tn", "tnext", ec_tnext, 1},
+	{"tp", "tprev", ec_tprev, 1},
+	{"tc", "tclose", ec_tclose},
+	{"tt", "tput", ec_tput},
 	{"u", "undo", ec_undo},
 	{"v", "vglobal", ec_glob},
-	{"w", "write", ec_write},
-	{"w!", "write!", ec_write},
-	{"wq", "wq", ec_quit},
-	{"wq!", "wq!", ec_quit},
-	{"x", "xit", ec_quit},
-	{"x!", "xit!", ec_quit},
-	{"xa", "xa", ec_quit},
-	{"xa!", "xa!", ec_quit},
+	{"w", "write", ec_write, 1},
+	{"wq", "wq", ec_quit, 1},
+	{"x", "xit", ec_quit, 1},
+	{"xa", "xa", ec_quit, 1},
 	{"y", "yank", ec_yank},
 	{"!", "!", ec_exec},
 	{"@", "@", ec_at},
@@ -1237,84 +1485,98 @@ static struct excmd {
 
 static int ex_idx(char *cmd)
 {
-	int i;
+	char base[32];
+	int len, i;
+	snprintf(base, sizeof(base), "%s", cmd);
+	if ((len = strlen(base)) > 1 && base[len - 1] == '!')
+		base[len - 1] = '\0';
 	for (i = 0; i < LEN(excmds); i++)
-		if (!strcmp(excmds[i].abbr, cmd) || !strcmp(excmds[i].name, cmd))
+		if (!strcmp(excmds[i].abbr, base) || !strcmp(excmds[i].name, base))
 			return i;
 	return -1;
 }
 
-/* read ex command addresses */
-static char *ex_loc(char *src, char *loc)
+/* read ex command addresses; return a static buffer */
+static char *ex_loc(char **src0)
 {
+	char *src = *src0;
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	while (*src == ':' || *src == ' ' || *src == '\t')
 		src++;
 	while (*src && strchr(".$0123456789'/?+-,;%", (unsigned char) *src) != NULL) {
 		if (*src == '\'')
-			*loc++ = *src++;
+			sbuf_chr(&sb, *src++);
 		if (*src == '/' || *src == '?') {
 			int d = *src;
-			*loc++ = *src++;
+			sbuf_chr(&sb, *src++);
 			while (*src && *src != d) {
 				if (*src == '\\' && src[1])
-					*loc++ = *src++;
-				*loc++ = *src++;
+					sbuf_chr(&sb, *src++);
+				sbuf_chr(&sb, *src++);
 			}
 		}
 		if (*src)
-			*loc++ = *src++;
+			sbuf_chr(&sb, *src++);
 	}
-	*loc = '\0';
-	return src;
+	*src0 = src;
+	return sbuf_buf(&sb);
 }
 
-/* read ex command name */
-static char *ex_cmd(char *src, char *cmd)
+/* read ex command name; returns a static buffer */
+static char *ex_cmd(char **src0)
 {
-	char *cmd0 = cmd;
+	char *src = *src0;
+	static char sb_buf[32];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	while (*src == ' ' || *src == '\t')
 		src++;
-	while (isalpha((unsigned char) *src) && cmd < cmd0 + 16)
-		if ((*cmd++ = *src++) == 'k' && cmd == cmd0 + 1)
+	while (isalpha((unsigned char) *src)) {
+		sbuf_chr(&sb, *src++);
+		if (src[-1] == 'k' && sbuf_len(&sb) == 1)
 			break;
+	}
 	if (*src == '!' || *src == '=' || *src == '@')
-		*cmd++ = *src++;
-	*cmd = '\0';
-	return src;
+		sbuf_chr(&sb, *src++);
+	*src0 = src;
+	return sbuf_buf(&sb);
 }
 
-/* read ex command argument for excmd command */
-static char *ex_arg(char *src, char *dst, char *excmd)
+/* read ex command argument for excmd command; returns a static buffer */
+static char *ex_arg(char **src0, char *excmd)
 {
+	static char sb_buf[EXLEN];
+	struct sbuf sb = {sb_buf, sizeof(sb_buf)};
 	int c0 = excmd[0];
 	int c1 = c0 ? excmd[1] : 0;
+	char *src = *src0;
 	while (*src == ' ' || *src == '\t')
 		src++;
 	if (c0 == '!' || c0 == 'g' || c0 == 'v' ||
 			((c0 == 'r' || c0 == 'w') && !c1 && src[0] == '!')) {
 		while (*src && *src != '\n') {
 			if (*src == '\\' && src[1])
-				*dst++ = *src++;
-			*dst++ = *src++;
+				sbuf_chr(&sb, *src++);
+			sbuf_chr(&sb, *src++);
 		}
 	} else if ((c0 == 's' && c1 != 'e') || c0 == '&' || c0 == '~') {
 		int delim = *src;
 		int cnt = 2;
 		if (delim != '\n' && delim != '|' && delim != '\\' && delim != '"') {
-			*dst++ = *src++;
+			sbuf_chr(&sb, *src++);
 			while (*src && *src != '\n' && cnt > 0) {
 				if (*src == delim)
 					cnt--;
 				if (*src == '\\' && src[1])
-					*dst++ = *src++;
-				*dst++ = *src++;
+					sbuf_chr(&sb, *src++);
+				sbuf_chr(&sb, *src++);
 			}
 		}
 	}
 	while (*src && *src != '\n' && *src != '|' && *src != '"') {
 		if (*src == '\\' && src[1])
-			*dst++ = *src++;
-		*dst++ = *src++;
+			sbuf_chr(&sb, *src++);
+		sbuf_chr(&sb, *src++);
 	}
 	if (*src == '"') {
 		while (*src && *src != '\n')
@@ -1322,16 +1584,16 @@ static char *ex_arg(char *src, char *dst, char *excmd)
 	}
 	if (*src == '\n' || *src == '|')
 		src++;
-	*dst = '\0';
-	return src;
+	*src0 = src;
+	return sbuf_buf(&sb);
 }
 
 /* read ex text input for excmd command */
-static char *ex_txt(char *src, char **dst, char *excmd)
+static char *ex_txt(char **src0, char *excmd)
 {
+	char *src = *src0;
 	int c0 = excmd[0];
 	int c1 = c0 ? excmd[1] : 0;
-	*dst = NULL;
 	if (c0 == 'r' && c1 == 's' && src[0]) {
 		char *beg = src;
 		char *res;
@@ -1341,58 +1603,57 @@ static char *ex_txt(char *src, char **dst, char *excmd)
 		memcpy(res, beg, src - beg);
 		res[src - beg] = '\n';
 		res[src - beg + 1] = '\0';
-		*dst = res;
-		return src[0] ? src + 3 : src;
+		*src0 = src[0] ? src + 3 : src;
+		return res;
 	}
 	if ((c0 == 'r' && c1 == 's') || (c1 == 0 && (c0 == 'i' || c0 == 'a' || c0 == 'c'))) {
-		struct sbuf *sb = sbuf_make();
+		struct sbuf sb = {0};
 		char *s;
 		while ((s = ex_read(""))) {
 			if (!strcmp(".", s)) {
 				free(s);
 				break;
 			}
-			sbuf_str(sb, s);
-			sbuf_chr(sb, '\n');
+			sbuf_str(&sb, s);
+			sbuf_chr(&sb, '\n');
 			free(s);
 		}
-		*dst = sbuf_done(sb);
-		return src;
+		*src0 = src;
+		return sbuf_done(&sb);
 	}
-	return src;
+	return NULL;
 }
 
 /* execute a single ex command */
 static int ex_exec(char *ln)
 {
-	char loc[EXLEN], cmd[EXLEN], arg[EXLEN];
 	int ret = 0;
-	if (strlen(ln) >= EXLEN) {
-		ex_show("command too long");
-		return 1;
-	}
-	while (*ln) {
-		char *txt = NULL;
+	while (!ret) {
+		char *loc, *cmd, *arg, *txt;
 		int idx;
-		ln = ex_loc(ln, loc);
-		ln = ex_cmd(ln, cmd);
-		idx = ex_idx(cmd);
-		ln = ex_arg(ln, arg, idx >= 0 ? excmds[idx].abbr : "unknown");
-		ln = ex_txt(ln, &txt, idx >= 0 ? excmds[idx].abbr : "unknown");
-		if (idx >= 0)
+		loc = ex_loc(&ln);
+		cmd = ex_cmd(&ln);
+		idx = cmd ? ex_idx(cmd) : -1;
+		arg = ex_arg(&ln, idx >= 0 ? excmds[idx].abbr : "unknown");
+		txt = ex_txt(&ln, idx >= 0 ? excmds[idx].abbr : "unknown");
+		if (idx >= 0 && arg) {
 			ret = excmds[idx].ec(loc, cmd, arg, txt);
-		else
-			ex_show("unknown command");
+		} else {
+			ret = 1;
+			ex_show("unknown command %s", cmd);
+		}
 		free(txt);
+		if (!*ln)
+			break;
 	}
 	return ret;
 }
 
-/* execute a single ex command */
+/* execute ex commands */
 int ex_command(char *ln)
 {
 	int ret = ex_exec(ln);
-	lbuf_modified(xb);
+	lbuf_tx(xb);
 	return ret;
 }
 
@@ -1401,10 +1662,10 @@ void ex(void)
 {
 	while (!xquit) {
 		char *ln = ex_read(":");
-		if (ln) {
-			ex_command(ln);
-			reg_put(':', ln, 1);
-		}
+		if (!ln)
+			break;
+		ex_command(ln);
+		reg_put(':', ln, 1);
 		free(ln);
 	}
 }
@@ -1414,14 +1675,23 @@ int ex_init(char **files)
 	next = files;
 	if (ex_next("e", 0))
 		return 1;
-	if (getenv("EXINIT"))
+	if (getenv("EXINIT")) {
 		ex_command(getenv("EXINIT"));
+	} else if (getenv("HOME")) {
+		char sb_buf[EXLEN];
+		struct sbuf sb = {sb_buf, sizeof(sb_buf)};
+		sbuf_str(&sb, getenv("HOME"));
+		sbuf_str(&sb, "/.neatvi");
+		if (sbuf_buf(&sb) && !access(sbuf_buf(&sb), R_OK))
+			ec_source("", "so", sbuf_buf(&sb), NULL);
+	}
 	return 0;
 }
 
 void ex_done(void)
 {
 	int i;
+	lsp_done();
 	for (i = 0; i < LEN(bufs); i++)
 		bufs_free(i);
 }

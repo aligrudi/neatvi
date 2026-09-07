@@ -4,6 +4,7 @@
 #define REG_NEWLINE		0x08
 #define REG_NOTBOL		0x10
 #define REG_NOTEOL		0x20
+#define REG_EOLSTOP		0x40
 
 typedef struct {
 	long rm_so;

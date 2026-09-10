@@ -152,21 +152,28 @@ static void vi_drawupdate(int otop)
 /* update the screen by replacing lines r1 to r2 with n lines */
 static void vi_drawfix(int r1, int del, int ins)
 {
+	int s1 = r1;
 	int i;
-	int s1 = MIN(MAX(r1, xtop), xtop + xrows - 1);
+	if (r1 >= xtop + xrows)
+		return;
+	if (r1 < xtop) {
+		s1 = xtop;
+		del = MAX(0, del - (xtop - r1));
+		ins = MAX(0, ins - (xtop - r1));
+	}
 	if (ins != del) {
 		term_pos(s1 - xtop, 0);
 		term_room(ins - del);
 	}
 	/* new lines are visible */
-	if (del > ins && r1 + ins < xtop + xrows) {
+	if (del > ins && s1 + ins < xtop + xrows) {
 		for (i = xtop + xrows - del + ins; i < xtop + xrows; i++)
-			if (i >= r1 + ins && i > xtop)
+			if (i >= s1 + ins && i >= xtop)
 				vi_drawrow(i);
 	}
 	/* draw replaced lines */
 	for (i = s1; i < xtop + xrows; i++)
-		if (i < r1 + ins || (!i && !r1 && !ins))
+		if (i < s1 + ins || (!i && !s1 && !ins))
 			vi_drawrow(i);
 }
 

@@ -35,9 +35,9 @@ COMMANDS
 Commands not available in ex(1):
 
 :cm[ap][!] [kmap]
-  Without argument, prints the current keymap name.
-  When kmap is given, sets the alternate keymap to the keymap with
-  the given name and, unless ! is given, switches to this keymap.
+  Without argument, prints the current keymap name.  When kmap
+  is given, it switches to the given keymap; with !, it sets the
+  alternate keymap as well.
 :ft [filetype]
   Without filetype, prints the current file type.
   When filetype is specified, sets the file type of the

@@ -55,10 +55,11 @@ Commands not available in ex(1):
 :po[p]
   Pops the tag stack.
 :b[uffer] [buf]
-  Without buf, prints buffer list.  Switches to the given buffer
-  if buf is a buffer number or alias.  Also, buf can be -, +, !,
-  and ~ to switch to the previous buffer, switch to the next buffer,
-  delete the current buffer, and renumber buffers, respectively.
+  Without buf, prints the buffer list.  If buf is given and is a
+  buffer number or alias, it switches to the given buffer.  Also,
+  buf can be -, +, !, and ~, to switch to the previous buffer,
+  switch to the next buffer, delete the current buffer, and
+  renumber buffers, respectively.
 :rs reg
   Reads dot-terminated lines (similar to :a command) from ex input
   and copies them to the given yank buffer.
@@ -138,7 +139,7 @@ Other noteworthy differences with vi(1):
 - If paths start with =, they are assumed to be relative to the
   directory of the current file.
 - Neatvi highlights files whose names end with ls as directory
-  listings; combined with the gl command, which edits the file
+  listings; combined with the gl command, which opens the file
   under the cursor, it can be used to explore and edit files
   under a directory.  For instance, git ls-files >ls && neatvi ls.
 - In addition to the standard single-letter yank buffers, Neatvi

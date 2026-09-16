@@ -921,12 +921,12 @@ static int ec_ft(char *loc, char *cmd, char *arg, char *txt)
 
 static int ec_cmap(char *loc, char *cmd, char *arg, char *txt)
 {
-	if (arg[0] && kmap_find(arg) >= 0)
-		xkmap_alt = kmap_find(arg);
-	else
+	if (!arg[0])
 		ex_print(kmap_map(xkmap, 0));
-	if (arg[0] && !strchr(cmd, '!'))
-		xkmap = xkmap_alt;
+	if (arg[0] && strchr(cmd, '!'))
+		xkmap_alt = kmap_find(arg);
+	if (arg[0] && kmap_find(arg) >= 0)
+		xkmap = kmap_find(arg);
 	return 0;
 }
 

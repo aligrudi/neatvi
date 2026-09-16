@@ -163,11 +163,12 @@ static void vi_drawfix(int r1, int del, int ins)
 	}
 	if (ins != del) {
 		term_pos(s1 - xtop, 0);
-		term_room(ins - del);
+		term_room(ins - del - (s1 - r1));
 	}
 	/* new lines are visible */
 	if (del > ins && s1 + ins < xtop + xrows) {
-		for (i = xtop + xrows - del + ins; i < xtop + xrows; i++)
+		int beg = xtop + xrows - del + ins - (s1 - r1);
+		for (i = beg; i < xtop + xrows; i++)
 			if (i >= s1 + ins && i >= xtop)
 				vi_drawrow(i);
 	}

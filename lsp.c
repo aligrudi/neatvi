@@ -377,13 +377,11 @@ static long http_hlen(char *buf, long len)
 {
 	long pos = 0;
 	char *r;
-	while (pos + 4 <= len && (r = memchr(buf + pos, '\n', len - pos)) != NULL) {
+	while (pos + 3 <= len && (r = memchr(buf + pos, '\n', len - pos))) {
 		long cur = r - buf;
-		if (cur == 0 || cur + 3 > len)
-			continue;
-		if (buf[cur + 1] == '\r' && buf[cur + 2] == '\n')
+		if (cur && cur + 3 <= len && buf[cur + 1] == '\r' && buf[cur + 2] == '\n')
 			return cur + 3;
-		pos++;
+		pos = (r - buf) + 1;
 	}
 	return -1;
 }

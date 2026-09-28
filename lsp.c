@@ -192,7 +192,7 @@ static int lsp_open(char *path, char *ft)
 
 void lsp_modified(char *path, char *ft)
 {
-	if (lsp_pid > 0 && path && ft)
+	if (lsp_pid > 0 && path && ft && path[0] != '/')
 		lsp_open(path, ft);
 }
 

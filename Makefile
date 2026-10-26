@@ -16,5 +16,7 @@ vi: $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 stag: $(STAG)
 	$(CC) -o $@ $(STAG) $(LDFLAGS)
+check: vi
+	$(SHELL) test.sh
 clean:
 	rm -f *.o vi stag
